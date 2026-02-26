@@ -6,6 +6,7 @@
 <title>Budget · Einzelfirma</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async></script>
 <style>
 :root {
   --ink: #161412; --ink2: #44403c; --muted: #9a9490;
@@ -337,13 +338,13 @@ input:focus,select:focus{outline:none;border-color:var(--accent2);box-shadow:0 0
       <label>Beleg / Foto</label>
       <div class="scan-zone" id="scanZone" onclick="triggerUpload()" ondragover="onDragOver(event)" ondragleave="onDragLeave()" ondrop="onDrop(event)">
         <div class="ico">📎</div>
-        <div class="lbl">Foto aufnehmen oder Beleg hochladen<br><span style="font-size:11px">JPG, PNG, PDF · Drag & Drop</span></div>
+        <div class="lbl">Foto, PDF oder Datei hochladen<br><span style="font-size:11px">JPG, PNG, PDF, HEIC · Drag & Drop · wird auf Google Drive gespeichert</span></div>
         <div class="scan-btns" onclick="event.stopPropagation()">
           <button class="btn btn-outline btn-sm" onclick="openCam()">📷 Kamera</button>
           <button class="btn btn-outline btn-sm" onclick="triggerUpload()">⬆ Hochladen</button>
         </div>
       </div>
-      <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none" onchange="onFilePicked(event)">
+      <input type="file" id="fileInput" accept="image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.heic,.heif" style="display:none" onchange="onFilePicked(event)">
       <div id="receiptPreview"></div>
     </div>
     <div class="divider"></div>
@@ -516,6 +517,9 @@ const DB_RECHNUNGEN = '966caa95a0334bb18a2cc9bac7de2ddf';
 const NOTION_API    = 'https://notion-proxy.holy-forest-0174.workers.dev/v1';
 const NOTION_VER    = '2022-06-28';
 const YEAR = new Date().getFullYear();
+const GDRIVE_CLIENT_ID = '525241680265-ecrm63sckhdllc59gv8j7k19tecl7ulu.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+let gdriveToken = null;
 
 const CATS_BIZ  = ['Honorar/Auftrag','Miete/Büro','Software & Tools','Hardware','Marketing & Werbung','Fahrtkosten','Kommunikation','Versicherung (beruflich)','Weiterbildung','Buchhaltung & Beratung','Repräsentation','AHV/Sozialversicherung','Sonstiges (Geschäftl.)'];
 const CATS_PRIV = ['Lohn / Privatbezug','Miete privat','Lebensmittel','Gesundheit','Mobilität & ÖV','Reisen & Ferien','Freizeit & Hobby','Telefon & Internet','Abonnemente','Sonstiges (Privat)'];
@@ -714,9 +718,19 @@ async function saveTx(){
   btn.disabled=true; btn.textContent='Speichert…';
 
   let receiptFileName = null;
+  let receiptLink = null;
   if(currentReceipt){
-    receiptFileName = buildFilename(currentReceipt.isPDF?'pdf':'jpg');
-    downloadOriginal(currentReceipt.original, receiptFileName);
+    receiptFileName = buildFilename(getFileExt(currentReceipt.original, currentReceipt.filename, currentReceipt.isPDF));
+    btn.textContent='📤 Lade Beleg hoch…';
+    try{
+      const uploadResult = await uploadToGDrive(currentReceipt.original, receiptFileName, currentReceipt.isPDF);
+      receiptLink = uploadResult.link;
+      receiptFileName = uploadResult.filename;
+    } catch(e){
+      console.warn('GDrive Upload fehlgeschlagen, fahre ohne Beleg fort:', e);
+      showFeedback('⚠️ Beleg-Upload fehlgeschlagen, Buchung wird trotzdem gespeichert','amber');
+    }
+    btn.textContent='Speichert…';
   }
 
   const props = {
@@ -729,7 +743,8 @@ async function saveTx(){
     'Gegenpartei':  { rich_text:[{ text:{ content: document.getElementById('eCounterpart').value }}]},
     'Notiz':        { rich_text:[{ text:{ content: document.getElementById('eNote').value }}]},
     'Rechnungs-Nr': { rich_text:[{ text:{ content: document.getElementById('eInvRef').value }}]},
-    'Beleg-Dateiname':{ rich_text:[{ text:{ content: receiptFileName||'' }}]}
+    'Beleg-Dateiname':{ rich_text:[{ text:{ content: receiptFileName||'' }}]},
+    'Beleg-Link':    { url: receiptLink||null }
   };
   if(entryCategory) props['Kategorie'] = { select:{ name: entryCategory }};
   if(document.getElementById('eAccount').value) props['Konto'] = { select:{ name: document.getElementById('eAccount').value }};
@@ -1146,9 +1161,106 @@ function buildFilename(ext){
   const ym=(document.getElementById('eDate').value||toDay()).slice(0,7);
   const amt=(document.getElementById('eAmt').value||'0').replace(/[^0-9.]/g,'');
   const san=(s,max)=>(s||'').replace(/[^a-zA-Z0-9äöüÄÖÜ\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-').slice(0,max)||'beleg';
-  return `${ym}_${san(entryCategory,20)||'Beleg'}_CHF-${amt}_${san(document.getElementById('eDesc').value,30)}.${ext}`;
+  const desc=san(document.getElementById('eDesc').value||document.getElementById('eCounterpart').value,30);
+  return `${ym}_${san(entryCategory,20)||'Beleg'}_CHF-${amt}_${desc}.${ext}`;
+}
+
+function getFileExt(dataURL, originalFilename, isPDF){
+  if(isPDF) return 'pdf';
+  if(originalFilename){
+    const parts = originalFilename.split('.');
+    if(parts.length>1) return parts[parts.length-1].toLowerCase();
+  }
+  if(dataURL.startsWith('data:image/png')) return 'png';
+  if(dataURL.startsWith('data:image/heic')) return 'heic';
+  return 'jpg';
 }
 function downloadOriginal(dataURL,filename){ const a=document.createElement('a'); a.href=dataURL; a.download=filename; a.click(); }
+
+// ═══════════════════════════════════════════
+// GOOGLE DRIVE
+// ═══════════════════════════════════════════
+async function getGDriveToken(){
+  if(gdriveToken) return gdriveToken;
+  return new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID,
+      scope: GDRIVE_SCOPE,
+      callback: (resp) => {
+        if(resp.error){ reject(new Error(resp.error)); return; }
+        gdriveToken = resp.access_token;
+        resolve(gdriveToken);
+      }
+    });
+    client.requestAccessToken();
+  });
+}
+
+const GDRIVE_PARENT_FOLDER = '1NCSz86nG3Q0QRNu7Ltw-ZTYqhin0yNSS';
+
+async function getOrCreateFolder(token, year){
+  const folderName = `Belege ${year}`;
+  // Search inside parent folder
+  const q = encodeURIComponent(`name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${GDRIVE_PARENT_FOLDER}' in parents and trashed=false`);
+  const search = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}`,
+    { headers: { Authorization: 'Bearer '+token } }
+  );
+  const searchData = await search.json();
+  if(searchData.files && searchData.files.length > 0){
+    return searchData.files[0].id;
+  }
+  // Create folder inside parent
+  const create = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [GDRIVE_PARENT_FOLDER]
+    })
+  });
+  const folder = await create.json();
+  return folder.id;
+}
+
+async function uploadToGDrive(dataURL, filename, isPDF){
+  const token = await getGDriveToken();
+  const year = (document.getElementById('eDate').value || toDay()).slice(0,4);
+  const folderId = await getOrCreateFolder(token, year);
+
+  // Convert dataURL to blob
+  const res = await fetch(dataURL);
+  const blob = await res.blob();
+  // Detect correct mimeType from dataURL
+  let mimeType = 'image/jpeg';
+  if(isPDF) mimeType = 'application/pdf';
+  else if(dataURL.startsWith('data:image/png')) mimeType = 'image/png';
+  else if(dataURL.startsWith('data:image/heic')) mimeType = 'image/heic';
+  else if(dataURL.startsWith('data:image/')) mimeType = dataURL.split(';')[0].replace('data:','');
+
+  // Multipart upload
+  const metadata = { name: filename, parents: [folderId] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
+  form.append('file', blob, filename);
+
+  const upload = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+    { method: 'POST', headers: { Authorization: 'Bearer '+token }, body: form }
+  );
+  const file = await upload.json();
+  if(file.error) throw new Error(file.error.message);
+
+  // Make file readable by anyone with link
+  await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/permissions`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' })
+  });
+
+  return { filename: file.name, link: file.webViewLink, id: file.id };
+}
 
 // ═══════════════════════════════════════════
 // CAMERA
