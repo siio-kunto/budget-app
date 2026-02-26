@@ -270,6 +270,70 @@ textarea.form-input{resize:vertical;min-height:72px}
 .filter-bar select{padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;background:white;color:var(--ink);cursor:pointer}
 .filter-bar input{padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;flex:1;min-width:120px}
 .filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--accent)}
+
+/* ACCOUNT BALANCES */
+.account-card{background:white;border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.account-icon{font-size:20px;margin-right:10px}
+.account-name{font-size:13.5px;font-weight:600;color:var(--ink)}
+.account-sub{font-size:11px;color:var(--muted)}
+.account-bal{font-family:'Fraunces',serif;font-size:18px;font-weight:500;color:var(--ink);text-align:right;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background .15s}
+.account-bal:hover{background:var(--accent-light);color:var(--accent)}
+.account-bal.editing{background:#f0fdf4;outline:2px solid var(--accent);border-radius:6px}
+
+/* RECURRING */
+.recur-item{background:white;border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.recur-freq{padding:4px 9px;border-radius:7px;font-size:11px;font-weight:700;letter-spacing:.04em}
+.recur-freq.weekly{background:#eff6ff;color:var(--blue)}
+.recur-freq.monthly{background:var(--accent-light);color:var(--accent)}
+.recur-freq.yearly{background:var(--purple-light);color:var(--purple)}
+.recur-name{flex:1;font-size:13.5px;font-weight:500}
+.recur-amt{font-family:'Fraunces',serif;font-size:16px;color:var(--red)}
+.recur-next{font-size:11px;color:var(--muted)}
+
+/* OFFLINE BANNER */
+.offline-banner{display:none;background:#7f1d1d;color:#fca5a5;padding:10px 20px;font-size:13px;font-weight:600;text-align:center;position:sticky;top:calc(56px + env(safe-area-inset-top) + 42px);z-index:98;letter-spacing:.01em}
+.offline-banner.show{display:block}
+
+/* CURRENCY CONVERTER */
+.fx-bar{background:linear-gradient(135deg,#1e3a5f,#1e40af);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.fx-input{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:7px 10px;font-size:14px;color:white;width:90px;font-family:inherit}
+.fx-input::placeholder{color:rgba(255,255,255,.5)}
+.fx-input:focus{outline:none;background:rgba(255,255,255,.25)}
+.fx-select{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:7px 10px;font-size:13px;color:white;cursor:pointer;font-family:inherit}
+.fx-select option{background:#1e3a5f;color:white}
+.fx-result{font-family:'Fraunces',serif;font-size:18px;color:#86efac;white-space:nowrap}
+.fx-rate{font-size:11px;color:rgba(255,255,255,.5);white-space:nowrap}
+.fx-apply{background:#86efac;color:#14532d;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+
+/* ── TOAST NOTIFICATION ── */
+.toast{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:white;border-radius:14px;padding:14px 20px;font-size:14px;font-weight:600;
+  display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(22,20,18,.25);
+  opacity:0;transition:all .25s cubic-bezier(.34,1.56,.64,1);z-index:500;pointer-events:none;max-width:calc(100vw - 40px);white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.toast.success{background:#14532d}
+.toast.error{background:#7f1d1d}
+.toast.warning{background:#78350f}
+.toast.pending{background:#1e3a5f}
+.toast-icon{font-size:18px;flex-shrink:0}
+.toast-body{flex:1;min-width:0}
+.toast-title{font-weight:700;font-size:13px}
+.toast-sub{font-size:11.5px;opacity:.8;margin-top:1px;white-space:normal}
+.toast-action{font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;flex-shrink:0;padding:2px 0}
+.toast-links{display:flex;gap:12px;margin-top:6px}
+.toast-link{font-size:11.5px;opacity:.85;cursor:pointer;text-decoration:underline}
+
+/* ── PENDING QUEUE BANNER ── */
+.queue-banner{display:none;background:#1e3a5f;color:#bfdbfe;padding:10px 20px;font-size:13px;
+  font-weight:600;cursor:pointer;position:sticky;top:calc(98px + env(safe-area-inset-top));z-index:97;
+  display:none;align-items:center;justify-content:space-between;gap:10px}
+.queue-banner.show{display:flex}
+.queue-badge{background:#3b82f6;color:white;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:800}
+
+/* ── SAVE BUTTON STATES ── */
+.btn-saving{background:#78350f !important;color:#fde68a !important;cursor:not-allowed !important}
+.btn-saved{background:#14532d !important;color:#86efac !important;cursor:default !important}
 </style>
 </head>
 <body>
@@ -319,7 +383,34 @@ textarea.form-input{resize:vertical;min-height:72px}
   <div class="nav-tab" data-page="projekte" onclick="go('projekte')">🗂 Projekte</div>
   <div class="nav-tab" data-page="leben" onclick="go('leben')">🌱 Leben</div>
   <div class="nav-tab" data-page="buchungen" onclick="go('buchungen')">📋 Buchungen</div>
+  <div class="nav-tab" data-page="einstellungen" onclick="go('einstellungen')">⚙️ Keys</div>
 </nav>
+
+
+<!-- TOAST -->
+<div class="toast" id="appToast">
+  <div class="toast-icon" id="toastIcon">✅</div>
+  <div class="toast-body">
+    <div class="toast-title" id="toastTitle"></div>
+    <div class="toast-sub" id="toastSub"></div>
+    <div class="toast-links" id="toastLinks"></div>
+  </div>
+  <div class="toast-action" id="toastAction" style="display:none"></div>
+</div>
+
+<!-- PENDING QUEUE BANNER -->
+<div class="queue-banner" id="queueBanner" onclick="showPendingQueue()">
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="queue-badge" id="queueCount">0</span>
+    <span>Einträge ausstehend — klicken zum Senden</span>
+  </div>
+  <span style="font-size:11px;opacity:.7">Offline oder Fehler</span>
+</div>
+
+<!-- OFFLINE BANNER -->
+<div id="offlineBanner" class="offline-banner">
+  📴 Offline — letzte Sync: <span id="offlineSyncTime">unbekannt</span> · Daten aus Cache
+</div>
 
 <!-- ═══════════════════════════════════════ -->
 <!-- TAB 1: ÜBERSICHT                        -->
@@ -420,6 +511,25 @@ textarea.form-input{resize:vertical;min-height:72px}
 <!-- ═══════════════════════════════════════ -->
 <div id="page-erfassen" class="page">
 
+  <!-- CURRENCY CONVERTER -->
+  <div class="fx-bar" id="fxBar">
+    <span style="font-size:11px;color:rgba(255,255,255,.7);font-weight:600;white-space:nowrap">🌐 FX</span>
+    <input type="number" id="fxAmt" class="fx-input" placeholder="100" oninput="calcFX()">
+    <select id="fxFrom" class="fx-select" onchange="calcFX()">
+      <option value="USD">USD</option>
+      <option value="EUR">EUR</option>
+      <option value="GBP">GBP</option>
+      <option value="SEK">SEK</option>
+      <option value="NOK">NOK</option>
+      <option value="DKK">DKK</option>
+      <option value="JPY">JPY</option>
+    </select>
+    <span style="color:rgba(255,255,255,.5);font-size:13px">→ CHF</span>
+    <span class="fx-result" id="fxResult">—</span>
+    <span class="fx-rate" id="fxRate"></span>
+    <button class="fx-apply" onclick="applyFX()" id="fxApply" style="display:none">↓ Übernehmen</button>
+  </div>
+
   <!-- TYPE TOGGLE -->
   <div class="type-toggle">
     <button class="type-btn income active" onclick="setType('income')">💰 Einnahme</button>
@@ -476,10 +586,24 @@ textarea.form-input{resize:vertical;min-height:72px}
       <div class="form-group">
         <label class="form-label">Konto</label>
         <select id="eAccount" class="form-input">
-          <option value="Raiffeisen">🏦 Raiffeisen</option>
-          <option value="Revolut">💳 Revolut</option>
-          <option value="Kreditkarte">💰 Kreditkarte</option>
-          <option value="Bar">💵 Bar</option>
+          <optgroup label="🏦 Raiffeisen">
+            <option value="Raiffeisen Privat">Raiffeisen Privat</option>
+            <option value="Raiffeisen Sparkonto">Raiffeisen Sparkonto</option>
+            <option value="Raiffeisen 3a Konto">Raiffeisen 3a Konto</option>
+            <option value="Raiffeisen 3a Fonds">Raiffeisen 3a Fonds</option>
+          </optgroup>
+          <optgroup label="💳 Revolut">
+            <option value="Revolut">Revolut (Hauptkonto)</option>
+            <option value="Revolut Buffer">Revolut · Buffer_Savings</option>
+            <option value="Revolut Equipment">Revolut · Equipment</option>
+            <option value="Revolut Schulden Philipp">Revolut · Schulden Philipp</option>
+            <option value="Revolut Zukunft">Revolut · Zu(sammen):kunft</option>
+            <option value="Revolut Crypto">Revolut · Crypto</option>
+          </optgroup>
+          <optgroup label="🌐 Andere">
+            <option value="Ting Community">Ting Community</option>
+            <option value="Bar">💵 Bar</option>
+          </optgroup>
         </select>
       </div>
       <div class="form-group">
@@ -685,6 +809,21 @@ textarea.form-input{resize:vertical;min-height:72px}
   </div>
   <div class="card" id="privCatList"></div>
 
+  <!-- KONTOSTÄNDE -->
+  <div class="section-head" style="margin-top:24px">
+    <h3>🏦 Kontostände</h3>
+    <div style="font-size:11px;color:var(--muted)">Klicken zum Bearbeiten</div>
+  </div>
+  <div id="accountBalanceList"></div>
+
+  <!-- WIEDERKEHRENDE AUSGABEN -->
+  <div class="section-head" style="margin-top:24px">
+    <h3>🔄 Wiederkehrende Ausgaben</h3>
+    <button class="btn btn-outline btn-sm" onclick="openRecurModal()">+ Hinzufügen</button>
+  </div>
+  <div id="recurSetupWarn" style="background:var(--amber-light);color:var(--amber);border-radius:8px;padding:10px 14px;font-size:12.5px;font-weight:600;margin-bottom:10px;display:none"></div><div id="recurList"></div>
+  <div id="recurSummary" style="margin-top:8px"></div>
+
   <!-- JAHRESABSCHLUSS EXPORT -->
   <div class="section-head" style="margin-top:24px">
     <h3>📋 Jahresabschluss</h3>
@@ -694,8 +833,220 @@ textarea.form-input{resize:vertical;min-height:72px}
     <div class="card-title">Steuer-Mapping überprüfen</div>
     <div id="taxMappingEditor"></div>
     <div style="margin-top:16px;display:flex;gap:8px">
-      <button class="btn btn-primary" onclick="exportJahresabschluss()">📥 Jahresabschluss CSV</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="exportYear" class="form-input" style="width:auto;padding:8px 12px">
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+        </select>
+        <button class="btn btn-primary" onclick="exportJahresabschluss()">📥 Jahresabschluss (Steuer)</button>
+        <button class="btn btn-outline" onclick="exportCSV()">📋 Alle Buchungen CSV</button>
+      </div>
       <button class="btn btn-outline" onclick="exportCSV()">📥 Alle Buchungen</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- RECURRING MODAL -->
+<div class="modal-overlay" id="recurModal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeRecurModal()">✕</button>
+    <div class="modal-title" id="recurModalTitle">Wiederkehrende Ausgabe</div>
+    <input type="hidden" id="rEditId">
+    <div class="form-group">
+      <label class="form-label">Bezeichnung</label>
+      <input type="text" id="rName" class="form-input" placeholder="z.B. Schulden Philipp">
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Betrag (CHF)</label>
+        <input type="number" id="rAmt" class="form-input" placeholder="100" step="0.05">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Frequenz</label>
+        <select id="rFreq" class="form-input">
+          <option value="weekly">Wöchentlich</option>
+          <option value="monthly">Monatlich</option>
+          <option value="yearly">Jährlich</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Kategorie</label>
+        <select id="rCat" class="form-input">
+          <option value="">— wählen</option>
+          <option value="Schuldenrückzahlung">Schuldenrückzahlung</option>
+          <option value="Abos & Software">Abos & Software</option>
+          <option value="Versicherungen">Versicherungen</option>
+          <option value="Miete & Arbeitszimmer">Miete & Arbeitszimmer</option>
+          <option value="3. Säule">3. Säule</option>
+          <option value="Wohnen">Wohnen</option>
+          <option value="Übriges Privat">Übriges Privat</option>
+          <option value="AHV">AHV</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Konto</label>
+        <select id="rAccount" class="form-input">
+          <option value="Raiffeisen Privat">Raiffeisen Privat</option>
+          <option value="Revolut">Revolut</option>
+          <option value="Revolut Schulden Philipp">Revolut · Philipp</option>
+          <option value="Revolut Buffer">Revolut · Buffer</option>
+          <option value="Revolut Zukunft">Revolut · Zu:kunft</option>
+          <option value="Ting Community">Ting Community</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Bereich</label>
+        <select id="rBereich" class="form-input">
+          <option value="Privat">🏠 Privat</option>
+          <option value="Geschäftlich">💼 Geschäftlich</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Erstes / nächstes Fälligkeitsdatum</label>
+        <input type="date" id="rNextDate" class="form-input">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Serie läuft ab diesem Datum weiter — immer +7 Tage (wöchentlich) oder +1 Monat (monatlich) vom letzten Datum aus. Kein fixer Wochentag oder Monatstag nötig.</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notiz</label>
+      <input type="text" id="rNote" class="form-input" placeholder="Optional">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="saveRecur()">✓ Speichern</button>
+  </div>
+</div>
+
+
+<!-- RECUR ACTION MODAL: Typ + Status -->
+<div class="modal-overlay" id="recurActionModal">
+  <div class="modal" style="position:relative;max-width:400px">
+    <button class="modal-close" onclick="closeRecurAction()">✕</button>
+    <div class="modal-title" id="recurActionTitle">Buchung erfassen</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px" id="recurActionSub"></div>
+
+    <div class="form-group">
+      <label class="form-label">Typ</label>
+      <div style="display:flex;gap:8px">
+        <button class="type-btn" id="raTypTransfer" onclick="setRecurActionTyp('transfer')"
+          style="flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:white;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);transition:all .15s">
+          ↔ Interner Transfer<br><span style="font-size:10px;font-weight:400">Geld bleibt bei dir</span>
+        </button>
+        <button class="type-btn" id="raTypExtern" onclick="setRecurActionTyp('extern')"
+          style="flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:white;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);transition:all .15s">
+          💸 Buchung<br><span style="font-size:10px;font-weight:400">Geld geht nach extern</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group" id="raStatusWrap" style="display:none">
+      <label class="form-label">Status</label>
+      <div style="display:flex;gap:8px">
+        <button id="raStatGeplant" onclick="setRecurActionStatus('planned')"
+          style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:white;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);transition:all .15s">
+          📅 Geplant<br><span style="font-size:10px;font-weight:400">Noch nicht passiert</span>
+        </button>
+        <button id="raStatAusgefuehrt" onclick="setRecurActionStatus('done')"
+          style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:white;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);transition:all .15s">
+          ✓ Ausgeführt<br><span style="font-size:10px;font-weight:400">Bereits passiert</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="raConfirmWrap" style="display:none;margin-top:4px">
+      <div id="raConfirmSummary" style="background:#f8f7f5;border-radius:10px;padding:12px;font-size:13px;margin-bottom:12px;line-height:1.7"></div>
+      <div class="form-group">
+        <label class="form-label">Datum <span style="font-weight:400;color:var(--muted)" id="raDateHint"></span></label>
+        <input type="date" id="raDate" class="form-input">
+      </div>
+      <button class="btn btn-primary" style="width:100%" id="raConfirmBtn" onclick="executeRecurAction()">✓ Bestätigen & speichern</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- TAB 7: EINSTELLUNGEN / API KEYS                     -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="page-einstellungen" class="page">
+  <div class="section-head"><h3>⚙️ API Keys & Verbindungen</h3></div>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Alle Schlüssel werden nur lokal in diesem Browser gespeichert (localStorage) — nie auf einem Server.</div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Notion</div>
+    <div class="settings-row">
+      <div>
+        <div style="font-weight:600;font-size:14px">Integration Token</div>
+        <div style="font-size:12px;color:var(--muted)" id="notionTokenStatus">Nicht gesetzt</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="changeNotionToken()">✏️ Ändern</button>
+        <button class="btn btn-danger btn-sm" onclick="clearNotionToken()">✕ Löschen</button>
+      </div>
+    </div>
+    <div class="settings-row" style="border-bottom:none">
+      <div>
+        <div style="font-weight:600;font-size:14px">Buchungen DB</div>
+        <div style="font-size:11px;color:var(--muted);font-family:monospace">9fcdf5fe…3417a</div>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px">Transfers DB</div>
+        <div style="font-size:11px;color:var(--muted);font-family:monospace">1dd17e66…2ef9</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Clockify</div>
+    <div class="settings-row">
+      <div>
+        <div style="font-weight:600;font-size:14px">API Key</div>
+        <div style="font-size:12px;color:var(--muted)" id="clockifyKeyStatus">Nicht gesetzt</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="changeClockifyKey()">✏️ Ändern</button>
+        <button class="btn btn-danger btn-sm" onclick="clearClockifyKey()">✕ Löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Claude AI (Beleganalyse) <span style="font-size:10px;background:var(--amber-light);color:var(--amber);padding:2px 7px;border-radius:6px;margin-left:6px;font-weight:600">bald</span></div>
+    <div class="settings-row" style="border-bottom:none">
+      <div>
+        <div style="font-weight:600;font-size:14px">API Key</div>
+        <div style="font-size:12px;color:var(--muted)" id="claudeKeyStatus">Nicht gesetzt</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="changeClaudeKey()">✏️ Ändern</button>
+        <button class="btn btn-danger btn-sm" onclick="clearClaudeKey()">✕ Löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Google Drive</div>
+    <div class="settings-row" style="border-bottom:none">
+      <div>
+        <div style="font-weight:600;font-size:14px">OAuth 2.0</div>
+        <div style="font-size:12px;color:var(--muted)" id="gdriveStatus">Nicht angemeldet — wird beim ersten Beleg-Upload abgefragt</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="clearGDrive()">✕ Reset</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Gefahrenzone</div>
+    <div class="settings-row">
+      <div>
+        <div style="font-weight:600;font-size:14px">Alle lokalen Daten löschen</div>
+        <div style="font-size:12px;color:var(--muted)">Löscht alle Keys, Kontostände, Recurring, Goals, Projekte aus dem Browser. Notion-Daten bleiben unberührt.</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="clearAllLocal()">🗑 Reset</button>
     </div>
   </div>
 </div>
@@ -768,8 +1119,16 @@ textarea.form-input{resize:vertical;min-height:72px}
       <div class="form-group">
         <label class="form-label">Konto</label>
         <select id="iKonto" class="form-input">
-          <option value="Raiffeisen">Raiffeisen</option>
-          <option value="Revolut">Revolut</option>
+          <optgroup label="Raiffeisen">
+            <option value="Raiffeisen Privat">Raiffeisen Privat</option>
+            <option value="Raiffeisen Sparkonto">Raiffeisen Sparkonto</option>
+          </optgroup>
+          <optgroup label="Revolut">
+            <option value="Revolut">Revolut</option>
+            <option value="Revolut Buffer">Revolut Buffer</option>
+          </optgroup>
+          <option value="Ting Community">Ting Community</option>
+          <option value="Kreditkarte">Kreditkarte</option>
         </select>
       </div>
       <div class="form-group">
@@ -792,10 +1151,10 @@ textarea.form-input{resize:vertical;min-height:72px}
   </div>
 </div>
 
-<!-- CONFIRM MODAL -->
-<div class="modal-overlay" id="confirmModal">
+<!-- CONFIRM MODAL (kept for backward compat, now mostly replaced by toast) -->
+<div class="modal-overlay" id="confirmModal" style="display:none">
   <div class="modal" style="position:relative;text-align:center">
-    <div class="confirm-icon" id="confirmIcon">💰</div>
+    <div class="confirm-icon" id="confirmIcon">✅</div>
     <div class="confirm-title" id="confirmTitle">Gespeichert!</div>
     <div style="font-size:13px;color:var(--muted);margin-top:4px" id="confirmSub"></div>
     <div class="confirm-details" id="confirmDetails"></div>
@@ -888,13 +1247,24 @@ textarea.form-input{resize:vertical;min-height:72px}
       <input type="date" id="debtPayDate" class="form-input">
     </div>
     <div class="form-group">
-      <label class="form-label">Konto</label>
-      <select id="debtPayAccount" class="form-input">
-        <option value="Raiffeisen">Raiffeisen</option>
-        <option value="Revolut">Revolut</option>
+      <label class="form-label">Art der Zahlung</label>
+      <select id="debtPayMode" class="form-input">
+        <option value="transfer">↔ Interner Transfer (Pocket-Einzahlung)</option>
+        <option value="extern">💸 Echter Geldabfluss (Überweisung an Person)</option>
       </select>
     </div>
-    <button class="btn btn-primary" style="width:100%" onclick="payDebt()">💸 Zahlung buchen</button>
+    <div class="form-group">
+      <label class="form-label">Konto</label>
+      <select id="debtPayAccount" class="form-input">
+        <option value="Raiffeisen Privat">Raiffeisen Privat</option>
+        <option value="Revolut">Revolut</option>
+        <option value="Revolut Schulden Philipp">Revolut · Schulden Philipp</option>
+        <option value="Revolut Zukunft">Revolut · Zu:kunft</option>
+        <option value="Revolut Buffer">Revolut · Buffer</option>
+        <option value="Ting Community">Ting Community</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="payDebt()">✓ Ausführen</button>
     <div id="debtPayFeedback" style="font-size:13px;color:var(--red);margin-top:8px"></div>
   </div>
 </div>
@@ -928,6 +1298,7 @@ textarea.form-input{resize:vertical;min-height:72px}
 // ═══════════════════════════════════════════
 const DB_BUCHUNGEN  = '9fcdf5fe3b9648ac8b19c66ecd33417a';
 const DB_RECHNUNGEN = '966caa95a0334bb18a2cc9bac7de2ddf';
+const DB_TRANSFERS  = '1dd17e6663d04fb9bcd873b8228e2ef9';
 const NOTION_API    = 'https://notion-proxy.holy-forest-0174.workers.dev/v1';
 const NOTION_VER    = '2022-06-28';
 const GDRIVE_CLIENT_ID = '525241680265-ecrm63sckhdllc59gv8j7k19tecl7ulu.apps.googleusercontent.com';
@@ -971,23 +1342,23 @@ const CATS_PRIV = [
 
 // Default tax mapping (user can override)
 const DEFAULT_TAX_MAPPING = {
-  'Abos & Software':             'Büromaterial, EDV/IT, Telefon, Porti',
+  'Abos & Software':             'Büromaterial/EDV/IT',
   'Transport & Reisen':          'Reisespesen',
   'Weiterbildung & Supervision': 'Weiterbildung',
-  'Mitarbeit Dritter':           'Direkter Aufwand (Material, Waren, Fremdleistungen)',
-  'Material & Workshop':         'Direkter Aufwand (Material, Waren, Fremdleistungen)',
+  'Mitarbeit Dritter':           'Direkter Aufwand (Material)',
+  'Material & Workshop':         'Direkter Aufwand (Material)',
   'Repräsentation & Netzwerk':   'Repräsentation',
   'Verpflegung (geschäftl.)':    'Repräsentation',
   'Miete & Arbeitszimmer':       'Miete Büro/Arbeitszimmer',
-  'AHV':                         'AHV/IV/EO-Beiträge Inhaber (1. Säule)',
+  'AHV':                         'AHV/IV/EO-Beiträge',
   'Übriges Geschäftlich':        'Alle übrigen Geschäftsaufwände'
 };
 
 const TAX_CATS = [
-  'Direkter Aufwand (Material, Waren, Fremdleistungen)',
-  'AHV/IV/EO-Beiträge Inhaber (1. Säule)',
+  'Direkter Aufwand (Material)',
+  'AHV/IV/EO-Beiträge',
   'Miete Büro/Arbeitszimmer',
-  'Büromaterial, EDV/IT, Telefon, Porti',
+  'Büromaterial/EDV/IT',
   'Reisespesen',
   'Repräsentation',
   'Weiterbildung',
@@ -1052,6 +1423,15 @@ function setSyncStatus(state,label){
   const dot=document.getElementById('syncDot');
   dot.className='sync-dot'+(state?' '+state:'');
   document.getElementById('syncLabel').textContent=label;
+  const banner=document.getElementById('offlineBanner');
+  if(state==='error'){
+    const lastSync=loadLocal('lastSyncTime','');
+    document.getElementById('offlineSyncTime').textContent=lastSync||'unbekannt';
+    banner.classList.add('show');
+  } else if(state===''){
+    banner.classList.remove('show');
+    saveLocal('lastSyncTime',new Date().toLocaleString('de-CH',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));
+  }
 }
 
 async function saveToken(){
@@ -1161,6 +1541,9 @@ async function loadAll(){
     setSyncStatus('','Synchronisiert');
     hideLoading();
     renderAll();
+    // Auto-flush any pending queue items now that we're online
+    const pending=loadLocal('pendingQueue',[]).filter(e=>e.status==='pending'||e.status==='error');
+    if(pending.length>0) setTimeout(flushQueue,800);
   }catch(e){
     setSyncStatus('error','Fehler');
     hideLoading();
@@ -1180,6 +1563,7 @@ function renderAll(){
   updateBadges();
   buildCounterpartList();
   buildProjektDropdowns();
+  updateQueueBanner(); // check pending on every render
 }
 
 // ═══════════════════════════════════════════
@@ -1190,6 +1574,7 @@ function go(id){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.querySelector(`[data-page="${id}"]`).classList.add('active');
+  if(id==='einstellungen') renderSettings();
 }
 
 // ═══════════════════════════════════════════
@@ -1220,11 +1605,13 @@ function renderDash(){
 
   // Puffer (estimated: saldo - debtTotal shown as buffer progress)
   const pufferGoal=5000;
-  const pufferEst=Math.max(0,saldo);
+  const accountBals=loadLocal('accountBalances',{});
+  const pufferEst=accountBals['revBuf']??Math.max(0,saldo); // use real Buffer pocket if set, else fallback to saldo
   const pufferPct=Math.min(100,Math.round(pufferEst/pufferGoal*100));
   document.getElementById('pufferDisplay').textContent=fmtS(pufferEst);
   document.getElementById('pufferPct').textContent=pufferPct+'%';
   document.getElementById('pufferBar').style.width=pufferPct+'%';
+  document.getElementById('pufferSub').textContent=accountBals['revBuf']!==undefined?'Revolut Buffer · Ziel: CHF 5\'000':'Geschätzt aus Saldo · Ziel: CHF 5\'000';
 
   // Cashflow bars
   const maxVal=Math.max(...MONTHS.map((_,i)=>{
@@ -1402,33 +1789,51 @@ async function saveTx(){
   if(document.getElementById('eAccount').value) props['Konto']={ select:{name:document.getElementById('eAccount').value}};
   if(document.getElementById('eProjekt').value) props['Projekt']={ select:{name:document.getElementById('eProjekt').value}};
 
-  try{
-    const result=await notionFetch('/pages','POST',{parent:{database_id:DB_BUCHUNGEN},properties:props});
-    if(result.object==='error') throw new Error(result.message);
+  const desc=document.getElementById('eDesc').value;
+  btn.textContent='📡 Sendet…';
+  const {success,result,error}=await notionSaveWithQueue(DB_BUCHUNGEN,props,{
+    desc:desc||(entryType==='income'?'Einnahme':'Ausgabe'),
+    amt:fmt(amt), icon:entryType==='income'?'💰':'💸', type:'buchung'
+  });
+
+  if(success){
+    // Save thumb locally
     if(currentReceipt?.thumb&&result.id){
       const thumbMap=loadLocal('thumbs',{});
       thumbMap[result.id]=currentReceipt.thumb;
       saveLocal('thumbs',thumbMap);
     }
-    // Auto-reduce debt if category is Schuldenrückzahlung
-    if(entryCategory==='Schuldenrückzahlung'){
-      // handled via debt modal normally, but if direct entry — track it
-    }
-    showConfirmation(entryType,document.getElementById('eDesc').value,amt,entryBereich);
+    // Clear form
     ['eAmt','eDesc','eNote','eInvRef','eCounterpart'].forEach(id=>document.getElementById(id).value='');
     entryCategory=''; entrySource=''; removeReceipt(); renderCatChips();
+    // Rich toast with links
+    const links=[];
+    if(result.url) links.push({label:'In Notion öffnen',url:result.url});
+    if(receiptLink) links.push({label:'Beleg auf Drive',url:receiptLink});
+    const isInc=entryType==='income';
+    showToast('success',isInc?'💰':'💸',
+      isInc?'Einnahme gespeichert':'Ausgabe gespeichert',
+      (isInc?'+':'−')+fmt(amt)+' CHF'+(desc?' · '+desc:'')+(receiptLink?' · Beleg ✓':''),
+      links);
+    btn.textContent='✅ Gespeichert';
+    setTimeout(()=>{btn.textContent='✓ Speichern';btn.disabled=false;},1800);
     await loadAll();
-  }catch(e){
-    showFeedback('❌ Fehler: '+e.message,'red');
+    return;
+  } else {
+    showToast('error','❌','Fehler beim Speichern',error||'Unbekannter Fehler',[],
+      {label:'Nochmals',fn:()=>{btn.disabled=false;btn.textContent='✓ Speichern';saveTx();}},0);
   }
   btn.disabled=false; btn.textContent='✓ Speichern';
 }
 
 function showFeedback(msg,color){
+  // Also update inline text for backward compat
   const el=document.getElementById('saveFeedback');
-  el.textContent=msg;
-  el.style.color=color==='green'?'var(--accent)':color==='red'?'var(--red)':'var(--amber)';
-  setTimeout(()=>el.textContent='',5000);
+  if(el){el.textContent=msg; setTimeout(()=>el.textContent='',5000);}
+  // Show toast
+  const type=color==='red'?'error':color==='amber'?'warning':'success';
+  const icon=color==='red'?'❌':color==='amber'?'⚠️':'✅';
+  showToast(type,icon,msg,'',[]); 
 }
 
 // ═══════════════════════════════════════════
@@ -1447,7 +1852,7 @@ function openInvModal(inv=null){
   document.getElementById('iMwst').value=inv?.mwst||'';
   document.getElementById('iStatus').value=inv?.status||'Offen';
   document.getElementById('iPaidDate').value=inv?.paidDate||'';
-  document.getElementById('iKonto').value=inv?.account||'Raiffeisen';
+  document.getElementById('iKonto').value=inv?.account||'Raiffeisen Privat';
   document.getElementById('iNote2').value=inv?.note||'';
   document.getElementById('iType').value=inv?.type||'Honorar';
   document.getElementById('iProjekt').value=inv?.projekt||'';
@@ -1484,13 +1889,19 @@ async function saveInv(){
     let result;
     if(editId){
       result=await notionFetch(`/pages/${editId}`,'PATCH',{properties:props});
+      if(result.object==='error') throw new Error(result.message);
+      showToast('success','🧾','Rechnung aktualisiert',nr+' · '+client);
     }else{
-      result=await notionFetch('/pages','POST',{parent:{database_id:DB_RECHNUNGEN},properties:props});
+      const r=await notionSaveWithQueue(DB_RECHNUNGEN,props,{desc:nr+' · '+client,amt:fmt(parseFloat(document.getElementById('iAmt').value)),type:'rechnung'});
+      if(!r.success) throw new Error(r.error);
+      result=r.result;
+      const links=result.url?[{label:'In Notion öffnen',url:result.url}]:[];
+      showToast('success','🧾','Rechnung gespeichert',nr+' · '+client+' · CHF '+fmt(parseFloat(document.getElementById('iAmt').value)),links);
     }
-    if(result.object==='error') throw new Error(result.message);
     closeInvModal(); await loadAll();
   }catch(e){
     document.getElementById('invFeedback').textContent='❌ '+e.message;
+    showToast('error','❌','Fehler: '+e.message,'');
   }
   btn.disabled=false; btn.textContent='✓ Speichern';
 }
@@ -1795,8 +2206,10 @@ async function deleteTxNotion(id){
 // LEBEN TAB
 // ═══════════════════════════════════════════
 function renderLeben(){
+  renderAccountBalances();
+  renderRecurring();
   // Baby countdown
-  const babyDate=new Date('2025-09-15'); // estimated mid-September
+  const babyDate=new Date('2026-09-15'); // estimated mid-September
   const now=new Date();
   const days=Math.max(0,Math.round((babyDate-now)/(1000*60*60*24)));
   document.getElementById('babyDays').textContent=days>0?days:'🎉';
@@ -1806,7 +2219,7 @@ function renderLeben(){
   const debtTotal=debts.reduce((s,d)=>s+d.remaining,0);
   document.getElementById('debtTotal').textContent=fmtS(debtTotal);
   document.getElementById('kDebt').textContent=fmtS(debtTotal);
-  document.getElementById('kDebtSub').textContent='von CHF 21\'421';
+  document.getElementById('kDebtSub').textContent='von '+fmtS(DEBT_INITIAL.reduce((s,d)=>s+d.original,0));
 
   document.getElementById('debtList').innerHTML=debts.map(d=>{
     const pct=Math.min(100,Math.round((1-d.remaining/d.original)*100));
@@ -1910,23 +2323,47 @@ async function payDebt(){
   d.remaining=Math.max(0,d.remaining-amt);
   saveLocal('debts',debts);
 
-  // Book as transaction in Notion
-  const props={
-    'Beschreibung':{ title:[{text:{content:'Schuldenrückzahlung: '+d.name}}]},
-    'Datum':       { date:{start:document.getElementById('debtPayDate').value||toDay()}},
-    'Typ':         { select:{name:'Ausgabe'}},
-    'Bereich':     { select:{name:'Privat'}},
-    'Betrag':      { number:amt},
-    'Bezahlt':     { checkbox:true},
-    'Gegenpartei': { rich_text:[{text:{content:d.name}}]},
-    'Kategorie':   { select:{name:'Schuldenrückzahlung'}}
-  };
-  if(document.getElementById('debtPayAccount').value) props['Konto']={select:{name:document.getElementById('debtPayAccount').value}};
-  try{
-    await notionFetch('/pages','POST',{parent:{database_id:DB_BUCHUNGEN},properties:props});
-  }catch(e){ console.warn('Notion booking failed:',e); }
+  const payDate=document.getElementById('debtPayDate').value||toDay();
+  const payAcc=document.getElementById('debtPayAccount').value;
+  const payMode=document.getElementById('debtPayMode').value;
+
+  if(payMode==='transfer'){
+    // Pocket-Einzahlung: internes Transfer-Log
+    try{
+      await notionFetch('/pages','POST',{parent:{database_id:DB_TRANSFERS},properties:{
+        'Beschreibung':{ title:[{text:{content:'Schulden-Pocket: '+d.name}}]},
+        'Datum':        { date:{start:payDate}},
+        'Typ':          { select:{name:'Pocket-Einzahlung'}},
+        'Von Konto':    { select:{name:'Raiffeisen Privat'}},
+        'Nach Konto':   { select:{name:payAcc}},
+        'Betrag':       { number:amt},
+        'Betrag CHF':   { number:amt},
+        'Währung':      { select:{name:'CHF'}},
+        'Status':       { select:{name:'Ausgeführt'}},
+        'Kategorie':    { select:{name:'Schulden '+d.name.split(' ')[0]}},
+        'Notiz':        { rich_text:[{text:{content:'Pocket-Einzahlung für Schuldenrückzahlung'}}]}
+      }});
+    }catch(e){ console.warn('Transfer log failed:',e); }
+  } else {
+    // Echter Abfluss → Buchungen
+    const props={
+      'Beschreibung':{ title:[{text:{content:'Schuldenrückzahlung: '+d.name}}]},
+      'Datum':       { date:{start:payDate}},
+      'Typ':         { select:{name:'Ausgabe'}},
+      'Bereich':     { select:{name:'Privat'}},
+      'Betrag':      { number:amt},
+      'Bezahlt':     { checkbox:true},
+      'Gegenpartei': { rich_text:[{text:{content:d.name}}]},
+      'Kategorie':   { select:{name:'Schuldenrückzahlung'}}
+    };
+    if(payAcc) props['Konto']={select:{name:payAcc}};
+    try{
+      await notionFetch('/pages','POST',{parent:{database_id:DB_BUCHUNGEN},properties:props});
+    }catch(e){ console.warn('Notion booking failed:',e); }
+  }
 
   closeDebtModal();
+  showToast('success','💸','Zahlung gebucht',fmtS(amt)+' an '+d.name);
   await loadAll();
 }
 
@@ -1974,7 +2411,9 @@ function deleteGoal(id){
 // ═══════════════════════════════════════════
 function exportJahresabschluss(){
   const tm=loadLocal('taxMapping',DEFAULT_TAX_MAPPING);
-  const ytx=txCache.filter(t=>getYear(t.date)===String(YEAR)&&t.bereich==='Geschäftlich');
+  const exportYr=document.getElementById('exportYear')?.value||String(YEAR);
+  const ytx=txCache.filter(t=>getYear(t.date)===exportYr&&t.bereich==='Geschäftlich');
+  const allYtx=txCache.filter(t=>getYear(t.date)===exportYr);
   const inc=ytx.filter(t=>t.type==='Einnahme').reduce((s,t)=>s+t.amount,0);
 
   // Group expenses by tax category
@@ -2009,10 +2448,22 @@ function exportJahresabschluss(){
     ]);
   });
 
+  // Private summary (Schulden, 3.Säule etc.) — nicht steuerrelevant aber nützlich
+  const privYtx=allYtx.filter(t=>t.bereich==='Privat');
+  const privExp=privYtx.filter(t=>t.type==='Ausgabe');
+  const privInc=privYtx.filter(t=>t.type==='Einnahme');
+  const debtPaid=privExp.filter(t=>t.cat==='Schuldenrückzahlung').reduce((s,t)=>s+t.amount,0);
+  const saeulePaid=privExp.filter(t=>t.cat==='3. Säule').reduce((s,t)=>s+t.amount,0);
+  rows.push(['','',''],['PRIVAT (nicht steuerrelevant — zur Information)','','']);
+  rows.push(['Total Privatausgaben',privExp.reduce((s,t)=>s+t.amount,0),'']);
+  rows.push(['davon Schuldenrückzahlung',debtPaid,'']);
+  rows.push(['davon 3. Säule',saeulePaid,'']);
+  rows.push(['Total Privateinnahmen',privInc.reduce((s,t)=>s+t.amount,0),'']);
+
   const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(';')).join('\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download=`jahresabschluss_${YEAR}.csv`; a.click();
+  const a=document.createElement('a'); a.href=url; a.download=`jahresabschluss_${exportYr}.csv`; a.click();
 }
 
 function exportCSV(){
@@ -2042,21 +2493,40 @@ function updateBadges(){
 // ═══════════════════════════════════════════
 // CONFIRMATION MODAL
 // ═══════════════════════════════════════════
-function showConfirmation(type,desc,amt,bereich){
+function showConfirmation(type,desc,amt,bereich,extra={}){
+  // extra: {notionUrl, driveUrl, driveFilename, isQueue}
   const isInc=type==='income';
-  document.getElementById('confirmIcon').textContent=isInc?'💰':'💸';
-  document.getElementById('confirmTitle').textContent=isInc?'Einnahme gespeichert!':'Ausgabe gespeichert!';
-  document.getElementById('confirmSub').textContent='In Notion gespeichert'+(currentReceipt?' · Google Drive':'');
-  const tm=loadLocal('taxMapping',DEFAULT_TAX_MAPPING);
-  document.getElementById('confirmDetails').innerHTML=`
-    <div><strong>Betrag:</strong> <span style="color:${isInc?'var(--accent)':'var(--red)'}">${isInc?'+':'−'}${fmt(amt)}</span></div>
-    <div><strong>Beschreibung:</strong> ${desc||'—'}</div>
-    <div><strong>Kategorie:</strong> ${entryCategory||'—'}</div>
-    ${entryCategory&&bereich==='business'?`<div style="font-size:12px;color:var(--muted)">→ Steuer: ${tm[entryCategory]||'—'}</div>`:''}
-  `;
-  document.getElementById('confirmModal').classList.add('open');
+  const icon=isInc?'💰':'💸';
+  const title=isInc?'Einnahme gespeichert':'Ausgabe gespeichert';
+  const sub=(isInc?'+':'−')+fmt(amt)+' CHF'+(desc?' · '+desc:'');
+  const links=[];
+  if(extra.notionUrl) links.push({label:'In Notion öffnen',url:extra.notionUrl});
+  if(extra.driveUrl)  links.push({label:'Beleg: '+( extra.driveFilename||'Drive'),url:extra.driveUrl});
+  showToast('success',icon,title,sub,links);
 }
-function closeConfirm(){ document.getElementById('confirmModal').classList.remove('open'); }
+function closeConfirm(){ /* kept for compat */ }
+
+// ── TOAST ENGINE ──
+let _toastTimer=null;
+function showToast(type,icon,title,sub,links=[],action=null,duration=5000){
+  const t=document.getElementById('appToast');
+  if(!t) return;
+  t.className='toast '+type;
+  document.getElementById('toastIcon').textContent=icon;
+  document.getElementById('toastTitle').textContent=title;
+  document.getElementById('toastSub').textContent=sub||'';
+  const linksEl=document.getElementById('toastLinks');
+  linksEl.innerHTML=links.map(l=>`<a class="toast-link" href="${l.url}" target="_blank">${l.label} ↗</a>`).join('');
+  linksEl.style.display=links.length?'flex':'none';
+  const actEl=document.getElementById('toastAction');
+  if(action){actEl.textContent=action.label;actEl.onclick=action.fn;actEl.style.display='';}
+  else actEl.style.display='none';
+  if(_toastTimer) clearTimeout(_toastTimer);
+  // Show
+  t.classList.add('show');
+  if(duration>0) _toastTimer=setTimeout(()=>t.classList.remove('show'),duration);
+}
+function hideToast(){ document.getElementById('appToast')?.classList.remove('show'); }
 
 // ═══════════════════════════════════════════
 // RECEIPT / CAMERA
@@ -2220,6 +2690,7 @@ async function uploadToGDrive(dataURL,filename,isPDF){
   notionToken=loadLocal('notionToken',null);
 
   document.getElementById('eDate').value=toDay();
+  loadFXRates();
 
   setType('income');
   setBereich('business');
@@ -2233,6 +2704,590 @@ async function uploadToGDrive(dataURL,filename,isPDF){
     document.getElementById('mainApp').style.display='none';
   }
 })();
+
+
+// ═══════════════════════════════════════════
+// ACCOUNT BALANCES (Ist-Kontostände)
+// ═══════════════════════════════════════════
+const ACCOUNTS_DEF = [
+  {id:'raiPriv',  name:'Raiffeisen Privat',     icon:'🏦', group:'Raiffeisen'},
+  {id:'raiSpar',  name:'Raiffeisen Sparkonto',   icon:'🏦', group:'Raiffeisen'},
+  {id:'rai3aKto', name:'Raiffeisen 3a Konto',    icon:'🔒', group:'Vorsorge'},
+  {id:'rai3aFon', name:'Raiffeisen 3a Fonds',    icon:'📈', group:'Vorsorge'},
+  {id:'revMain',  name:'Revolut',                icon:'💳', group:'Revolut'},
+  {id:'revBuf',   name:'Revolut Buffer',icon:'💛', group:'Revolut'},
+  {id:'revEquip', name:'Revolut Equipment',    icon:'🎸', group:'Revolut'},
+  {id:'revPhil',  name:'Revolut Schulden Philipp',icon:'💸',group:'Revolut'},
+  {id:'revZuk',   name:'Revolut Zukunft',icon:'👶',group:'Revolut'},
+  {id:'revCryp',  name:'Revolut Crypto',       icon:'₿',  group:'Revolut'},
+  {id:'ting',     name:'Ting Community',          icon:'🌐', group:'Andere'},
+  {id:'bar',      name:'Bar',                      icon:'💵', group:'Andere'},
+];
+
+function renderAccountBalances(){
+  const balances=loadLocal('accountBalances',{});
+  const el=document.getElementById('accountBalanceList');
+  if(!el) return;
+  let total=0;
+  el.innerHTML=ACCOUNTS_DEF.map(a=>{
+    const bal=balances[a.id]??null;
+    if(bal!==null) total+=bal;
+    return `<div class="account-card">
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <span style="font-size:20px">${a.icon}</span>
+        <div>
+          <div class="account-name">${a.name}</div>
+          <div class="account-sub">${a.group}</div>
+        </div>
+      </div>
+      <div class="account-bal" onclick="editAccountBal('${a.id}')" title="Klicken zum Bearbeiten">
+        ${bal!==null?fmtS(bal):'<span style="color:var(--border)">—</span>'}
+      </div>
+    </div>`;
+  }).join('')
+  +`<div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8f7f5;border-radius:12px;margin-top:4px">
+    <strong>Total erfasst</strong>
+    <span style="font-family:'Fraunces',serif;font-size:18px;font-weight:500">${fmtS(total)}</span>
+  </div>`;
+}
+
+async function editAccountBal(id){
+  const balances=loadLocal('accountBalances',{});
+  const acc=ACCOUNTS_DEF.find(a=>a.id===id);
+  const cur=balances[id]??'';
+  const val=prompt(`Kontostand ${acc.name} (CHF):`, cur);
+  if(val===null) return;
+  const num=parseFloat(val.replace(/[^0-9.-]/g,''));
+  if(!isNaN(num)){
+    const prev=balances[id]??null;
+    balances[id]=num;
+    saveLocal('accountBalances',balances);
+    // Log to Notion Transfers DB
+    try{
+      await notionFetch('/pages','POST',{parent:{database_id:DB_TRANSFERS},properties:{
+        'Beschreibung':{ title:[{text:{content:'Kontostand-Korrektur: '+acc.name}}]},
+        'Datum':        { date:{start:toDay()}},
+        'Typ':          { select:{name:'Kontostand-Korrektur'}},
+        'Nach Konto':   { select:{name:acc.name.replace(' (Hauptkonto)','')}},
+        'Betrag CHF':   { number:num},
+        'Kontostand Neu':{ number:num},
+        'Status':       { select:{name:'Ausgeführt'}},
+        'Notiz':        { rich_text:[{text:{content:prev!==null?`Vorher: CHF ${fmt(prev)} → Neu: CHF ${fmt(num)}`:`Ersteingabe: CHF ${fmt(num)}`}}]},
+        'App-Referenz': { rich_text:[{text:{content:'accountBal_'+id+'_'+Date.now()}}]}
+      }});
+    }catch(e){ console.warn('Transfer log failed:',e); }
+  }
+  else if(val.trim()===''){ delete balances[id]; saveLocal('accountBalances',balances); }
+  renderAccountBalances();
+}
+
+// ═══════════════════════════════════════════
+// RECURRING EXPENSES
+// ═══════════════════════════════════════════
+const RECUR_DEFAULTS = [
+  {id:'r1',name:'Schulden Philipp',amt:100,freq:'weekly',cat:'Schuldenrückzahlung',account:'Revolut Schulden Philipp',bereich:'Privat',note:'CHF 100/Woche'},
+  {id:'r2',name:'Buffer_Savings',amt:300,freq:'monthly',cat:'Übriges Privat',account:'Revolut Buffer',bereich:'Privat',note:'CHF 300/Monat'},
+  {id:'r3',name:'Zu(sammen):kunft',amt:250,freq:'monthly',cat:'Baby',account:'Revolut Zukunft',bereich:'Privat',note:'Gemeinsam mit Sidsel'},
+  {id:'r4',name:'Ting Community',amt:0,freq:'monthly',cat:'Übriges Privat',account:'Ting Community',bereich:'Privat',note:'Elternzeit-Vorsorge'},
+];
+
+// Helper: compute next occurrence date from a base date + frequency
+function nextOccurrence(fromDate, freq){
+  const d = new Date(fromDate+'T12:00');
+  if(freq==='weekly')  d.setDate(d.getDate()+7);
+  if(freq==='monthly') d.setMonth(d.getMonth()+1);
+  if(freq==='yearly')  d.setFullYear(d.getFullYear()+1);
+  return d.toISOString().slice(0,10);
+}
+
+function renderRecurring(){
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const el=document.getElementById('recurList');
+  if(!el) return;
+
+  const freqLabel={weekly:'Wöchentlich',monthly:'Monatlich',yearly:'Jährlich'};
+  const freqMult={weekly:52,monthly:12,yearly:1};
+  let monthlyTotal=0;
+  recurs.forEach(r=>{ if(!r.paused) monthlyTotal+=r.amt*(freqMult[r.freq]||12)/12; });
+
+  const today=toDay();
+  const needsSetup=recurs.filter(r=>!r.nextDate||r.nextDate===today);
+  const setupWarnEl=document.getElementById('recurSetupWarn');
+  if(setupWarnEl){
+    if(needsSetup.length>0){
+      setupWarnEl.innerHTML='⚠️ '+needsSetup.length+' Einträge haben noch kein Startdatum — klicke ✏️ und setze das erste Fälligkeitsdatum.';
+      setupWarnEl.style.display='';
+    } else {
+      setupWarnEl.style.display='none';
+    }
+  }
+
+  el.innerHTML=recurs.map(r=>{
+    const skips=loadLocal('recurSkips_'+r.id,[]);
+    const nextDate=r.nextDate||today;
+    const isSkipped=skips.includes(nextDate);
+    const isDue=nextDate<=today;
+    return `<div class="recur-item" style="${r.paused?'opacity:.5':''}${isDue&&!isSkipped?';border-left:3px solid var(--amber)':''}">
+    <span class="recur-freq ${r.freq}">${freqLabel[r.freq]||r.freq}</span>
+    <div style="flex:1">
+      <div class="recur-name">${r.name}${r.paused?' <span style="font-size:10px;color:var(--muted)">(pausiert)</span>':''}</div>
+      <div style="font-size:11px;color:var(--muted)">${r.cat||''} · ${r.account||''}${r.note?' · '+r.note:''}</div>
+      ${skips.length?`<div style="font-size:10.5px;color:var(--amber);margin-top:2px">⚡ ${skips.length}× übersprungen</div>`:''}
+    </div>
+    <div style="text-align:right;margin-right:4px">
+      <div class="recur-amt" style="${isSkipped?'text-decoration:line-through;color:var(--muted)':''}">${fmtS(r.amt)}</div>
+      <div class="recur-next" style="${isDue&&!isSkipped?'color:var(--amber);font-weight:600':''}">
+        ${isDue&&!isSkipped?'⏰ Fällig: ':'Nächste: '}${fmtDate(nextDate)}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-outline btn-sm" title="Bearbeiten" onclick="openRecurModal(loadLocal('recurrings',RECUR_DEFAULTS).find(x=>x.id==='${r.id}'))">✏️</button>
+        <button class="btn btn-danger btn-sm" title="Serie löschen" onclick="deleteRecur('${r.id}')">✕</button>
+      </div>
+      <div style="display:flex;gap:4px">
+        ${!isSkipped?`<button class="btn btn-sm" style="background:#fffbeb;color:var(--amber);border:none;font-size:11px;cursor:pointer" title="Diese eine Zahlung überspringen — Serie läuft weiter" onclick="skipOccurrence('${r.id}','${nextDate}')">⏭ Skip</button>`
+                    :`<button class="btn btn-sm" style="background:var(--accent-light);color:var(--accent);border:none;font-size:11px;cursor:pointer" onclick="unskipOccurrence('${r.id}','${nextDate}')">↩ Rückgängig</button>`}
+        <button class="btn btn-sm" style="background:var(--accent-light);color:var(--accent);border:none;font-size:11px;cursor:pointer;font-weight:600" onclick="openRecurAction('${r.id}')">⚡ Buchen</button>
+      </div>
+    </div>
+  </div>`;
+  }).join('')||'<div class="empty"><div class="ico">🔄</div><p>Noch keine wiederkehrenden Ausgaben</p></div>';
+
+  const activeMonthly=monthlyTotal;
+  document.getElementById('recurSummary').innerHTML=`<div style="background:#f8f7f5;border-radius:12px;padding:14px 16px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:13px;color:var(--muted)">Ø monatliche Fixkosten</div>
+      <div style="font-family:'Fraunces',serif;font-size:20px;color:var(--red)">${fmtS(activeMonthly)}</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Jährlich: ${fmtS(activeMonthly*12)} · Wöchentlich: ${fmtS(activeMonthly/4.33)}</div>
+  </div>`;
+}
+
+// Skip one occurrence — series continues from next date
+function skipOccurrence(id, date){
+  const skips=loadLocal('recurSkips_'+id,[]);
+  if(!skips.includes(date)) skips.push(date);
+  saveLocal('recurSkips_'+id, skips);
+  // Advance nextDate to the occurrence after the skipped one
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const r=recurs.find(x=>x.id===id);
+  if(r){ r.nextDate=nextOccurrence(date, r.freq); saveLocal('recurrings',recurs); }
+  renderRecurring();
+}
+
+function unskipOccurrence(id, date){
+  const skips=loadLocal('recurSkips_'+id,[]).filter(d=>d!==date);
+  saveLocal('recurSkips_'+id, skips);
+  // Roll back nextDate
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const r=recurs.find(x=>x.id===id);
+  if(r){ r.nextDate=date; saveLocal('recurrings',recurs); }
+  renderRecurring();
+}
+
+// Book recurring: 3 modes
+// mode='transfer' = interner Transfer (→ DB_TRANSFERS, kein Geldabfluss)
+// mode='extern'   = echter Geldabfluss (→ DB_BUCHUNGEN)
+async function bookRecurNow(id, mode, useDate=null){
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const r=recurs.find(x=>x.id===id);
+  if(!r) return;
+
+  // planned_transfer or planned_extern: log to Transfers as Geplant, don't advance date
+  if(mode==='planned_transfer'||mode==='planned_extern'){
+    const notionTyp=mode==='planned_transfer'?'Interner Transfer':'Sonstiges';
+    try{
+      await notionFetch('/pages','POST',{parent:{database_id:DB_TRANSFERS},properties:{
+        'Beschreibung':{ title:[{text:{content:'Geplant: '+r.name}}]},
+        'Datum':        { date:{start:useDate||toDay()}},
+        'Typ':          { select:{name:notionTyp}},
+        'Nach Konto':   { select:{name:r.account||'Revolut'}},
+        'Betrag':       { number:r.amt},
+        'Betrag CHF':   { number:r.amt},
+        'Währung':      { select:{name:'CHF'}},
+        'Status':       { select:{name:'Geplant'}},
+        'Notiz':        { rich_text:[{text:{content:(mode==='planned_extern'?'Geplante externe Buchung':'Geplanter interner Transfer')+'. Wiederkehrend: '+r.freq}}]},
+        'App-Referenz': { rich_text:[{text:{content:'recur_planned_'+id+'_'+Date.now()}}]}
+      }});
+    }catch(e){ console.warn('Planned log failed:',e); }
+    return; // don't advance nextDate
+  }
+
+  if(mode==='transfer'){
+    // Log to Transfers DB
+    try{
+      await notionFetch('/pages','POST',{parent:{database_id:DB_TRANSFERS},properties:{
+        'Beschreibung':{ title:[{text:{content:r.name}}]},
+        'Datum':        { date:{start:useDate||toDay()}},
+        'Typ':          { select:{name:'Pocket-Einzahlung'}},
+        'Von Konto':    { select:{name:'Raiffeisen Privat'}},
+        'Nach Konto':   { select:{name:r.account||'Revolut'}},
+        'Betrag':       { number:r.amt},
+        'Betrag CHF':   { number:r.amt},
+        'Währung':      { select:{name:'CHF'}},
+        'Status':       { select:{name:'Ausgeführt'}},
+
+        'Notiz':        { rich_text:[{text:{content:'Wiederkehrend: '+r.freq+(r.note?' — '+r.note:'')}}]},
+        'App-Referenz': { rich_text:[{text:{content:'recur_'+id+'_'+Date.now()}}]}
+      }});
+      // Update account balance in app
+      const balances=loadLocal('accountBalances',{});
+      const accId=ACCOUNTS_DEF.find(a=>a.name===r.account)?.id;
+      if(accId&&balances[accId]!==undefined){ balances[accId]+=r.amt; saveLocal('accountBalances',balances); }
+      r.nextDate=nextOccurrence(r.nextDate||toDay(),r.freq);
+      saveLocal('recurrings',recurs);
+      renderRecurring();
+      renderAccountBalances();
+      showToast('success','↔','Transfer gebucht',r.name+' — CHF '+fmt(r.amt)+' → '+r.account);
+    }catch(e){ showToast('error','❌','Notion Fehler',e.message,[],{label:'Retry',fn:()=>bookRecurNow(id,mode,useDate)},0); return; }
+  } else {
+    // Real outflow → Buchungen
+    const tm=loadLocal('taxMapping',DEFAULT_TAX_MAPPING);
+    const steuerKat=r.bereich==='Geschäftlich'&&r.cat?(tm[r.cat]||''):'';
+    const props={
+      'Beschreibung':{ title:[{text:{content:r.name+(r.note?' — '+r.note:'')}}]},
+      'Datum':       { date:{start:useDate||toDay()}},
+      'Typ':         { select:{name:'Ausgabe'}},
+      'Bereich':     { select:{name:r.bereich||'Privat'}},
+      'Betrag':      { number:r.amt},
+      'Bezahlt':     { checkbox:true},
+      'Notiz':       { rich_text:[{text:{content:'Wiederkehrend: '+r.freq}}]}
+    };
+    if(r.cat)     props['Kategorie']={ select:{name:r.cat}};
+    if(steuerKat) props['Steuerkategorie']={ select:{name:steuerKat}};
+    if(r.account) props['Konto']={ select:{name:r.account}};
+    try{
+      await notionFetch('/pages','POST',{parent:{database_id:DB_BUCHUNGEN},properties:props});
+      r.nextDate=nextOccurrence(r.nextDate||toDay(),r.freq);
+      saveLocal('recurrings',recurs);
+      renderRecurring();
+      showToast('success','💸','Buchung gespeichert',r.name+' — CHF '+fmt(r.amt));
+      await loadAll();
+    }catch(e){ showToast('error','❌','Notion Fehler',e.message,[],{label:'Retry',fn:()=>bookRecurNow(id,mode,useDate)},0); return; }
+  }
+}
+
+function debtCatFromName(name){
+  const map={'Philipp':'Schulden Philipp','Ana':'Schulden Ana','Sidsel':'Schulden Sidsel','Jana':'Schulden Jana','Theo':'Schulden Theo','Buffer':'Buffer Savings','Zukunft':'Zu(sammen):kunft','Equipment':'Equipment','Ting':'Ting Elternzeit'};
+  for(const[k,v] of Object.entries(map)){ if(name.toLowerCase().includes(k.toLowerCase())) return v; }
+  return 'Sonstiges';
+}
+
+function openRecurModal(r=null){
+  document.getElementById('rEditId').value=r?.id||'';
+  document.getElementById('recurModalTitle').textContent=r?'Ausgabe bearbeiten':'Wiederkehrende Ausgabe';
+  document.getElementById('rName').value=r?.name||'';
+  document.getElementById('rAmt').value=r?.amt||'';
+  document.getElementById('rFreq').value=r?.freq||'monthly';
+  document.getElementById('rCat').value=r?.cat||'';
+  document.getElementById('rAccount').value=r?.account||'Raiffeisen Privat';
+  document.getElementById('rBereich').value=r?.bereich||'Privat';
+  document.getElementById('rNextDate').value=r?.nextDate||toDay();
+  document.getElementById('rNote').value=r?.note||'';
+  document.getElementById('recurModal').classList.add('open');
+}
+function closeRecurModal(){ document.getElementById('recurModal').classList.remove('open'); }
+
+function saveRecur(){
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const editId=document.getElementById('rEditId').value;
+  const r={
+    id:editId||'r'+Date.now(),
+    name:document.getElementById('rName').value.trim(),
+    amt:parseFloat(document.getElementById('rAmt').value)||0,
+    freq:document.getElementById('rFreq').value,
+    cat:document.getElementById('rCat').value,
+    account:document.getElementById('rAccount').value,
+    bereich:document.getElementById('rBereich').value,
+    nextDate:document.getElementById('rNextDate').value||toDay(),
+    note:document.getElementById('rNote').value.trim()
+  };
+  if(!r.name){ alert('Bitte Bezeichnung eingeben'); return; }
+  if(editId){ const idx=recurs.findIndex(x=>x.id===editId); if(idx>=0) recurs[idx]=r; else recurs.push(r); }
+  else recurs.push(r);
+  saveLocal('recurrings',recurs);
+  closeRecurModal();
+  renderRecurring();
+}
+function deleteRecur(id){
+  if(!confirm('Ganze Serie löschen? (einzelne Zahlungen überspringen geht mit "Skip")')) return;
+  saveLocal('recurrings',loadLocal('recurrings',RECUR_DEFAULTS).filter(r=>r.id!==id));
+  saveLocal('recurSkips_'+id,[]);
+  renderRecurring();
+}
+
+// ═══════════════════════════════════════════
+// CURRENCY CONVERTER (frankfurter.app)
+// ═══════════════════════════════════════════
+let fxRates={};
+async function loadFXRates(){
+  try{
+    const r=await fetch('https://api.frankfurter.app/latest?to=CHF');
+    const data=await r.json();
+    fxRates=data.rates||{};
+    fxRates['CHF']=1;
+  }catch(e){ console.warn('FX load failed:',e); }
+}
+
+function calcFX(){
+  const amt=parseFloat(document.getElementById('fxAmt').value)||0;
+  const from=document.getElementById('fxFrom').value;
+  if(!amt||!from){ document.getElementById('fxResult').textContent='—'; document.getElementById('fxRate').textContent=''; document.getElementById('fxApply').style.display='none'; return; }
+  const rate=fxRates[from];
+  if(!rate){ document.getElementById('fxResult').textContent='Kurs laden…'; return; }
+  const chf=amt/rate;
+  document.getElementById('fxResult').textContent=fmtS(chf);
+  document.getElementById('fxRate').textContent='1 '+from+' = CHF '+fmt(1/rate);
+  document.getElementById('fxApply').style.display='inline-block';
+}
+
+function applyFX(){
+  const amt=parseFloat(document.getElementById('fxAmt').value)||0;
+  const from=document.getElementById('fxFrom').value;
+  const rate=fxRates[from];
+  if(!rate||!amt) return;
+  const chf=amt/rate;
+  document.getElementById('eAmt').value=chf.toFixed(2);
+  document.getElementById('eNote').value=(document.getElementById('eNote').value+' '+amt+' '+from+' @ '+fmt(1/rate)).trim();
+  // Flash the amount field
+  document.getElementById('eAmt').style.background='#d8f3dc';
+  setTimeout(()=>document.getElementById('eAmt').style.background='',800);
+}
+
+// ═══════════════════════════════════════════
+// RECUR ACTION MODAL (Typ → Status → Datum)
+// ═══════════════════════════════════════════
+let _raId=null, _raTyp=null, _raStatus=null;
+
+function openRecurAction(id){
+  _raId=id; _raTyp=null; _raStatus=null;
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const r=recurs.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('recurActionTitle').textContent=r.name;
+  document.getElementById('recurActionSub').textContent=
+    fmtS(r.amt)+' · '+({weekly:'Wöchentlich',monthly:'Monatlich',yearly:'Jährlich'}[r.freq]||r.freq)+' · '+r.account;
+  // Reset all buttons
+  ['raTypTransfer','raTypExtern','raStatGeplant','raStatAusgefuehrt'].forEach(bid=>{
+    const el=document.getElementById(bid);
+    el.style.borderColor='var(--border)';
+    el.style.background='white';
+    el.style.color='var(--muted)';
+  });
+  document.getElementById('raStatusWrap').style.display='none';
+  document.getElementById('raConfirmWrap').style.display='none';
+  document.getElementById('recurActionModal').classList.add('open');
+}
+function closeRecurAction(){ document.getElementById('recurActionModal').classList.remove('open'); }
+
+function setRecurActionTyp(typ){
+  _raTyp=typ; _raStatus=null;
+  const isTransfer=typ==='transfer';
+  const tEl=document.getElementById('raTypTransfer');
+  const eEl=document.getElementById('raTypExtern');
+  tEl.style.borderColor=isTransfer?'var(--accent)':'var(--border)';
+  tEl.style.background=isTransfer?'var(--accent-light)':'white';
+  tEl.style.color=isTransfer?'var(--accent)':'var(--muted)';
+  eEl.style.borderColor=!isTransfer?'var(--red)':'var(--border)';
+  eEl.style.background=!isTransfer?'var(--red-light)':'white';
+  eEl.style.color=!isTransfer?'var(--red)':'var(--muted)';
+  // Reset status
+  ['raStatGeplant','raStatAusgefuehrt'].forEach(bid=>{
+    const el=document.getElementById(bid);
+    el.style.borderColor='var(--border)'; el.style.background='white'; el.style.color='var(--muted)';
+  });
+  document.getElementById('raStatusWrap').style.display='';
+  document.getElementById('raConfirmWrap').style.display='none';
+}
+
+function setRecurActionStatus(status){
+  _raStatus=status;
+  const isDone=status==='done';
+  const gEl=document.getElementById('raStatGeplant');
+  const dEl=document.getElementById('raStatAusgefuehrt');
+  gEl.style.borderColor=!isDone?'var(--blue)':'var(--border)';
+  gEl.style.background=!isDone?'var(--blue-light)':'white';
+  gEl.style.color=!isDone?'var(--blue)':'var(--muted)';
+  dEl.style.borderColor=isDone?'var(--accent)':'var(--border)';
+  dEl.style.background=isDone?'var(--accent-light)':'white';
+  dEl.style.color=isDone?'var(--accent)':'var(--muted)';
+
+  // Smart date: Geplant → nextDate (Fälligkeitsdatum), Ausgeführt → heute
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const r=recurs.find(x=>x.id===_raId);
+  const suggestedDate=isDone ? toDay() : (r?.nextDate||toDay());
+  document.getElementById('raDate').value=suggestedDate;
+  document.getElementById('raDateHint').textContent=
+    isDone ? '(heute — anpassen falls nötig)' : '(Fälligkeitsdatum — anpassen falls nötig)';
+
+  const typLabel=_raTyp==='transfer'?'↔ Interner Transfer':'💸 Buchung (extern)';
+  const statLabel=isDone?'✓ Ausgeführt':'📅 Geplant';
+  const notionDB=(_raTyp==='transfer'||!isDone)?'💸 Transfers & Kontobewegungen':'💰 Buchungen';
+  const consequence=_raTyp==='transfer'
+    ?(isDone?'Pocket-Stand wird aktualisiert, kein externer Geldabfluss':'Wird als geplanter Transfer vorgemerkt')
+    :(isDone?'Echter Geldabfluss — geht in Buchungen (steuerrelevant)':'Geplante externe Zahlung — wird in Transfers vorgemerkt');
+
+  document.getElementById('raConfirmSummary').innerHTML=
+    `<div><strong>Typ:</strong> ${typLabel}</div>`+
+    `<div><strong>Status:</strong> ${statLabel}</div>`+
+    `<div><strong>Betrag:</strong> ${fmtS(r?.amt||0)}</div>`+
+    `<div><strong>Notion DB:</strong> ${notionDB}</div>`+
+    `<div style="margin-top:6px;font-size:11.5px;color:var(--muted)">${consequence}</div>`;
+  document.getElementById('raConfirmWrap').style.display='';
+}
+
+async function executeRecurAction(){
+  if(!_raId||!_raTyp||!_raStatus) return;
+  const btn=document.getElementById('raConfirmBtn');
+  btn.disabled=true; btn.textContent='Speichert…';
+  const chosenDate=document.getElementById('raDate').value||toDay();
+  const mode=_raTyp==='transfer'
+    ?(_raStatus==='done'?'transfer':'planned_transfer')
+    :(_raStatus==='done'?'extern':'planned_extern');
+  await bookRecurNow(_raId, mode, chosenDate);
+  closeRecurAction();
+  btn.disabled=false; btn.textContent='✓ Bestätigen & speichern';
+}
+
+// ═══════════════════════════════════════════
+// EINSTELLUNGEN / KEY MANAGEMENT
+// ═══════════════════════════════════════════
+function renderSettings(){
+  const tk=loadLocal('notionToken',null);
+  document.getElementById('notionTokenStatus').textContent=tk?'✅ secret_…'+tk.slice(-6):'❌ Nicht gesetzt';
+  const ck=loadLocal('clockifyApiKey','');
+  document.getElementById('clockifyKeyStatus').textContent=ck?'✅ …'+ck.slice(-8):'❌ Nicht gesetzt';
+  const ak=loadLocal('claudeApiKey','');
+  document.getElementById('claudeKeyStatus').textContent=ak?'✅ sk-ant-…'+ak.slice(-6):'❌ Nicht gesetzt';
+  document.getElementById('gdriveStatus').textContent=gdriveToken?'✅ Angemeldet (Session)':'Nicht angemeldet — wird beim ersten Upload abgefragt';
+}
+
+function changeNotionToken(){
+  const t=prompt('Neuer Notion Token (secret_…):');
+  if(!t) return;
+  notionToken=t.trim(); saveLocal('notionToken',notionToken);
+  renderSettings(); loadAll();
+}
+function clearNotionToken(){
+  if(!confirm('Notion Token löschen? Du wirst ausgeloggt.')) return;
+  localStorage.removeItem('notionToken'); notionToken=null;
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('setupScreen').style.display='flex';
+}
+function changeClockifyKey(){
+  const k=prompt('Clockify API Key (Profile Settings → API):');
+  if(!k) return;
+  saveLocal('clockifyApiKey',k.trim()); renderSettings();
+}
+function clearClockifyKey(){ localStorage.removeItem('clockifyApiKey'); renderSettings(); }
+function changeClaudeKey(){
+  const k=prompt('Claude API Key (console.anthropic.com):');
+  if(!k) return;
+  saveLocal('claudeApiKey',k.trim()); renderSettings();
+}
+function clearClaudeKey(){ localStorage.removeItem('claudeApiKey'); renderSettings(); }
+function clearGDrive(){ gdriveToken=null; renderSettings(); alert('Google Drive Session zurückgesetzt.'); }
+function clearAllLocal(){
+  if(!confirm('Wirklich ALLE lokalen Daten löschen? (Keys, Kontostände, Recurring, Goals, Projekte) Notion-Daten bleiben erhalten.')) return;
+  const keep=['notionToken'];
+  Object.keys(localStorage).filter(k=>!keep.includes(k)).forEach(k=>localStorage.removeItem(k));
+  alert('Lokale Daten gelöscht. Seite wird neu geladen...');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OFFLINE QUEUE — schreibt zuerst lokal, sendet dann an Notion
+// ═══════════════════════════════════════════════════════════════
+function queueAdd(entry){
+  // entry = {id, type:'buchung'|'rechnung'|'transfer', dbId, props, meta:{desc,amt,icon}}
+  entry.id = entry.id||'q_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  entry.ts = new Date().toISOString();
+  entry.status = 'pending'; // pending | sending | done | error
+  entry.retries = 0;
+  const q=loadLocal('pendingQueue',[]);
+  q.push(entry);
+  saveLocal('pendingQueue',q);
+  updateQueueBanner();
+  return entry.id;
+}
+
+function queueRemove(id){
+  const q=loadLocal('pendingQueue',[]).filter(e=>e.id!==id);
+  saveLocal('pendingQueue',q);
+  updateQueueBanner();
+}
+
+function queueSetStatus(id,status,error=null){
+  const q=loadLocal('pendingQueue',[]);
+  const e=q.find(x=>x.id===id);
+  if(e){e.status=status;if(error)e.error=error;if(status==='sending')e.retries=(e.retries||0)+1;}
+  saveLocal('pendingQueue',q);
+  updateQueueBanner();
+}
+
+function updateQueueBanner(){
+  const q=loadLocal('pendingQueue',[]).filter(e=>e.status==='pending'||e.status==='error');
+  const banner=document.getElementById('queueBanner');
+  const countEl=document.getElementById('queueCount');
+  if(!banner||!countEl) return;
+  if(q.length>0){
+    countEl.textContent=q.length;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+async function flushQueue(){
+  const q=loadLocal('pendingQueue',[]);
+  const pending=q.filter(e=>e.status==='pending'||e.status==='error');
+  if(!pending.length) return;
+  showToast('pending','⏳','Sende '+pending.length+' ausstehende Einträge…','',[]); 
+  let sent=0,failed=0;
+  for(const entry of pending){
+    queueSetStatus(entry.id,'sending');
+    try{
+      const result=await notionFetch('/pages','POST',{parent:{database_id:entry.dbId},properties:entry.props});
+      if(result.object==='error') throw new Error(result.message);
+      queueRemove(entry.id);
+      sent++;
+    }catch(e){
+      queueSetStatus(entry.id,'error',e.message);
+      failed++;
+    }
+  }
+  if(failed===0){
+    showToast('success','✅',sent+' Einträge erfolgreich gesendet','Notion ist synchronisiert');
+    await loadAll();
+  } else {
+    showToast('error','❌',failed+' Einträge fehlgeschlagen',sent+' erfolgreich · '+failed+' fehlgeschlagen',[],
+      {label:'Nochmals versuchen',fn:()=>flushQueue()},0);
+  }
+}
+
+function showPendingQueue(){
+  const q=loadLocal('pendingQueue',[]).filter(e=>e.status==='pending'||e.status==='error');
+  if(!q.length){showToast('success','✅','Nichts ausstehend','Alles ist synchronisiert');return;}
+  const list=q.map(e=>`• ${e.meta?.desc||e.type} — CHF ${e.meta?.amt||'?'} (${e.status==='error'?'Fehler: '+e.error:'Ausstehend'})`).join('\n');
+  if(confirm(q.length+' ausstehende Einträge:\n\n'+list+'\n\nJetzt senden?')) flushQueue();
+}
+
+// ── Queue-aware notionSave wrapper ──
+async function notionSaveWithQueue(dbId, props, meta={}){
+  // meta: {desc, amt, icon, type}
+  const qId=queueAdd({dbId,props,meta,type:meta.type||'eintrag'});
+  try{
+    const result=await notionFetch('/pages','POST',{parent:{database_id:dbId},properties:props});
+    if(result.object==='error') throw new Error(result.message);
+    queueRemove(qId);
+    return {success:true, result, qId};
+  }catch(e){
+    queueSetStatus(qId,'error',e.message);
+    return {success:false, error:e.message, qId};
+  }
+}
+
 </script>
 </body>
 </html>
