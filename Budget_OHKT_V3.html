@@ -773,6 +773,7 @@ textarea.form-input{resize:vertical;min-height:72px}
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-outline btn-sm" onclick="syncClockify()">🔄 Sync</button>
+      <button class="btn btn-outline btn-sm" onclick="debugProjekte()" style="color:var(--amber)">🔍 Debug</button>
       <button class="btn btn-primary btn-sm" onclick="openProjModal()">+ Projekt</button>
     </div>
   </div>
@@ -3875,6 +3876,20 @@ function applyCfQuick(cfId,cfName,clientId){
   }
   closeCfQuick();
   showToast('success','⏱','Clockify Projekt gesetzt',lp?lp.name:cfName);
+}
+
+
+function debugProjekte(){
+  const lp=loadLocal('projekte',[]);
+  const cp=loadLocal('clockifyProjects',[]);
+  const msg=[
+    'LOKALE PROJEKTE: '+lp.length,
+    lp.map(p=>'  '+p.name+' | status:'+p.status+' | cfId:'+p.clockifyId).join('\n'),
+    '',
+    'CLOCKIFY PROJEKTE: '+cp.length,
+    cp.slice(0,10).map(p=>'  '+p.name+' | archived:'+p.archived+' | billable:'+p.billable).join('\n'),
+  ].join('\n');
+  alert(msg||'Keine Daten — bitte zuerst Sync machen');
 }
 
 // ═══════════════════════════════════════════
