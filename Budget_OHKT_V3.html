@@ -3014,6 +3014,18 @@ function compress(dataURL,cb){
     c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',.6)); };
   img.src=dataURL;
 }
+// Compress for AI OCR: max 1500px, quality 0.85 — good enough for text recognition, not too large
+function compressForAI(dataURL, cb){
+  const img=new Image();
+  img.onload=()=>{
+    const MAX=1500, r=Math.min(MAX/img.width, MAX/img.height, 1);
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*r); c.height=Math.round(img.height*r);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    cb(c.toDataURL('image/jpeg',.85));
+  };
+  img.src=dataURL;
+}
 function showReceiptUI(thumb,filename,isPDF){
   document.getElementById('scanZone').style.display='none';
   document.getElementById('receiptPreview').innerHTML=`<div class="receipt-wrap" style="position:relative">
@@ -3081,16 +3093,25 @@ async function analyseBeleg(imageDataUrl, isPDF=false){
   const msgContent=[];
 
   if(isPDF && currentReceipt?.original){
-    // Send PDF as document
-    const b64=currentReceipt.original.split(',')[1];
-    msgContent.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}});
+    // Send PDF — check size first (API limit ~5MB base64)
+    const pdfB64=currentReceipt.original.split(',')[1];
+    const sizeKB=Math.round(pdfB64.length * 0.75 / 1024);
+    if(sizeKB > 4500){
+      if(statusLine) statusLine.textContent='⚠️ PDF zu gross für KI-Analyse (>4.5MB) — manuell ausfüllen';
+      if(overlay) overlay.style.display='none';
+      return;
+    }
+    msgContent.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:pdfB64}});
   } else if(imageDataUrl){
-    // Use full-res original for better OCR, not thumbnail
+    // Compress to ~1500px for OCR quality without payload bloat
     const imgData=currentReceipt?.original||imageDataUrl;
-    const b64=imgData.includes(',')? imgData.split(',')[1] : imgData;
-    const mimeMatch=imgData.match(/^data:(image\/[^;]+)/);
-    const mime=(mimeMatch?mimeMatch[1]:'image/jpeg');
-    msgContent.push({type:'image',source:{type:'base64',media_type:mime,data:b64}});
+    await new Promise(resolve=>{
+      compressForAI(imgData, compressed=>{
+        const b64=compressed.split(',')[1];
+        msgContent.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});
+        resolve();
+      });
+    });
   } else { return; }
 
   msgContent.push({type:'text',text:`Du bist ein Finanzassistent für einen Schweizer Selbständigen (Einzelfirma, Kanton Zürich).
@@ -3117,8 +3138,12 @@ Regeln:
 Antworte nur mit dem JSON-Objekt.`});
 
   try{
+    // 30s timeout — vision calls can be slow on large images
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),30000);
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
+      signal:controller.signal,
       headers:{
         'Content-Type':'application/json',
         'x-api-key':apiKey,
@@ -3131,6 +3156,7 @@ Antworte nur mit dem JSON-Objekt.`});
         messages:[{role:'user',content:msgContent}]
       })
     });
+    clearTimeout(timeout);
 
     if(!resp.ok){
       const err=await resp.json().catch(()=>({error:{message:resp.statusText}}));
@@ -3150,8 +3176,11 @@ Antworte nur mit dem JSON-Objekt.`});
 
   } catch(e){
     if(overlay) overlay.style.display='none';
-    if(statusLine) statusLine.textContent='⚠️ KI-Analyse fehlgeschlagen — manuell ausfüllen';
-    console.warn('AI scan error:', e.message);
+    const isTimeout=e.name==='AbortError';
+    if(statusLine) statusLine.textContent=isTimeout
+      ? '⚠️ KI-Analyse Timeout (zu langsam) — manuell ausfüllen'
+      : '⚠️ KI: '+e.message+' — manuell ausfüllen';
+    console.warn('AI scan error:', e.name, e.message);
   }
 }
 
