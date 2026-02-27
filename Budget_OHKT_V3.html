@@ -814,8 +814,9 @@ textarea.form-input{resize:vertical;min-height:72px}
   <!-- KPIs -->
   <div class="grid-4" style="margin-bottom:16px">
     <div class="kpi">
-      <div class="kpi-label">Aktive Projekte</div>
-      <div class="kpi-val blue" id="projCount">—</div>
+      <div class="kpi-label">Total Stunden</div>
+      <div class="kpi-val" id="projTotalHours">—</div>
+      <div class="kpi-sub" id="projAvgRate">Ø — CHF/h</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Billable Stunden</div>
@@ -833,9 +834,8 @@ textarea.form-input{resize:vertical;min-height:72px}
       <div class="kpi-sub">Admin · Akquise · etc.</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Total Stunden</div>
-      <div class="kpi-val" id="projTotalHours">—</div>
-      <div class="kpi-sub" id="projAvgRate">Ø — CHF/h</div>
+      <div class="kpi-label">Aktive Projekte</div>
+      <div class="kpi-val blue" id="projCount">—</div>
     </div>
   </div>
 
@@ -1137,7 +1137,7 @@ textarea.form-input{resize:vertical;min-height:72px}
   </div>
 
   <div class="card" style="margin-bottom:14px">
-    <div class="card-title">Claude AI (Beleganalyse) <span style="font-size:10px;background:var(--amber-light);color:var(--amber);padding:2px 7px;border-radius:6px;margin-left:6px;font-weight:600">bald</span></div>
+    <div class="card-title">Claude AI (Beleganalyse)</div>
     <div class="settings-row" style="border-bottom:none">
       <div>
         <div style="font-weight:600;font-size:14px">API Key</div>
