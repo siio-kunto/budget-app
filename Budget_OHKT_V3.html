@@ -307,6 +307,30 @@ textarea.form-input{resize:vertical;min-height:72px}
 
 
 
+
+/* ── AI BELEG-ANALYSE ── */
+.ai-scan-overlay{position:absolute;inset:0;background:rgba(13,15,23,.85);border-radius:inherit;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:10}
+.ai-spin{width:28px;height:28px;border:3px solid rgba(147,197,253,.2);border-top-color:#93c5fd;
+  border-radius:50%;animation:spin .8s linear infinite}
+.ai-scan-label{font-size:12px;color:#93c5fd;font-weight:600}
+.ai-result-banner{background:rgba(30,58,95,.9);border:1px solid rgba(147,197,253,.3);border-radius:12px;
+  padding:12px 14px;margin-top:10px;font-size:13px}
+.ai-result-banner .ai-rb-title{color:#93c5fd;font-weight:700;font-size:11px;
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-field{display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:12.5px}
+.ai-field-label{color:var(--muted);width:90px;flex-shrink:0}
+.ai-field-val{font-weight:600;color:var(--ink);flex:1;text-align:right}
+.ai-field-conf{font-size:10px;margin-left:6px;flex-shrink:0}
+.ai-field-conf.high{color:var(--accent)}
+.ai-field-conf.mid{color:var(--amber)}
+.ai-field-conf.low{color:var(--red)}
+.ai-apply-btn{width:100%;margin-top:10px;background:#1e3a5f;color:#93c5fd;border:1px solid rgba(147,197,253,.3);
+  border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.ai-apply-btn:hover{background:#2d4f7c}
+.scan-zone.scanning{border-color:#93c5fd;animation:pulse-blue 1s ease-in-out infinite}
+@keyframes pulse-blue{0%,100%{box-shadow:0 0 0 0 rgba(147,197,253,.3)}50%{box-shadow:0 0 0 6px rgba(147,197,253,0)}}
+
 /* ── PROJEKTE SUBTABS ── */
 .proj-subtab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;
   font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;
@@ -2989,19 +3013,33 @@ function compress(dataURL,cb){
 }
 function showReceiptUI(thumb,filename,isPDF){
   document.getElementById('scanZone').style.display='none';
-  document.getElementById('receiptPreview').innerHTML=`<div class="receipt-wrap">
+  document.getElementById('receiptPreview').innerHTML=`<div class="receipt-wrap" style="position:relative">
+    <div id="aiScanOverlay" class="ai-scan-overlay" style="display:none">
+      <div class="ai-spin"></div>
+      <div class="ai-scan-label">KI analysiert…</div>
+    </div>
     ${thumb?`<img class="receipt-thumb-lg" src="${thumb}" onclick="openLightbox('${thumb}')">`:
             `<div style="font-size:40px">${isPDF?'📄':'🖼'}</div>`}
-    <div>
+    <div style="flex:1">
       <div style="font-weight:600;font-size:13px;color:var(--accent);margin-bottom:4px">✓ Beleg bereit</div>
       <div style="font-size:12px;color:var(--muted);word-break:break-all">${filename}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">Wird auf Google Drive hochgeladen</div>
+      <div id="aiStatusLine" style="font-size:11px;color:#93c5fd;margin-top:4px">⚡ KI liest Beleg…</div>
       <div style="margin-top:8px;display:flex;gap:6px">
         ${thumb?`<button class="btn btn-outline btn-sm" onclick="openLightbox('${thumb}')">🔍</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="removeReceipt()">✕</button>
       </div>
     </div>
-  </div>`;
+  </div>
+  <div id="aiResultBanner" style="display:none"></div>`;
+  // Auto-trigger AI analysis if key exists and image (not PDF for now)
+  if(!isPDF && loadLocal('claudeApiKey','')) {
+    setTimeout(()=>analyseBeleg(thumb||currentReceipt?.original, isPDF), 100);
+  } else if(isPDF && loadLocal('claudeApiKey','')){
+    setTimeout(()=>analyseBeleg(null, true), 100);
+  } else {
+    const sl=document.getElementById('aiStatusLine');
+    if(sl) sl.textContent='Wird auf Google Drive hochgeladen';
+  }
 }
 function removeReceipt(){ currentReceipt=null; document.getElementById('receiptPreview').innerHTML=''; document.getElementById('scanZone').style.display=''; }
 function buildFilename(ext){
@@ -3017,6 +3055,192 @@ function getFileExt(dataURL,originalFilename,isPDF){
   if(dataURL.startsWith('data:image/png')) return 'png';
   if(dataURL.startsWith('data:image/heic')) return 'heic';
   return 'jpg';
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// KI BELEGANALYSE — Claude Vision API
+// ═══════════════════════════════════════════════════════════════
+async function analyseBeleg(imageDataUrl, isPDF=false){
+  const apiKey=loadLocal('claudeApiKey','');
+  if(!apiKey) return;
+
+  const overlay=document.getElementById('aiScanOverlay');
+  const statusLine=document.getElementById('aiStatusLine');
+  const scanZoneEl=document.getElementById('scanZone');
+  if(overlay) overlay.style.display='flex';
+  if(statusLine) statusLine.textContent='⚡ KI liest Beleg…';
+
+  const allCats=[...CATS_BIZ,...CATS_PRIV];
+  const today=toDay();
+
+  // Build message content
+  const msgContent=[];
+
+  if(isPDF && currentReceipt?.original){
+    // Send PDF as document
+    const b64=currentReceipt.original.split(',')[1];
+    msgContent.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}});
+  } else if(imageDataUrl){
+    // Use full-res original for better OCR, not thumbnail
+    const imgData=currentReceipt?.original||imageDataUrl;
+    const b64=imgData.includes(',')? imgData.split(',')[1] : imgData;
+    const mimeMatch=imgData.match(/^data:(image\/[^;]+)/);
+    const mime=(mimeMatch?mimeMatch[1]:'image/jpeg');
+    msgContent.push({type:'image',source:{type:'base64',media_type:mime,data:b64}});
+  } else { return; }
+
+  msgContent.push({type:'text',text:`Du bist ein Finanzassistent für einen Schweizer Selbständigen (Einzelfirma, Kanton Zürich).
+Analysiere diesen Beleg und extrahiere folgende Felder. Antworte NUR mit einem JSON-Objekt, kein Text davor oder danach.
+
+Felder:
+- betrag: Zahl (CHF, ohne Währungssymbol, nur Endbetrag/Total)
+- datum: String "YYYY-MM-DD" (Belegdatum, heute ist ${today})
+- gegenpartei: String (Lieferant/Firmenname, kurz und klar)
+- beschreibung: String (was wurde gekauft/wofür, max 50 Zeichen)
+- kategorie: String aus dieser exakten Liste: ${JSON.stringify(allCats)}
+- bereich: "Geschäftlich" oder "Privat"
+- mwst: Zahl oder null (MwSt-Betrag falls auf Beleg ersichtlich)
+- typ: "Ausgabe" oder "Einnahme"
+- konfidenz: Object mit Feldern betrag/datum/gegenpartei/kategorie je "high"/"mid"/"low"
+
+Regeln:
+- Bei Restaurants/Cafés und klar privaten Einkäufen: bereich="Privat"
+- Bei Büromaterial, Software, Fachliteratur, Reisen für Arbeit: bereich="Geschäftlich"  
+- Wenn unklar: bereich="Geschäftlich" (Einzelfirma, meistens geschäftlich)
+- kategorie muss EXAKT einem Wert aus der Liste entsprechen
+- Wenn Beleg unleserlich: konfidenz "low" für betroffene Felder
+
+Antworte nur mit dem JSON-Objekt.`});
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-opus-4-6',
+        max_tokens:600,
+        messages:[{role:'user',content:msgContent}]
+      })
+    });
+
+    if(!resp.ok){
+      const err=await resp.json().catch(()=>({error:{message:resp.statusText}}));
+      throw new Error(err.error?.message||resp.statusText);
+    }
+
+    const data=await resp.json();
+    const raw=data.content?.[0]?.text||'';
+    // Strip markdown code fences if present
+    const jsonStr=raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+    const parsed=JSON.parse(jsonStr);
+
+    if(overlay) overlay.style.display='none';
+    if(statusLine) statusLine.textContent='✅ KI hat Beleg gelesen';
+
+    showAiResult(parsed);
+
+  } catch(e){
+    if(overlay) overlay.style.display='none';
+    if(statusLine) statusLine.textContent='⚠️ KI-Analyse fehlgeschlagen — manuell ausfüllen';
+    console.warn('AI scan error:', e.message);
+  }
+}
+
+function showAiResult(data){
+  const banner=document.getElementById('aiResultBanner');
+  if(!banner) return;
+
+  const confIcon=(c)=>c==='high'?'<span class="ai-field-conf high">✓</span>':
+                      c==='mid'?'<span class="ai-field-conf mid">~</span>':
+                      '<span class="ai-field-conf low">?</span>';
+  const k=data.konfidenz||{};
+
+  const rows=[
+    data.betrag!=null ? {label:'Betrag',val:'CHF '+Number(data.betrag).toFixed(2),conf:k.betrag} : null,
+    data.datum        ? {label:'Datum',val:data.datum,conf:k.datum} : null,
+    data.gegenpartei  ? {label:'Von/An',val:data.gegenpartei,conf:k.gegenpartei} : null,
+    data.beschreibung ? {label:'Beschreibung',val:data.beschreibung,conf:'high'} : null,
+    data.kategorie    ? {label:'Kategorie',val:data.kategorie,conf:k.kategorie} : null,
+    data.bereich      ? {label:'Bereich',val:data.bereich,conf:'high'} : null,
+    data.mwst!=null && data.mwst>0 ? {label:'MwSt',val:'CHF '+Number(data.mwst).toFixed(2),conf:'mid'} : null,
+  ].filter(Boolean);
+
+  banner.style.display='';
+  banner.innerHTML=`<div class="ai-result-banner">
+    <div class="ai-rb-title">
+      <span style="font-size:14px">✨</span>
+      KI-Erkennung — bitte prüfen
+      <span style="margin-left:auto;font-weight:400;font-size:10px;color:var(--muted)">✓ sicher  ~ unsicher  ? unklar</span>
+    </div>
+    ${rows.map(r=>`<div class="ai-field">
+      <span class="ai-field-label">${r.label}</span>
+      <span class="ai-field-val">${r.val}</span>
+      ${confIcon(r.conf)}
+    </div>`).join('')}
+    <button class="ai-apply-btn" onclick="applyAiResult(${JSON.stringify(JSON.stringify(data))})">
+      ✓ Felder übernehmen &amp; prüfen
+    </button>
+  </div>`;
+}
+
+function applyAiResult(jsonStr){
+  const data=JSON.parse(jsonStr);
+
+  // Betrag
+  if(data.betrag!=null){
+    document.getElementById('eAmt').value=Number(data.betrag).toFixed(2);
+  }
+  // Datum
+  if(data.datum){
+    document.getElementById('eDate').value=data.datum;
+  }
+  // Gegenpartei
+  if(data.gegenpartei){
+    document.getElementById('eCounterpart').value=data.gegenpartei;
+  }
+  // Beschreibung
+  if(data.beschreibung){
+    document.getElementById('eDesc').value=data.beschreibung;
+  }
+  // Typ (Einnahme/Ausgabe)
+  if(data.typ){
+    const isInc=data.typ==='Einnahme';
+    if(entryType!==( isInc?'income':'expense')){
+      document.querySelector(`.type-btn[data-type="${isInc?'income':'expense'}"]`)?.click();
+    }
+  }
+  // Bereich
+  if(data.bereich){
+    const isBiz=data.bereich==='Geschäftlich';
+    if(entryBereich!==(isBiz?'business':'private')){
+      setBereich(isBiz?'business':'private');
+    }
+  }
+  // Kategorie — set after bereich so correct chips are rendered
+  if(data.kategorie){
+    const allCats=[...CATS_BIZ,...CATS_PRIV];
+    if(allCats.includes(data.kategorie)){
+      entryCategory=data.kategorie;
+      renderCatChips();
+    }
+  }
+
+  // Hide banner, show success
+  const banner=document.getElementById('aiResultBanner');
+  if(banner) banner.innerHTML=`<div style="color:var(--accent);font-size:12.5px;font-weight:600;padding:8px 0">
+    ✅ Felder übernommen — bitte prüfen und speichern
+  </div>`;
+
+  // Scroll to form
+  document.getElementById('eAmt').scrollIntoView({behavior:'smooth',block:'nearest'});
+  document.getElementById('eAmt').focus();
+  showToast('success','✨','Felder ausgefüllt','Bitte prüfen bevor du speicherst');
 }
 
 // CAMERA
@@ -3040,6 +3264,7 @@ function snap(){
   document.getElementById('camStatus').textContent='Foto aufgenommen';
 }
 function useSnap(){ const orig=document.getElementById('snapImg').src; closeCam(); compress(orig,th=>{ currentReceipt={thumb:th,original:orig,filename:'kamera_beleg.jpg',isPDF:false}; showReceiptUI(th,'kamera_beleg.jpg',false); }); }
+// Note: analyseBeleg is triggered inside showReceiptUI automatically
 function closeCam(){ if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;} document.getElementById('camModal').classList.remove('open'); document.getElementById('camVideo').srcObject=null; }
 
 // LIGHTBOX
