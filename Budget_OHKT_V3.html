@@ -38,6 +38,16 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--i
 .nav-tab{padding:13px 16px;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2.5px solid transparent;transition:all .18s;display:flex;align-items:center;gap:5px;letter-spacing:-.01em}
 .nav-tab:hover{color:var(--ink)}
 .nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Mobile nav: nur Icons auf sehr kleinen Screens */
+@media (max-width: 500px) {
+  .nav-txt { display: none }
+  .nav-tab { padding: 13px 10px }
+}
+@media (min-width: 501px) {
+  .nav-icon { display: none }
+}
+
 .nav-tab .badge{background:#fef2f2;color:var(--red);font-size:11px;font-weight:700;padding:1px 6px;border-radius:8px;min-width:18px;text-align:center}
 
 /* LAYOUT */
@@ -431,13 +441,13 @@ textarea.form-input{resize:vertical;min-height:72px}
 </header>
 
 <nav class="nav-tabs">
-  <div class="nav-tab active" data-page="uebersicht" onclick="go('uebersicht')">📊 Übersicht</div>
-  <div class="nav-tab" data-page="erfassen" onclick="go('erfassen')">➕ Erfassen</div>
-  <div class="nav-tab" data-page="rechnungen" onclick="go('rechnungen')">🧾 Rechnungen <span class="badge" id="invBadge" style="display:none">0</span></div>
-  <div class="nav-tab" data-page="projekte" onclick="go('projekte')">🗂 Projekte</div>
-  <div class="nav-tab" data-page="leben" onclick="go('leben')">🌱 Leben</div>
-  <div class="nav-tab" data-page="buchungen" onclick="go('buchungen')">📋 Buchungen</div>
-  <div class="nav-tab" data-page="einstellungen" onclick="go('einstellungen')">⚙️ Keys</div>
+  <div class="nav-tab active" data-page="uebersicht" onclick="go('uebersicht')"><span class="nav-icon">📊</span><span class="nav-txt">Übersicht</span></div>
+  <div class="nav-tab" data-page="erfassen" onclick="go('erfassen')"><span class="nav-icon">➕</span><span class="nav-txt">Erfassen</span></div>
+  <div class="nav-tab" data-page="rechnungen" onclick="go('rechnungen')"><span class="nav-icon">🧾</span><span class="nav-txt">Rechnungen</span> <span class="badge" id="invBadge" style="display:none">0</span></div>
+  <div class="nav-tab" data-page="projekte" onclick="go('projekte')"><span class="nav-icon">🗂</span><span class="nav-txt">Projekte</span></div>
+  <div class="nav-tab" data-page="leben" onclick="go('leben')"><span class="nav-icon">🌱</span><span class="nav-txt">Leben</span></div>
+  <div class="nav-tab" data-page="buchungen" onclick="go('buchungen')"><span class="nav-icon">📋</span><span class="nav-txt">Buchungen</span></div>
+  <div class="nav-tab" data-page="einstellungen" onclick="go('einstellungen')"><span class="nav-icon">⚙️</span><span class="nav-txt">Keys</span></div>
 </nav>
 
 
@@ -1310,6 +1320,7 @@ textarea.form-input{resize:vertical;min-height:72px}
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
       <button class="btn btn-outline" onclick="flipCam()">🔄 Kamera</button>
+      <button class="btn btn-outline" id="torchBtn" onclick="toggleTorch()" style="display:none">🔦 Blitz</button>
       <button class="btn btn-primary" onclick="snap()">📸 Aufnahme</button>
       <button class="btn btn-accent" id="useSnapBtn" style="display:none" onclick="useSnap()">✓ Verwenden</button>
     </div>
@@ -1638,7 +1649,7 @@ function parseTx(page){
     paid:chk(p['Bezahlt']),
     receiptFile:txt(p['Beleg-Dateiname']),
     receiptLink:url(p['Beleg-Link']),
-    projekt:sel(p['Projekt'])||'',
+    projekt:txt(p['Projekt'])||'',
     receipt:null
   };
 }
@@ -1655,7 +1666,7 @@ function parseInv(page){
     amount:num(p['Betrag']),mwst:num(p['MwSt']),
     status:sel(p['Status']),account:sel(p['Konto']),
     paidDate:dat(p['Bezahlt am']),note:txt(p['Notiz']),
-    type:sel(p['Typ'])||'',projekt:sel(p['Projekt'])||''
+    type:sel(p['Typ'])||'',projekt:txt(p['Projekt'])||''
   };
 }
 
@@ -1880,26 +1891,25 @@ function buildCounterpartList(){
 // Projekt dropdowns
 function buildProjektDropdowns(){
   const projs=loadLocal('projekte',[]);
-  // For Erfassen: all active projects (Aufträge + Herzensarbeit, not overhead)
-  const active=projs.filter(p=>p.status==='active');
-  const auftraege=active.filter(p=>p.kategorie!=='overhead');
-  const archived=projs.filter(p=>p.status==='inactive'||p.cfArchived);
+  const cfProjs=loadLocal('clockifyProjects',[]);
+  const active=projs.filter(p=>p.status==='active'&&p.kategorie!=='overhead');
+  const overheadCf=cfProjs.filter(cp=>cfProjType(cp,projs)==='overhead');
 
-  const makeOpts=(list,includeArchived=false)=>{
-    let html='<option value="">— kein Projekt</option>';
-    const active=list.filter(p=>p.status==='active');
-    if(active.length) html+=active.map(p=>`<option value="${p.name}">${p.type==='Herzensarbeit'?'❤️ ':''} ${p.name}</option>`).join('');
-    if(includeArchived){
-      const arch=list.filter(p=>p.status==='inactive');
-      if(arch.length) html+='<optgroup label="Archiviert">'+arch.map(p=>`<option value="${p.name}">${p.name}</option>`).join('')+'</optgroup>';
-    }
+  const makeOpts=()=>{
+    let html='<option value="">— kein Projekt —</option>';
+    const auftraege=active.filter(p=>p.type!=='Herzensarbeit');
+    const herz=active.filter(p=>p.type==='Herzensarbeit');
+    if(auftraege.length) html+='<optgroup label="Auftraege">'+auftraege.map(p=>`<option value="${p.name}">${p.name}</option>`).join('')+'</optgroup>';
+    if(herz.length) html+='<optgroup label="Herzensarbeit">'+herz.map(p=>`<option value="${p.name}">${p.name}</option>`).join('')+'</optgroup>';
+    if(overheadCf.length) html+='<optgroup label="Overhead">'+overheadCf.map(cp=>`<option value="${cp.name}">ohkt: ${cp.name.replace(/^ohkt_/i,'').trim()}</option>`).join('')+'</optgroup>';
     return html;
   };
 
+  const opts=makeOpts();
   const eProjEl=document.getElementById('eProjekt');
-  if(eProjEl) eProjEl.innerHTML=makeOpts(auftraege, false);
+  if(eProjEl) eProjEl.innerHTML=opts;
   const iProjEl=document.getElementById('iProjekt');
-  if(iProjEl) iProjEl.innerHTML=makeOpts(auftraege, false);
+  if(iProjEl) iProjEl.innerHTML=opts;
 }
 
 // ═══════════════════════════════════════════
@@ -1945,7 +1955,7 @@ async function saveTx(){
   if(steuerKat) props['Steuerkategorie']={ select:{name:steuerKat}};
   if(entrySource&&entryType==='income') props['Einnahmequelle']={ select:{name:entrySource}};
   if(document.getElementById('eAccount').value) props['Konto']={ select:{name:document.getElementById('eAccount').value}};
-  if(document.getElementById('eProjekt').value) props['Projekt']={ select:{name:document.getElementById('eProjekt').value}};
+  if(document.getElementById('eProjekt').value) props['Projekt']={ rich_text:[{text:{content:document.getElementById('eProjekt').value}}]};
 
   const desc=document.getElementById('eDesc').value;
   btn.textContent='📡 Sendet…';
@@ -2042,7 +2052,7 @@ async function saveInv(){
   };
   if(document.getElementById('iKonto').value) props['Konto']={select:{name:document.getElementById('iKonto').value}};
   if(document.getElementById('iType').value)  props['Typ']={select:{name:document.getElementById('iType').value}};
-  if(document.getElementById('iProjekt').value) props['Projekt']={select:{name:document.getElementById('iProjekt').value}};
+  if(document.getElementById('iProjekt').value) props['Projekt']={rich_text:[{text:{content:document.getElementById('iProjekt').value}}]};
   try{
     let result;
     if(editId){
@@ -3086,7 +3096,7 @@ function showReceiptUI(thumb,filename,isPDF){
   <div id="aiResultBanner" style="display:none"></div>`;
   // Auto-trigger AI analysis if key exists and image (not PDF for now)
   if(!isPDF && loadLocal('claudeApiKey','')) {
-    setTimeout(()=>analyseBeleg(thumb||currentReceipt?.original, isPDF), 100);
+    setTimeout(()=>analyseBeleg(currentReceipt?.original||thumb, isPDF), 100);
   } else if(isPDF && loadLocal('claudeApiKey','')){
     setTimeout(()=>analyseBeleg(null, true), 100);
   } else {
@@ -3172,6 +3182,7 @@ Regeln:
 - Wenn unklar: bereich="Geschäftlich" (Einzelfirma, meistens geschäftlich)
 - kategorie muss EXAKT einem Wert aus der Liste entsprechen
 - Wenn Beleg unleserlich: konfidenz "low" für betroffene Felder
+- konto: Falls auf dem Beleg Kreditkarten- oder Kartennummer sichtbar (auch letzte 4 Ziffern): erkenne ob es Revolut (meist Visa/Mastercard, oft auf digitalen Belegen) oder Raiffeisen (Maestro/Debit) ist. Gib einen Wert aus: "Revolut", "Raiffeisen Privat", oder null wenn unklar
 
 Antworte nur mit dem JSON-Objekt.`});
 
@@ -3239,9 +3250,11 @@ function showAiResult(data){
     data.kategorie    ? {label:'Kategorie',val:data.kategorie,conf:k.kategorie} : null,
     data.bereich      ? {label:'Bereich',val:data.bereich,conf:'high'} : null,
     data.mwst!=null && data.mwst>0 ? {label:'MwSt',val:'CHF '+Number(data.mwst).toFixed(2),conf:'mid'} : null,
+    data.konto ? {label:'Konto',val:data.konto,conf:'mid'} : null,
   ].filter(Boolean);
 
   banner.style.display='';
+  window._lastAiResult = data;
   banner.innerHTML=`<div class="ai-result-banner">
     <div class="ai-rb-title">
       <span style="font-size:14px">✨</span>
@@ -3253,14 +3266,14 @@ function showAiResult(data){
       <span class="ai-field-val">${r.val}</span>
       ${confIcon(r.conf)}
     </div>`).join('')}
-    <button class="ai-apply-btn" onclick="applyAiResult(${JSON.stringify(JSON.stringify(data))})">
+    <button class="ai-apply-btn" onclick="applyAiResult()">
       ✓ Felder übernehmen &amp; prüfen
     </button>
   </div>`;
 }
 
-function applyAiResult(jsonStr){
-  const data=JSON.parse(jsonStr);
+function applyAiResult(){
+  const data=window._lastAiResult; if(!data) return;
 
   // Betrag
   if(data.betrag!=null){
@@ -3307,6 +3320,16 @@ function applyAiResult(jsonStr){
     ✅ Felder übernommen — bitte prüfen und speichern
   </div>`;
 
+  // Konto
+  if(data.konto){
+    const kontoSel=document.getElementById('eKonto');
+    if(kontoSel){
+      const opts=Array.from(kontoSel.options).map(o=>o.value);
+      // Match: "Revolut" → first Revolut option, "Raiffeisen Privat" → exact
+      const match=opts.find(o=>o===data.konto)||opts.find(o=>data.konto&&o.toLowerCase().includes(data.konto.toLowerCase().split(' ')[0]));
+      if(match) kontoSel.value=match;
+    }
+  }
   // Scroll to form
   document.getElementById('eAmt').scrollIntoView({behavior:'smooth',block:'nearest'});
   document.getElementById('eAmt').focus();
@@ -3315,13 +3338,30 @@ function applyAiResult(jsonStr){
 
 // CAMERA
 async function openCam(){ document.getElementById('camModal').classList.add('open'); document.getElementById('snapWrap').style.display='none'; document.getElementById('useSnapBtn').style.display='none'; await startCam(); }
+let torchOn = false;
 async function startCam(){
   try{
     if(camStream) camStream.getTracks().forEach(t=>t.stop());
+    torchOn=false;
     camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing,width:{ideal:1920},height:{ideal:1080}}});
     document.getElementById('camVideo').srcObject=camStream;
     document.getElementById('camStatus').textContent='Kamera bereit';
+    // Check torch support
+    const track=camStream.getVideoTracks()[0];
+    const caps=track.getCapabilities?.();
+    const torchBtn=document.getElementById('torchBtn');
+    if(torchBtn) torchBtn.style.display=(caps?.torch)?'':'none';
   }catch(e){ document.getElementById('camStatus').textContent='⚠️ '+e.message; }
+}
+async function toggleTorch(){
+  if(!camStream) return;
+  const track=camStream.getVideoTracks()[0];
+  torchOn=!torchOn;
+  try{
+    await track.applyConstraints({advanced:[{torch:torchOn}]});
+    const btn=document.getElementById('torchBtn');
+    if(btn) btn.textContent=torchOn?'🔦 An':'🔦 Blitz';
+  }catch(e){ torchOn=!torchOn; }
 }
 function flipCam(){ camFacing=camFacing==='environment'?'user':'environment'; startCam(); }
 function snap(){
@@ -4069,7 +4109,7 @@ function showPendingQueue(){
   const q=loadLocal('pendingQueue',[]).filter(e=>e.status==='pending'||e.status==='error');
   if(!q.length){showToast('success','✅','Nichts ausstehend','Alles ist synchronisiert');return;}
   const list=q.map(e=>`• ${e.meta?.desc||e.type} — CHF ${e.meta?.amt||'?'} (${e.status==='error'?'Fehler: '+e.error:'Ausstehend'})`).join('\n');
-  if(confirm(q.length+' ausstehende Einträge:\n\n'+list+'\n\nJetzt senden?')) flushQueue();
+  flushQueue();
 }
 
 // ── Queue-aware notionSave wrapper ──
