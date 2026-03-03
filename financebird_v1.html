@@ -33,7 +33,7 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--i
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* NAV */
-.nav-tabs{background:white;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:99}
+.nav-tabs{background:white;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:99}
 .nav-tabs::-webkit-scrollbar{display:none}
 .nav-tab{padding:13px 16px;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2.5px solid transparent;transition:all .18s;display:flex;align-items:center;gap:5px;letter-spacing:-.01em}
 .nav-tab:hover{color:var(--ink)}
@@ -43,9 +43,6 @@ body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--i
 @media (max-width: 500px) {
   .nav-txt { display: none }
   .nav-tab { padding: 13px 10px }
-}
-@media (min-width: 501px) {
-  .nav-icon { display: none }
 }
 
 .nav-tab .badge{background:#fef2f2;color:var(--red);font-size:11px;font-weight:700;padding:1px 6px;border-radius:8px;min-width:18px;text-align:center}
@@ -400,6 +397,13 @@ textarea.form-input{resize:vertical;min-height:72px}
 /* ── SAVE BUTTON STATES ── */
 .btn-saving{background:#78350f !important;color:#fde68a !important;cursor:not-allowed !important}
 .btn-saved{background:#14532d !important;color:#86efac !important;cursor:default !important}
+@media (prefers-contrast: high) {
+  :root { --border: #888; --muted: #555; }
+  .btn-outline { border-width: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
 </style>
 </head>
 <body>
@@ -665,7 +669,7 @@ textarea.form-input{resize:vertical;min-height:72px}
       <!-- AMOUNT + DATE -->
       <div class="form-group">
         <label class="form-label">Betrag (CHF)</label>
-        <input type="number" id="eAmt" class="form-input" placeholder="0.00" step="0.05" oninput="checkDuplicate()" style="font-size:22px;font-family:'Fraunces',serif;font-weight:500">
+        <input type="number" id="eAmt" class="form-input" placeholder="0.00" step="0.05" oninput="this.value=this.value.replace(',','.');checkDuplicate()" style="font-size:22px;font-family:'Fraunces',serif;font-weight:500">
       </div>
       <div class="form-group">
         <label class="form-label">Datum</label>
@@ -673,7 +677,7 @@ textarea.form-input{resize:vertical;min-height:72px}
       </div>
       <div class="form-group">
         <label class="form-label">Beschreibung</label>
-        <input type="text" id="eDesc" class="form-input" placeholder="Was war das?" oninput="checkDuplicate()">
+        <input type="text" id="eDesc" class="form-input" placeholder="Was war das?" oninput="checkDuplicate()" maxlength="300">
       </div>
       <div class="form-group">
         <label class="form-label">Gegenpartei / Kunde</label>
@@ -1863,6 +1867,7 @@ function go(id){
   document.getElementById('page-'+id).classList.add('active');
   document.querySelector(`[data-page="${id}"]`).classList.add('active');
   if(id==='einstellungen') renderSettings();
+  window.scrollTo(0,0);
 }
 
 // ═══════════════════════════════════════════
@@ -2030,6 +2035,7 @@ function cancelTxEdit(){
   ['eAmt','eDesc','eNote','eInvRef','eCounterpart'].forEach(id=>document.getElementById(id).value='');
   entryCategory=''; entrySource=''; renderCatChips();
   setType('income'); setBereich('business');
+  document.getElementById('dupWarn').style.display='none';
 }
 function setType(t){
   entryType=t;
@@ -2299,6 +2305,8 @@ async function saveTx(){
     // Clear form
     ['eAmt','eDesc','eNote','eInvRef','eCounterpart'].forEach(id=>document.getElementById(id).value='');
     entryCategory=''; entrySource=''; removeReceipt(); renderCatChips();
+    setType('income'); setBereich('business');
+    document.getElementById('dupWarn').style.display='none';
     // Rich toast with links
     const links=[];
     if(result.url) links.push({label:'In Notion öffnen',url:result.url});
@@ -4127,6 +4135,17 @@ async function uploadToGDrive(dataURL,filename,isPDF){
 
   setType('income');
   setBereich('business');
+
+  // BUG-10: Offline/Online detection
+  window.addEventListener('offline',()=>{
+    setSyncStatus('error','Offline');
+    document.getElementById('offlineBanner').classList.add('show');
+  });
+  window.addEventListener('online',()=>{
+    document.getElementById('offlineBanner').classList.remove('show');
+    setSyncStatus('','Online');
+    flushQueue();
+  });
 
   if(notionToken){
     document.getElementById('setupScreen').style.display='none';
