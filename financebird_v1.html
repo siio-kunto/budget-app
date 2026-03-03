@@ -129,6 +129,16 @@ textarea.form-input{resize:vertical;min-height:72px}
 .data-table .totals-row td{background:#faf9f7;font-weight:700;border-top:2px solid var(--border)}
 /* BUG-11: mobile horizontal scroll fix */
 .table-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+/* Recurring Inbox */
+.inbox-modal{background:white;border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;animation:slideUp .25s ease}
+.inbox-item{border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.inbox-item.overdue{border-color:var(--amber);background:#fffbeb}
+.inbox-item-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+.inbox-item-name{font-weight:600;font-size:15px}
+.inbox-item-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.inbox-item-amt{font-family:'Fraunces',serif;font-size:18px;font-weight:500;color:var(--red);white-space:nowrap}
+.inbox-actions{display:flex;gap:6px;flex-wrap:wrap}
+.inbox-progress{font-size:12px;color:var(--muted);text-align:center;padding:6px 0;border-top:1px solid var(--border);margin-top:8px}
 .amt{font-family:'Fraunces',serif;font-weight:500;white-space:nowrap}
 .amt.pos{color:var(--accent)}
 .amt.neg{color:var(--red)}
@@ -419,10 +429,42 @@ textarea.form-input{resize:vertical;min-height:72px}
   <div id="loadingText" style="font-size:14px;color:var(--muted)">Lädt…</div>
 </div>
 
+<!-- RECURRING INBOX MODAL -->
+<div class="modal-overlay" id="recurInboxOverlay" style="display:none;align-items:flex-end" onclick="closeRecurInbox()">
+  <div class="inbox-modal" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div class="modal-title" style="margin-bottom:0">Zahlungs-Inbox</div>
+      <button onclick="closeRecurInbox()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">X</button>
+    </div>
+    <div id="recurInboxSub" style="font-size:13px;color:var(--muted);margin-bottom:18px"></div>
+    <div id="recurInboxList"></div>
+    <div id="recurInboxProgress" class="inbox-progress" style="display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeRecurInbox()">Spaeter</button>
+      <button class="btn btn-primary" style="flex:1" id="recurInboxDoneBtn" onclick="closeRecurInbox()">Fertig</button>
+    </div>
+  </div>
+</div>
+
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <img id="lbImg" src="" alt="">
+  <img id="lbImg" src="" alt="" style="display:none">
+  <div id="lbNothumb" style="display:none;text-align:center;color:white">
+    <div style="font-size:64px;margin-bottom:16px">PDF</div>
+    <div style="font-size:15px;opacity:.8;margin-bottom:20px">Kein lokales Vorschaubild</div>
+    <a id="lbDriveLink" href="#" target="_blank" onclick="closeLightbox()"
+       style="background:white;color:#333;padding:10px 24px;border-radius:10px;font-weight:600;font-size:14px;text-decoration:none">
+      Auf Google Drive oeffnen
+    </a>
+  </div>
+  <div id="lbDriveBadge" style="display:none;position:absolute;bottom:28px;left:50%;transform:translateX(-50%)">
+    <a id="lbDriveLink2" href="#" target="_blank" onclick="closeLightbox()"
+       style="background:rgba(255,255,255,.18);color:white;padding:8px 18px;border-radius:8px;font-size:13px;text-decoration:none;white-space:nowrap">
+      Google Drive oeffnen
+    </a>
+  </div>
 </div>
+
 
 <!-- SETUP SCREEN -->
 <div id="setupScreen" style="display:none">
@@ -3078,7 +3120,7 @@ function renderTx(){
     <td style="font-size:12px;color:var(--muted)">${t.account||'—'}</td>
     <td class="amt ${t.type==='Einnahme'?'pos':'neg'}">${t.type==='Einnahme'?'+':'−'}${fmt(t.amount)}</td>
     <td style="text-align:center">${t.paid?'✅':'⬜'}</td>
-    <td>${t.receipt?`<img class="tx-thumb" src="${t.receipt}" onclick="openLightbox('${t.receipt}')">`:(t.receiptLink?`<a href="${t.receiptLink}" target="_blank" style="font-size:16px" title="Auf Google Drive">📄</a>`:t.receiptFile?`<span style="font-size:14px" title="${t.receiptFile}">📎</span>`:'—')}</td>
+    <td>${t.receipt?`<img class="tx-thumb" src="${t.receipt}" onclick="openLightbox('${t.receipt}','${t.receiptLink||''}')" title="Beleg anzeigen">`:(t.receiptLink?`<button class="tx-beleg-btn" onclick="openLightbox('','${t.receiptLink}')" title="Beleg auf Google Drive">📄</button>`:t.receiptFile?`<span style="font-size:14px" title="${t.receiptFile}">📎</span>`:'—')}</td>
     <td style="white-space:nowrap">
       <button class="btn btn-outline btn-sm" onclick="openTxEdit('${t.id}')" title="Bearbeiten" style="margin-right:4px">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="deleteTxNotion('${t.id}')">✕</button>
@@ -4086,7 +4128,26 @@ function useSnap(){ const orig=document.getElementById('snapImg').src; closeCam(
 function closeCam(){ if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;} document.getElementById('camModal').classList.remove('open'); document.getElementById('camVideo').srcObject=null; }
 
 // LIGHTBOX
-function openLightbox(src){ document.getElementById('lbImg').src=src; document.getElementById('lightbox').classList.add('open'); }
+function openLightbox(src, driveLink){
+  const lb=document.getElementById('lightbox');
+  const img=document.getElementById('lbImg');
+  const nothumb=document.getElementById('lbNothumb');
+  const badge=document.getElementById('lbDriveBadge');
+  if(src){
+    img.src=src; img.style.display='';
+    nothumb.style.display='none';
+    badge.style.display=driveLink?'':'none';
+  } else {
+    img.src=''; img.style.display='none';
+    nothumb.style.display='';
+    badge.style.display='none';
+  }
+  if(driveLink){
+    document.getElementById('lbDriveLink').href=driveLink;
+    document.getElementById('lbDriveLink2').href=driveLink;
+  }
+  lb.classList.add('open');
+}
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
 
 // ═══════════════════════════════════════════
@@ -4150,6 +4211,204 @@ async function uploadToGDrive(dataURL,filename,isPDF){
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
+
+// INBOX (Rechnungen + Recurrings)
+function checkInbox(){
+  const today=toDay();
+  const lastVisit=loadLocal('lastVisitDate','');
+  saveLocal('lastVisitDate',today);
+  let daysSince=0;
+  if(lastVisit&&lastVisit<today)
+    daysSince=Math.round((new Date(today)-new Date(lastVisit))/(1000*60*60*24));
+
+  // Offene Rechnungen mit ueberfaelligem Due Date
+  const overdueInv=invCache.filter(i=>
+    i.due && i.due<=today && i.status!=='Bezahlt' && i.status!=='Entwurf'
+  );
+
+  // Faellige Recurrings
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const overdueRecur=recurs.filter(r=>{
+    if(r.paused||!r.nextDate) return false;
+    const skips=loadLocal('recurSkips_'+r.id,[]);
+    if(skips.includes(r.nextDate)) return false;
+    return r.nextDate<=today;
+  });
+
+  if(overdueInv.length===0&&overdueRecur.length===0) return;
+  renderInbox(overdueInv, overdueRecur, daysSince);
+  document.getElementById('recurInboxOverlay').style.display='flex';
+}
+// keep old name as alias for backward compat
+function checkRecurInbox(){ checkInbox(); }
+let _inboxTotal=0,_inboxDone=0;
+function renderInbox(invItems, recurItems, daysSince){
+  const total=invItems.length+recurItems.length;
+  _inboxTotal=total; _inboxDone=0;
+  const today=toDay();
+
+  // Subtitle
+  const sub=document.getElementById('recurInboxSub');
+  if(daysSince>1){
+    sub.textContent='Du warst '+daysSince+' Tage weg — '+total+' '+(total===1?'Eintrag wartet':'Eintraege warten')+' auf Bestaetigung.';
+  } else {
+    sub.textContent=total+' '+(total===1?'faelliger Eintrag':'faellige Eintraege')+' — bitte durcharbeiten.';
+  }
+  document.getElementById('recurInboxProgress').style.display='none';
+
+  const freqLabel={weekly:'Woechtl.',monthly:'Monatl.',yearly:'Jaehrl.'};
+  const nonPocket=['Revolut','Revolut Crypto','Raiffeisen Privat','Raiffeisen Sparkonto','Bar','Ting Community'];
+
+  // Section: Rechnungen (Einnahmen)
+  let html='';
+  if(invItems.length>0){
+    html+='<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px">Einnahmen — Zahlungseingang bestaetigen</div>';
+    html+=invItems.map(i=>{
+      const daysDue=Math.round((new Date(today)-new Date(i.due))/(1000*60*60*24));
+      const dueLabel=daysDue===0?'Heute faellig':daysDue===1?'Gestern faellig':daysDue+' Tage ueberfaellig';
+      return `<div class="inbox-item overdue" id="inbox_inv_${i.id}">
+        <div class="inbox-item-header">
+          <div>
+            <div class="inbox-item-name">${i.nr} — ${i.client}</div>
+            <div class="inbox-item-meta">${i.desc||''} | <span style="color:var(--amber);font-weight:600">${dueLabel}</span></div>
+          </div>
+          <div class="inbox-item-amt" style="color:var(--accent)">+CHF ${fmt(i.amount)}</div>
+        </div>
+        <div class="inbox-actions">
+          <button class="btn btn-sm" style="background:#d1fae5;color:#065f46;border:none;font-weight:600"
+            onclick="inboxInvPaid('${i.id}')">Zahlungseingang bestaetigt</button>
+          <button class="btn btn-sm" style="background:#e0f2fe;color:#075985;border:none"
+            onclick="inboxInvShift('${i.id}')">Faelligkeit verschieben</button>
+          <button class="btn btn-sm" style="background:#f3f4f6;color:var(--muted);border:none"
+            onclick="inboxItemDone('inv_${i.id}')">Spaeter erinnern</button>
+        </div>
+        <div id="inbox_inv_${i.id}_datepicker" style="display:none;margin-top:8px;gap:8px;align-items:center">
+          <input type="date" id="inv_newdue_${i.id}" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px">
+          <button class="btn btn-sm btn-primary" onclick="inboxInvConfirmShift('${i.id}')">Bestaetigen</button>
+          <button class="btn btn-sm btn-outline" onclick="document.getElementById('inbox_inv_${i.id}_datepicker').style.display='none'">Abbrechen</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Separator if both sections present
+  if(invItems.length>0&&recurItems.length>0){
+    html+='<div style="border-top:1px solid var(--border);margin:12px 0"></div>';
+  }
+
+  // Section: Recurrings (Ausgaben/Transfers)
+  if(recurItems.length>0){
+    html+='<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px">Ausgaben & Transfers — Ausfuehrung bestaetigen</div>';
+    html+=recurItems.map(r=>{
+      const daysDue=Math.round((new Date(today)-new Date(r.nextDate))/(1000*60*60*24));
+      const dueLabel=daysDue===0?'Heute faellig':daysDue===1?'Gestern faellig':daysDue+' Tage ueberfaellig';
+      const isTransfer=r.account&&!nonPocket.includes(r.account);
+      return `<div class="inbox-item overdue" id="inbox_${r.id}">
+        <div class="inbox-item-header">
+          <div>
+            <div class="inbox-item-name">${r.name}</div>
+            <div class="inbox-item-meta">${freqLabel[r.freq]||r.freq}${r.cat?' | '+r.cat:''} | <span style="color:var(--amber);font-weight:600">${dueLabel}</span></div>
+          </div>
+          <div class="inbox-item-amt">-CHF ${fmt(r.amt)}</div>
+        </div>
+        <div class="inbox-actions">
+          <button class="btn btn-sm" style="background:#d1fae5;color:#065f46;border:none;font-weight:600"
+            onclick="inboxBook('${r.id}','${isTransfer?'transfer':'extern'}')">Bezahlt / ausgefuehrt</button>
+          <button class="btn btn-sm" style="background:#fef3c7;color:#92400e;border:none"
+            onclick="inboxSkipItem('${r.id}','${r.nextDate}')">Ueberspringen</button>
+          <button class="btn btn-sm" style="background:#f3f4f6;color:var(--muted);border:none"
+            onclick="inboxSnooze('${r.id}')">Nicht bezahlt</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('recurInboxList').innerHTML=html;
+}
+// legacy alias
+function renderRecurInbox(items,daysSince){ renderInbox([],items,daysSince); }
+async function inboxBook(id,mode){
+  const item=document.getElementById('inbox_'+id);
+  if(item){item.style.opacity='.4';item.style.pointerEvents='none';}
+  await bookRecurNow(id,mode);
+  inboxItemDone(id);
+}
+function inboxSkipItem(id,date){
+  const skips=loadLocal('recurSkips_'+id,[]);
+  if(!skips.includes(date)) skips.push(date);
+  saveLocal('recurSkips_'+id,skips);
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const r=recurs.find(x=>x.id===id);
+  if(r){r.nextDate=nextOccurrence(date,r.freq);saveLocal('recurrings',recurs);}
+  renderRecurring();
+  inboxItemDone(id);
+}
+function inboxSnooze(id){
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const r=recurs.find(x=>x.id===id);
+  if(r){r.nextDate=nextOccurrence(r.nextDate||toDay(),r.freq);saveLocal('recurrings',recurs);}
+  renderRecurring();
+  inboxItemDone(id);
+}
+function inboxItemDone(id){
+  const item=document.getElementById('inbox_'+id);
+  if(item) item.remove();
+  _inboxDone++;
+  const prog=document.getElementById('recurInboxProgress');
+  prog.style.display='';
+  prog.textContent=_inboxDone+' von '+_inboxTotal+' erledigt';
+  if(document.querySelectorAll('#recurInboxList .inbox-item').length===0){
+    document.getElementById('recurInboxList').innerHTML=
+      '<div style="text-align:center;padding:24px 0"><div style="font-size:36px;margin-bottom:8px">Alles erledigt!</div></div>';
+    document.getElementById('recurInboxDoneBtn').textContent='Schliessen';
+  }
+}
+async function inboxInvPaid(id){
+  const item=document.getElementById('inbox_inv_'+id);
+  if(item){item.style.opacity='.4';item.style.pointerEvents='none';}
+  try{
+    await notionFetch('/pages/'+id,'PATCH',{properties:{
+      'Status':{select:{name:'Bezahlt'}},
+      'Bezahlt am':{date:{start:toDay()}}
+    }});
+    const inv=invCache.find(i=>i.id===id);
+    showToast('success','💰','Zahlungseingang bestaetigt',inv?(inv.nr+' — CHF '+fmt(inv.amount)):'');
+    await loadAll();
+  }catch(e){
+    showToast('error','ERR','Fehler',e.message);
+    if(item){item.style.opacity='1';item.style.pointerEvents='';}
+    return;
+  }
+  inboxItemDone('inv_'+id);
+}
+function inboxInvShift(id){
+  const dp=document.getElementById('inbox_inv_'+id+'_datepicker');
+  if(dp){ dp.style.display='flex'; }
+  const inp=document.getElementById('inv_newdue_'+id);
+  const inv=invCache.find(i=>i.id===id);
+  if(inp&&inv) inp.value=inv.due||toDay();
+}
+async function inboxInvConfirmShift(id){
+  const inp=document.getElementById('inv_newdue_'+id);
+  if(!inp||!inp.value) return;
+  const item=document.getElementById('inbox_inv_'+id);
+  if(item){item.style.opacity='.4';item.style.pointerEvents='none';}
+  try{
+    await notionFetch('/pages/'+id,'PATCH',{properties:{
+      'Fällig am':{date:{start:inp.value}}
+    }});
+    showToast('success','Datum','Faelligkeit verschoben',inp.value);
+    await loadAll();
+  }catch(e){
+    showToast('error','ERR','Fehler',e.message);
+    if(item){item.style.opacity='1';item.style.pointerEvents='';}
+    return;
+  }
+  inboxItemDone('inv_'+id);
+}
+
+function closeRecurInbox(){ document.getElementById('recurInboxOverlay').style.display='none'; }
+
 (function init(){
   taxMapping=loadLocal('taxMapping',DEFAULT_TAX_MAPPING);
   projCache=loadLocal('projekte',[]);
@@ -4176,7 +4435,7 @@ async function uploadToGDrive(dataURL,filename,isPDF){
     document.getElementById('setupScreen').style.display='none';
     document.getElementById('mainApp').style.display='block';
     go('uebersicht');
-    loadAll();
+    loadAll().then(()=>setTimeout(checkInbox,800));
   }else{
     document.getElementById('setupScreen').style.display='block';
     document.getElementById('mainApp').style.display='none';
