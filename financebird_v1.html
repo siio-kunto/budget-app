@@ -127,7 +127,27 @@ textarea.form-input{resize:vertical;min-height:72px}
 .data-table tr:last-child td{border-bottom:none}
 .data-table tr:hover td{background:#faf9f7}
 .data-table .totals-row td{background:#faf9f7;font-weight:700;border-top:2px solid var(--border)}
-/* BUG-11: mobile horizontal scroll fix */
+/* paid=false: unbestätigte Buchungen */
+.vermoegen-wrap{ position:relative; display:inline-block; }
+.vermoegen-dropdown{
+  position:absolute;top:calc(100% + 10px);left:0;
+  background:#152535;border:1px solid rgba(255,255,255,.18);
+  border-radius:14px;padding:14px;z-index:300;
+  box-shadow:0 12px 32px rgba(0,0,0,.5);min-width:280px;
+}
+.vermoegen-dropdown.hidden{ display:none; }
+.verm-row{ display:flex;align-items:center;gap:10px;padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer; }
+.verm-row:last-child{ border-bottom:none; }
+.verm-cb{ width:15px;height:15px;accent-color:#86efac;flex-shrink:0;cursor:pointer; }
+.verm-name{ flex:1;font-size:12px;color:rgba(255,255,255,.85); }
+.verm-bal{ font-size:12px;font-family:'Fraunces',serif;color:#86efac;white-space:nowrap; }
+.verm-bal.neg{ color:#fca5a5; }
+tr.unconfirmed td{ opacity:.55; font-style:italic; }
+tr.unconfirmed td:first-child::before{ content:'◷ '; font-style:normal; color:var(--amber); }
+.cf-bar.unconfirmed{ opacity:.3; background-image:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(0,0,0,.15) 3px,rgba(0,0,0,.15) 4px); }
+.kpi-ist{ font-size:10px; color:var(--accent); margin-top:1px; }
+.kpi-prognose{ font-size:10px; color:var(--muted); margin-top:0; }
 .table-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
 /* Recurring Inbox */
 .inbox-modal{background:white;border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;animation:slideUp .25s ease}
@@ -537,10 +557,21 @@ textarea.form-input{resize:vertical;min-height:72px}
   <!-- CASHFLOW HERO -->
   <div class="life-hero" style="background:linear-gradient(135deg,#0d1b2a,#1b4332,#2d6a4f);margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
+      <div class="vermoegen-wrap" id="vermoegenWrap">
         <div class="life-hero-title" id="dashSub">Loading…</div>
-        <div class="life-hero-val" id="dashSaldo" style="color:#86efac">CHF —</div>
-        <div class="life-hero-sub">Saldo <span id="dashYear"></span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;cursor:pointer" onclick="toggleVermoegenDrop()">
+          <div class="life-hero-val" id="dashSaldo" style="color:#86efac">CHF —</div>
+          <span id="vermChevron" style="color:rgba(255,255,255,.5);font-size:14px;line-height:1;transition:transform .2s">▾</span>
+        </div>
+        <div class="life-hero-sub" id="vermSub">Vermögen · <span id="dashYear"></span></div>
+        <div class="vermoegen-dropdown hidden" id="vermDropdown" onclick="event.stopPropagation()">
+          <div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:10px;letter-spacing:.07em;text-transform:uppercase">Konten einschliessen</div>
+          <div id="vermKontoList"></div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11px;color:rgba(255,255,255,.5)">Total</span>
+            <span id="vermTotal" style="font-family:'Fraunces',serif;font-size:16px;color:#86efac">—</span>
+          </div>
+        </div>
       </div>
       <div style="text-align:right">
         <div style="font-size:11px;opacity:.6;margin-bottom:4px">Puffer</div>
@@ -564,12 +595,14 @@ textarea.form-input{resize:vertical;min-height:72px}
     <div class="kpi">
       <div class="kpi-label">Einnahmen</div>
       <div class="kpi-val green" id="kInc">—</div>
-      <div class="kpi-sub" id="kIncSub">2026</div>
+      <div class="kpi-ist" id="kIncIst"></div>
+      <div class="kpi-prognose" id="kIncSub">2026</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Ausgaben</div>
       <div class="kpi-val red" id="kExp">—</div>
-      <div class="kpi-sub">Geschäftl. + Privat</div>
+      <div class="kpi-ist" id="kExpIst"></div>
+      <div class="kpi-prognose" id="kExpSub">Geschäftl. + Privat</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Offene Rechnungen</div>
@@ -590,6 +623,7 @@ textarea.form-input{resize:vertical;min-height:72px}
       <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--accent);border-radius:2px;display:inline-block"></span>Einnahmen</span>
         <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#fca5a5;border-radius:2px;display:inline-block"></span>Ausgaben</span>
+        <span style="display:flex;align-items:center;gap:4px;opacity:.6"><span style="width:10px;height:10px;background:var(--muted);border-radius:2px;opacity:.4;display:inline-block"></span>unbestätigt</span>
       </div>
     </div>
     <div class="cf-bars" id="cfBars"></div>
@@ -613,6 +647,19 @@ textarea.form-input{resize:vertical;min-height:72px}
     <div id="aboList"></div>
   </div>
 
+  <!-- LIQUIDITÄTSVORSCHAU -->
+  <div class="card" style="margin-bottom:16px;margin-top:16px" id="liquidCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title">Liquiditätsvorschau</div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm" id="liqBtn30" onclick="setLiqHorizon(30)" style="padding:4px 10px;font-size:11px">30T</button>
+        <button class="btn btn-sm btn-primary" id="liqBtn60" onclick="setLiqHorizon(60)" style="padding:4px 10px;font-size:11px">60T</button>
+        <button class="btn btn-sm" id="liqBtn90" onclick="setLiqHorizon(90)" style="padding:4px 10px;font-size:11px">90T</button>
+      </div>
+    </div>
+    <div id="liqContent">—</div>
+  </div>
+
   <!-- LETZTE BUCHUNGEN -->
   <div class="section-head">
     <h3>Letzte Buchungen</h3>
@@ -620,6 +667,29 @@ textarea.form-input{resize:vertical;min-height:72px}
   </div>
   <div class="card table-scroll-wrap">
     <div id="recentTx"></div>
+  </div>
+</div>
+
+<!-- STARTSALDO MODAL -->
+<div class="modal-overlay" id="saldoModalOverlay" style="display:none;align-items:center;justify-content:center" onclick="closeSaldoModal()">
+  <div class="modal-sheet" onclick="event.stopPropagation()" style="max-width:420px;width:92%">
+    <div class="modal-title">&#x1F4B0; Startsaldo aktualisieren</div>
+    <div id="saldoModalAccName" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+    <input type="hidden" id="saldoModalAccId">
+    <div class="form-group">
+      <label class="form-label">Aktueller Kontostand (CHF)</label>
+      <input type="number" id="saldoModalAmt" class="form-input" placeholder="0.00" step="0.01"
+        style="font-size:22px;font-family:'Fraunces',serif;font-weight:500">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Stand per Datum</label>
+      <input type="date" id="saldoModalDate" class="form-input">
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5;padding:8px 10px;background:#f8f7f5;border-radius:8px" id="saldoModalHint"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeSaldoModal()">Abbrechen</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveSaldoModal()">✓ Speichern</button>
+    </div>
   </div>
 </div>
 
@@ -1722,6 +1792,7 @@ let projektFilter = 'all';
 let notionToken = null;
 let txCache = [];
 let invCache = [];
+let transferCache = [];
 let projCache = [];    // local project definitions (Clockify projects)
 let clockifyProjects = []; // from Clockify API
 let gdriveToken = null;
@@ -1857,6 +1928,19 @@ function parseInv(page){
   };
 }
 
+function parseTransfer(page){
+  const p=page.properties;
+  const txt=prop=>prop?.rich_text?.[0]?.plain_text||prop?.title?.[0]?.plain_text||'';
+  const sel=prop=>prop?.select?.name||'';
+  const num=prop=>prop?.number??0;
+  const dat=prop=>prop?.date?.start||'';
+  return {
+    id:page.id, date:dat(p['Datum']), desc:txt(p['Beschreibung']),
+    fromAccount:sel(p['Von Konto']), toAccount:sel(p['Nach Konto']),
+    amount:num(p['Betrag CHF']), status:sel(p['Status']), typ:sel(p['Typ']),
+  };
+}
+
 // ═══════════════════════════════════════════
 // LOAD ALL DATA
 // ═══════════════════════════════════════════
@@ -1869,6 +1953,12 @@ async function loadAll(){
       txCache=txPages.map(parseTx).sort((a,b)=>b.date.localeCompare(a.date));
       const thumbMap=loadLocal('thumbs',{});
       txCache.forEach(t=>{ if(thumbMap[t.id]) t.receipt=thumbMap[t.id]; });
+      // Transfers laden für Kontostand-Delta-Berechnung
+      try{
+        const trPages=await notionQueryAll(DB_TRANSFERS);
+        transferCache=trPages.map(parseTransfer).filter(t=>t.status==='Ausgeführt');
+        saveLocal('transferCache_backup',transferCache);
+      }catch(e){ transferCache=loadLocal('transferCache_backup',[]); }
     }catch(e){ console.warn('Buchungen laden fehlgeschlagen, nutze Cache:',e); txCache=loadLocal('txCache_backup',[]); }
 
     document.getElementById('loadingText').textContent='Lade Rechnungen…';
@@ -1939,17 +2029,37 @@ function go(id){
 // ═══════════════════════════════════════════
 function renderDash(){
   document.getElementById('dashSub').textContent=new Date().toLocaleDateString('de-CH',{month:'long',year:'numeric'});
-  document.getElementById('dashYear').textContent=YEAR;
 
   const ytx=txCache.filter(t=>getYear(t.date)===String(YEAR));
+  // Ist = nur paid=true (Geschäftlich exakt; Privat Näherung)
+  const ytxIst=ytx.filter(t=>t.paid);
+  const incIst=ytxIst.filter(t=>t.type==='Einnahme').reduce((s,t)=>s+t.amount,0);
+  const expIst=ytxIst.filter(t=>t.type==='Ausgabe').reduce((s,t)=>s+t.amount,0);
+  // Prognose = alle Buchungen
   const inc=ytx.filter(t=>t.type==='Einnahme').reduce((s,t)=>s+t.amount,0);
   const exp=ytx.filter(t=>t.type==='Ausgabe').reduce((s,t)=>s+t.amount,0);
   const saldo=inc-exp;
+  const hasUnconf=ytx.some(t=>!t.paid);
 
-  document.getElementById('dashSaldo').textContent=fmtS(saldo);
-  document.getElementById('dashSaldo').style.color=saldo>=0?'#86efac':'#fca5a5';
+  renderVermoegenWidget();
   document.getElementById('kInc').textContent=fmtS(inc);
   document.getElementById('kExp').textContent=fmtS(exp);
+  // Ist-Subzeilen nur wenn es unbestätigte Buchungen gibt
+  const kIncIst=document.getElementById('kIncIst');
+  const kExpIst=document.getElementById('kExpIst');
+  const kIncSub=document.getElementById('kIncSub');
+  const kExpSub=document.getElementById('kExpSub');
+  if(hasUnconf){
+    if(kIncIst) kIncIst.textContent='✓ CHF '+fmt(incIst)+' bestätigt';
+    if(kExpIst) kExpIst.textContent='✓ CHF '+fmt(expIst)+' bestätigt';
+    if(kIncSub) kIncSub.textContent='inkl. unbestätigt';
+    if(kExpSub) kExpSub.textContent='inkl. unbestätigt';
+  } else {
+    if(kIncIst) kIncIst.textContent='';
+    if(kExpIst) kExpIst.textContent='';
+    if(kIncSub) kIncSub.textContent=String(YEAR);
+    if(kExpSub) kExpSub.textContent='Geschäftl. + Privat';
+  }
 
   const openInv=invCache.filter(i=>i.status==='Offen'||i.status==='Überfällig');
   document.getElementById('kOpen').textContent=fmtS(openInv.reduce((s,i)=>s+i.amount,0));
@@ -1985,15 +2095,25 @@ function renderDash(){
     cfEl.innerHTML='<div style="width:100%;text-align:center;padding:28px 0;color:var(--muted);font-size:13px">Noch keine Buchungen für '+YEAR+'</div>';
   } else {
     cfEl.innerHTML=MONTHS.map((m,i)=>{
+      const miIst=ytxIst.filter(t=>t.type==='Einnahme'&&getMonth(t.date)===i).reduce((s,t)=>s+t.amount,0);
+      const meIst=ytxIst.filter(t=>t.type==='Ausgabe'&&getMonth(t.date)===i).reduce((s,t)=>s+t.amount,0);
       const mi=ytx.filter(t=>t.type==='Einnahme'&&getMonth(t.date)===i).reduce((s,t)=>s+t.amount,0);
       const me=ytx.filter(t=>t.type==='Ausgabe'&&getMonth(t.date)===i).reduce((s,t)=>s+t.amount,0);
-      const ih=mi>0?Math.max(3,Math.round(mi/maxVal*88)):0;
-      const eh=me>0?Math.max(3,Math.round(me/maxVal*88)):0;
-      const tip=mi||me?`title="Ein: CHF ${fmt(mi)} / Aus: CHF ${fmt(me)}"`:''
+      const ihIst=miIst>0?Math.max(3,Math.round(miIst/maxVal*88)):0;
+      const ehIst=meIst>0?Math.max(3,Math.round(meIst/maxVal*88)):0;
+      const ihExtra=mi>miIst?Math.round((mi-miIst)/maxVal*88):0;
+      const ehExtra=me>meIst?Math.round((me-meIst)/maxVal*88):0;
+      const tip=mi||me?`title="Ein: CHF ${fmt(mi)} (best.: ${fmt(miIst)}) / Aus: CHF ${fmt(me)} (best.: ${fmt(meIst)})"`:''
       return `<div class="cf-bar-group" ${tip}>
         <div style="display:flex;gap:2px;align-items:flex-end;height:90px">
-          <div class="cf-bar inc" style="height:${ih}px;flex:1;opacity:${i===curM?1:.75}"></div>
-          <div class="cf-bar exp" style="height:${eh}px;flex:1;opacity:${i===curM?1:.75}"></div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:90px">
+            ${ihExtra?`<div class="cf-bar inc unconfirmed" style="height:${ihExtra}px"></div>`:''}
+            <div class="cf-bar inc" style="height:${ihIst}px;opacity:${i===curM?1:.75}"></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:90px">
+            ${ehExtra?`<div class="cf-bar exp unconfirmed" style="height:${ehExtra}px"></div>`:''}
+            <div class="cf-bar exp" style="height:${ehIst}px;opacity:${i===curM?1:.75}"></div>
+          </div>
         </div>
         <div class="cf-month-label" style="font-weight:${i===curM?700:400};color:${i===curM?'var(--ink)':'var(--muted)'}">${m}</div>
       </div>`;
@@ -2037,11 +2157,14 @@ function renderDash(){
     '</tbody></table>':
     '<div style="color:var(--muted);font-size:13px">Keine Abos erfasst</div>';
 
+  // Liquiditaetsvorschau
+  renderLiquiditaet();
+
   // Recent transactions
   const recent=txCache.slice(0,8);
   document.getElementById('recentTx').innerHTML=recent.length?
     `<table class="data-table"><thead><tr><th>Datum</th><th>Beschreibung</th><th>Gegenpartei</th><th>Bereich</th><th>Betrag</th></tr></thead><tbody>`+
-    recent.map(t=>`<tr>
+    recent.map(t=>`<tr class="${t.paid?'':'unconfirmed'}">
       <td style="color:var(--muted);font-size:12px">${fmtDate(t.date)}</td>
       <td><a href="${t.notionUrl}" target="_blank" style="color:inherit;text-decoration:none">${t.desc}</a></td>
       <td style="font-size:12px;color:var(--muted)">${t.counterpart||'—'}</td>
@@ -3110,7 +3233,7 @@ function renderTx(){
   const tm=loadLocal('taxMapping',DEFAULT_TAX_MAPPING);
   const total=rows.reduce((s,t)=>s+(t.type==='Einnahme'?t.amount:-t.amount),0);
   const body=document.getElementById('txBody');
-  body.innerHTML=rows.map(t=>`<tr>
+  body.innerHTML=rows.map(t=>`<tr class="${t.paid?'':'unconfirmed'}">
     <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${fmtDate(t.date)}</td>
     <td><a href="${t.notionUrl}" target="_blank" style="color:inherit;text-decoration:none;font-size:13.5px">${t.desc}</a>${t.invRef?`<br><span style="font-size:10.5px;color:var(--muted)">${t.invRef}</span>`:''}</td>
     <td style="font-size:12px;color:var(--muted)">${t.counterpart||'—'}</td>
@@ -4511,10 +4634,20 @@ async function syncAccountsFromNotion(){
         sort: pr['Sortierung']?.number ?? 99,
         active: pr['Aktiv']?.checkbox ?? true,
         stand: pr['Aktueller Stand']?.number ?? null,
+        saldoDatum: pr['Saldo-Datum']?.date?.start ?? null,
       };
     }).filter(a=>a.active);
     ACCOUNTS_DEF = accounts;
     saveLocal('accountsDef', accounts);
+    // Sync Startsaldo + Datum into localStorage (Notion is source of truth)
+    const balances=loadLocal('accountBalances',{});
+    const saldoDates=loadLocal('saldoDates',{});
+    accounts.forEach(a=>{
+      if(a.stand!==null){ balances[a.id]=a.stand; }
+      if(a.saldoDatum)  { saldoDates[a.id]=a.saldoDatum; }
+    });
+    saveLocal('accountBalances',balances);
+    saveLocal('saldoDates',saldoDates);
     renderAccountBalances();
     populateAccountDropdowns();
   }catch(e){ console.warn('Konten sync failed:',e); }
@@ -4568,68 +4701,315 @@ function populateAccountDropdowns(){
 
 function renderAccountBalances(){
   const balances=loadLocal('accountBalances',{});
+  const saldoDates=loadLocal('saldoDates',{});
   const el=document.getElementById('accountBalanceList');
   if(!el) return;
   let total=0;
   el.innerHTML=ACCOUNTS_DEF.map(a=>{
-    const bal=balances[a.id]??null;
-    if(bal!==null) total+=bal;
-    return `<div class="account-card">
-      <div style="display:flex;align-items:center;gap:10px;flex:1">
-        <span style="font-size:20px">${a.icon}</span>
-        <div>
-          <div class="account-name">${a.name}</div>
-          <div class="account-sub" style="display:flex;gap:6px;align-items:center">${a.group} · ${a.typ||''}
-            <button onclick="openKontoModal('${a.id}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);padding:0">✏️</button>
-            <button onclick="deleteKonto('${a.id}')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--red);padding:0">✕</button>
-          </div>
-        </div>
-      </div>
-      <div class="account-bal" onclick="editAccountBal('${a.id}')" title="Klicken zum Bearbeiten">
-        ${bal!==null?fmtS(bal):'<span style="color:var(--border)">—</span>'}
-      </div>
-    </div>`;
+    const est=estimatedBalance(a.id);
+    const base=balances[a.id]??null;
+    const sinceDate=saldoDates[a.id]||null;
+    const delta=(base!==null&&sinceDate)?calcBookingDelta(a.id,sinceDate):null;
+    if(est!==null) total+=est;
+    const isNeg=est!==null&&est<0;
+    let subInfo='';
+    if(base!==null&&sinceDate){
+      subInfo='<div style="font-size:10px;color:var(--muted);margin-top:2px">Basis '+fmtDate(sinceDate)+': CHF '+fmt(base)
+        +(delta!==0&&delta!==null?' · Δ '+(delta>=0?'+':'')+fmt(delta):'')+'</div>';
+    } else {
+      subInfo='<div style="font-size:10px;color:var(--amber);margin-top:2px">⚠ Kein Startsaldo</div>';
+    }
+    return '<div class="account-card">'
+      +'<div style="display:flex;align-items:center;gap:10px;flex:1">'
+        +'<span style="font-size:20px">'+a.icon+'</span>'
+        +'<div style="flex:1">'
+          +'<div class="account-name">'+a.name+'</div>'
+          +'<div class="account-sub" style="display:flex;gap:6px;align-items:center">'+a.group+' · '+(a.typ||'')
+            +'<button onclick="openSaldoModal(\''+a.id+'\')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);padding:0" title="Startsaldo aktualisieren">&#128221;</button>'
+            +'<button onclick="openKontoModal(\''+a.id+'\')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);padding:0">&#9999;&#65039;</button>'
+            +'<button onclick="deleteKonto(\''+a.id+'\')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--red);padding:0">✕</button>'
+          +'</div>'
+          +subInfo
+        +'</div>'
+      +'</div>'
+      +'<div class="account-bal" onclick="openSaldoModal(\''+a.id+'\')" title="Klicken zum Aktualisieren"'
+           +' style="color:'+(isNeg?'var(--red)':'inherit')+'">'
+        +(est!==null
+          ?fmtS(est)+'<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">Schätzung</div>'
+          :'<span style="color:var(--border)">—</span>')
+      +'</div>'
+    +'</div>';
   }).join('')
-  +`<div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8f7f5;border-radius:12px;margin-top:4px">
-    <strong>Total erfasst</strong>
-    <span style="font-family:'Fraunces',serif;font-size:18px;font-weight:500">${fmtS(total)}</span>
-  </div>`;
+  +'<div style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8f7f5;border-radius:12px;margin-top:4px">'
+    +'<strong>Total (Schätzung)</strong>'
+    +'<span style="font-family:\'Fraunces\',serif;font-size:18px;font-weight:500">'+fmtS(total)+'</span>'
+  +'</div>';
 }
 
-async function editAccountBal(id){
-  const balances=loadLocal('accountBalances',{});
+async function editAccountBal(id){ openSaldoModal(id); }
+
+function openSaldoModal(id){
   const acc=ACCOUNTS_DEF.find(a=>a.id===id);
   if(!acc) return;
-  const cur=balances[id]??'';
-  const val=prompt(`Kontostand ${acc.name} (CHF):`, cur);
-  if(val===null) return;
-  const num=parseFloat(val.replace(/[^0-9.-]/g,''));
-  if(!isNaN(num)){
-    const prev=balances[id]??null;
-    balances[id]=num;
-    saveLocal('accountBalances',balances);
-    // Sync balance to Konten-DB in Notion
-    if(acc.notionId){
-      notionFetch('/pages/'+acc.notionId,'PATCH',{properties:{'Aktueller Stand':{number:num}}})
-        .catch(e=>console.warn('Konten balance sync failed:',e));
-    }
-    // Log to Transfers DB
-    try{
-      await notionFetch('/pages','POST',{parent:{database_id:DB_TRANSFERS},properties:{
-        'Beschreibung':{ title:[{text:{content:'Kontostand-Korrektur: '+acc.name}}]},
-        'Datum':        { date:{start:toDay()}},
-        'Typ':          { select:{name:'Kontostand-Korrektur'}},
-        'Nach Konto':   { select:{name:acc.name}},
-        'Betrag CHF':   { number:num},
-        'Kontostand Neu':{ number:num},
-        'Status':       { select:{name:'Ausgeführt'}},
-        'Notiz':        { rich_text:[{text:{content:prev!==null?`Vorher: CHF ${fmt(prev)} → Neu: CHF ${fmt(num)}`:`Ersteingabe: CHF ${fmt(num)}`}}]},
-        'App-Referenz': { rich_text:[{text:{content:'accountBal_'+id+'_'+Date.now()}}]}
-      }});
-    }catch(e){ console.warn('Transfer log failed:',e); }
+  const balances=loadLocal('accountBalances',{});
+  const saldoDates=loadLocal('saldoDates',{});
+  const base=balances[id]??null;
+  const curDate=saldoDates[id]||toDay();
+  document.getElementById('saldoModalAccId').value=id;
+  document.getElementById('saldoModalAccName').textContent=acc.icon+' '+acc.name+' · '+acc.group+' · '+(acc.typ||'');
+  document.getElementById('saldoModalAmt').value=base!==null?base:'';
+  document.getElementById('saldoModalDate').value=curDate;
+  const delta=base!==null?calcBookingDelta(id,curDate):null;
+  let hint='';
+  if(base!==null){
+    const est=base+(delta||0);
+    hint='Letzter Startsaldo: CHF '+fmt(base)+' per '+fmtDate(curDate)
+      +(delta&&delta!==0?' · Δ aus Buchungen: '+(delta>=0?'+':'')+fmt(delta)+' → Schätzung heute: CHF '+fmt(est):'');
+  } else {
+    hint='Kein Startsaldo hinterlegt. Bitte aktuellen Kontostand eingeben.';
   }
-  else if(val.trim()===''){ delete balances[id]; saveLocal('accountBalances',balances); }
+  document.getElementById('saldoModalHint').textContent=hint;
+  document.getElementById('saldoModalOverlay').style.display='flex';
+  setTimeout(()=>document.getElementById('saldoModalAmt').focus(),100);
+}
+
+function closeSaldoModal(){
+  document.getElementById('saldoModalOverlay').style.display='none';
+}
+
+async function saveSaldoModal(){
+  const id=document.getElementById('saldoModalAccId').value;
+  const amt=parseFloat(document.getElementById('saldoModalAmt').value);
+  const date=document.getElementById('saldoModalDate').value;
+  if(isNaN(amt)||!date) return;
+  const acc=ACCOUNTS_DEF.find(a=>a.id===id);
+  if(!acc) return;
+  const balances=loadLocal('accountBalances',{});
+  const saldoDates=loadLocal('saldoDates',{});
+  const prev=balances[id]??null;
+  balances[id]=amt;
+  saldoDates[id]=date;
+  saveLocal('accountBalances',balances);
+  saveLocal('saldoDates',saldoDates);
+  if(acc.notionId){
+    notionFetch('/pages/'+acc.notionId,'PATCH',{properties:{
+      'Aktueller Stand':{number:amt},
+      'Saldo-Datum':{date:{start:date}}
+    }}).catch(e=>console.warn('Konten saldo sync failed:',e));
+  }
+  try{
+    await notionFetch('/pages','POST',{parent:{database_id:DB_TRANSFERS},properties:{
+      'Beschreibung':{ title:[{text:{content:'Startsaldo: '+acc.name}}]},
+      'Datum':        { date:{start:date}},
+      'Typ':          { select:{name:'Kontostand-Korrektur'}},
+      'Nach Konto':   { select:{name:acc.name}},
+      'Betrag CHF':   { number:amt},
+      'Kontostand Neu':{ number:amt},
+      'Status':       { select:{name:'Ausgeführt'}},
+      'Notiz':        { rich_text:[{text:{content:prev!==null?`Vorher: CHF ${fmt(prev)} → Neu: CHF ${fmt(amt)} per ${date}`:`Ersteingabe: CHF ${fmt(amt)} per ${date}`}}]},
+      'App-Referenz': { rich_text:[{text:{content:'accountBal_'+id+'_'+Date.now()}}]}
+    }});
+  }catch(e){ console.warn('Transfer log failed:',e); }
+  closeSaldoModal();
   renderAccountBalances();
+  renderDash();
+  showToast('success','💰','Startsaldo gespeichert',acc.name+' · CHF '+fmt(amt)+' per '+fmtDate(date));
+}
+
+function calcBookingDelta(accId, sinceDate){
+  const acc=ACCOUNTS_DEF.find(a=>a.id===accId);
+  if(!acc) return 0;
+  const accName=acc.name;
+  let delta=0;
+  txCache.filter(t=>t.paid&&t.date>=sinceDate&&t.account===accName).forEach(t=>{
+    delta+=(t.type==='Einnahme'?1:-1)*t.amount;
+  });
+  transferCache.filter(t=>t.date>=sinceDate).forEach(t=>{
+    if(t.toAccount===accName)   delta+=t.amount;
+    if(t.fromAccount===accName) delta-=t.amount;
+  });
+  return Math.round(delta*100)/100;
+}
+
+function estimatedBalance(accId){
+  const balances=loadLocal('accountBalances',{});
+  const saldoDates=loadLocal('saldoDates',{});
+  const base=balances[accId];
+  if(base===undefined||base===null) return null;
+  const sinceDate=saldoDates[accId]||toDay();
+  const delta=calcBookingDelta(accId,sinceDate);
+  return Math.round((base+delta)*100)/100;
+}
+
+// ═══════════════════════════════════════════
+// VERMÖGENS-WIDGET
+// ═══════════════════════════════════════════
+function getVermoegenConfig(){
+  const cfg=loadLocal('vermoegenConfig',{});
+  ACCOUNTS_DEF.forEach(a=>{ if(cfg[a.id]===undefined) cfg[a.id]=true; });
+  return cfg;
+}
+
+function renderVermoegenWidget(){
+  const cfg=getVermoegenConfig();
+  let total=0;
+  ACCOUNTS_DEF.forEach(a=>{
+    if(!cfg[a.id]) return;
+    const est=estimatedBalance(a.id);
+    if(est!==null) total+=est;
+  });
+  const el=document.getElementById('dashSaldo');
+  if(el){
+    el.textContent=fmtS(total);
+    el.style.color=total>=0?'#86efac':'#fca5a5';
+  }
+  const yr=document.getElementById('dashYear');
+  if(yr) yr.textContent=String(YEAR);
+  const included=ACCOUNTS_DEF.filter(a=>cfg[a.id]!==false).length;
+  const subEl=document.getElementById('vermSub');
+  if(subEl) subEl.textContent='Vermögen · '+String(YEAR)+' · '+included+' Konten';
+  // Dropdown neu rendern falls sichtbar
+  const drop=document.getElementById('vermDropdown');
+  if(drop&&!drop.classList.contains('hidden')) renderVermKontoList(cfg);
+}
+
+function renderVermKontoList(cfg){
+  if(!cfg) cfg=getVermoegenConfig();
+  const list=document.getElementById('vermKontoList');
+  const totEl=document.getElementById('vermTotal');
+  if(!list) return;
+  let t=0;
+  list.innerHTML=ACCOUNTS_DEF.map(a=>{
+    const est=estimatedBalance(a.id);
+    const checked=cfg[a.id]!==false;
+    if(checked&&est!==null) t+=est;
+    const balStr=est!==null?fmtS(est):'—';
+    const neg=est!==null&&est<0;
+    return '<label class="verm-row">'
+      +'<input type="checkbox" class="verm-cb" '+(checked?'checked':'')
+        +' onchange="toggleVermKonto(''+a.id+'',this.checked)">'
+      +'<span class="verm-name">'+a.icon+' '+a.name+'</span>'
+      +'<span class="verm-bal'+(neg?' neg':'')+'">'+balStr+'</span>'
+    +'</label>';
+  }).join('');
+  if(totEl){ totEl.textContent=fmtS(t); totEl.style.color=t>=0?'#86efac':'#fca5a5'; }
+}
+
+function toggleVermKonto(id, checked){
+  const cfg=getVermoegenConfig();
+  cfg[id]=checked;
+  saveLocal('vermoegenConfig',cfg);
+  renderVermoegenWidget();
+}
+
+function toggleVermoegenDrop(){
+  const drop=document.getElementById('vermDropdown');
+  const chev=document.getElementById('vermChevron');
+  if(!drop) return;
+  const isHidden=drop.classList.toggle('hidden');
+  if(chev) chev.style.transform=isHidden?'':'rotate(180deg)';
+  if(!isHidden) renderVermKontoList();
+}
+
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('vermoegenWrap');
+  if(wrap&&!wrap.contains(e.target)){
+    const drop=document.getElementById('vermDropdown');
+    const chev=document.getElementById('vermChevron');
+    if(drop&&!drop.classList.contains('hidden')){
+      drop.classList.add('hidden');
+      if(chev) chev.style.transform='';
+    }
+  }
+});
+
+let _liqHorizon=60;
+function setLiqHorizon(days){
+  _liqHorizon=days;
+  [30,60,90].forEach(d=>{
+    const btn=document.getElementById('liqBtn'+d);
+    if(!btn) return;
+    btn.classList.remove('btn-primary');
+    if(d===days) btn.classList.add('btn-primary');
+  });
+  renderLiquiditaet();
+}
+
+function renderLiquiditaet(){
+  const el=document.getElementById('liqContent');
+  if(!el) return;
+  const today=toDay();
+  const hDate=new Date(); hDate.setDate(hDate.getDate()+_liqHorizon);
+  const hStr=hDate.toISOString().slice(0,10);
+  const raiEst=estimatedBalance('raiPriv');
+  if(raiEst===null){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px">Bitte Startsaldo für Raiffeisen Privat hinterlegen → '
+      +'<button class="btn btn-sm btn-outline" onclick="openSaldoModal(\'raiPriv\')" style="font-size:11px">Jetzt eingeben</button></div>';
+    return;
+  }
+  // ── Einnahmen im Horizont ─────────────────────────────────
+  // 1) Offene Rechnungen fällig bis hStr
+  const expInv=invCache.filter(i=>i.due&&i.due>today&&i.due<=hStr&&i.status!=='Bezahlt'&&i.status!=='Entwurf'&&i.status!=='Storniert');
+  const expIncAmt=expInv.reduce((s,i)=>s+i.amount,0);
+  // 2) Konkrete zukünftige Buchungen (paid=false, Einnahmen) im Horizont
+  const futureInc=txCache.filter(t=>!t.paid&&t.type==='Einnahme'&&t.date>today&&t.date<=hStr);
+  const futureIncAmt=futureInc.reduce((s,t)=>s+t.amount,0);
+  const totalIncAmt=expIncAmt+futureIncAmt;
+
+  // ── Ausgaben im Horizont ────────────────────────────────────
+  // 1) Konkrete zukünftige Buchungen (paid=false, Ausgaben) im Horizont
+  const futureExp=txCache.filter(t=>!t.paid&&t.type==='Ausgabe'&&t.date>today&&t.date<=hStr);
+  const futureExpAmt=futureExp.reduce((s,t)=>s+t.amount,0);
+  // 2) Recurrings: alle Termine im Horizont aufrollen (nicht nur nextDate)
+  const recurs=loadLocal('recurrings',RECUR_DEFAULTS);
+  const nonPocket=['Revolut','Revolut Crypto','Raiffeisen Privat','Raiffeisen Sparkonto','Bar','Ting Community'];
+  let recurExpAmt=0; let recurCount=0;
+  recurs.filter(r=>!r.paused&&r.nextDate).forEach(r=>{
+    if(!nonPocket.includes(r.account)) return;
+    let d=r.nextDate;
+    while(d>today&&d<=hStr){
+      recurExpAmt+=r.amt; recurCount++;
+      d=nextOccurrence(d,r.freq);
+    }
+  });
+  const totalExpAmt=futureExpAmt+recurExpAmt;
+
+  const projected=raiEst+totalIncAmt-totalExpAmt;
+  const projCol=projected>=0?'var(--accent)':'var(--red)';
+  const raiCol=raiEst>=0?'var(--accent)':'var(--red)';
+
+  const incDetails=[
+    expInv.length?expInv.length+' Rechnungen fällig':'',
+    futureInc.length?futureInc.length+' geplante Einnahmen':''
+  ].filter(Boolean).join(' · ')||'Keine';
+  const expDetails=[
+    futureExp.length?futureExp.length+' geplante Ausgaben':'',
+    recurCount?recurCount+'× Recurrings':''
+  ].filter(Boolean).join(' · ')||'Keine';
+
+  el.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">'
+    +'<div style="text-align:center">'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Heute (Schätzung)</div>'
+      +'<div style="font-family:'Fraunces',serif;font-size:18px;color:'+raiCol+'">'+fmtS(raiEst)+'</div>'
+      +'<div style="font-size:10px;color:var(--muted)">Raiffeisen Privat</div>'
+    +'</div>'
+    +'<div style="text-align:center">'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">+Einnahmen '+_liqHorizon+'T</div>'
+      +'<div style="font-family:'Fraunces',serif;font-size:18px;color:var(--accent)">+'+fmtS(totalIncAmt)+'</div>'
+      +'<div style="font-size:10px;color:var(--muted)">'+incDetails+'</div>'
+    +'</div>'
+    +'<div style="text-align:center">'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">−Ausgaben '+_liqHorizon+'T</div>'
+      +'<div style="font-family:'Fraunces',serif;font-size:18px;color:var(--red)">−'+fmtS(totalExpAmt)+'</div>'
+      +'<div style="font-size:10px;color:var(--muted)">'+expDetails+'</div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="border-top:1px solid var(--border);padding-top:12px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-size:13px;color:var(--muted)">Prognostizierter Saldo per '+fmtDate(hStr)+'</div>'
+      +'<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:500;color:'+projCol+'">'+fmtS(projected)+'</div>'
+    +'</div>'
+    +(projected<0?'<div style="margin-top:8px;padding:8px 12px;background:#fef2f2;border-radius:8px;font-size:12px;color:var(--red)">⚠️ Achtung: Prognostizierter Saldo negativ.</div>':'');
 }
 
 // ═══════════════════════════════════════════
