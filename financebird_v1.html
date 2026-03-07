@@ -4887,7 +4887,7 @@ function renderVermKontoList(cfg){
     const neg=est!==null&&est<0;
     return '<label class="verm-row">'
       +'<input type="checkbox" class="verm-cb" '+(checked?'checked':'')
-        +' onchange="toggleVermKonto(''+a.id+'',this.checked)">'
+        +' onchange="toggleVermKonto(\''+a.id+'\',this.checked)">'
       +'<span class="verm-name">'+a.icon+' '+a.name+'</span>'
       +'<span class="verm-bal'+(neg?' neg':'')+'">'+balStr+'</span>'
     +'</label>';
@@ -4991,23 +4991,23 @@ function renderLiquiditaet(){
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">'
     +'<div style="text-align:center">'
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Heute (Schätzung)</div>'
-      +'<div style="font-family:'Fraunces',serif;font-size:18px;color:'+raiCol+'">'+fmtS(raiEst)+'</div>'
+      +'<div style="font-family:\'Fraunces\',serif;font-size:18px;color:'+raiCol+'">'+fmtS(raiEst)+'</div>'
       +'<div style="font-size:10px;color:var(--muted)">Raiffeisen Privat</div>'
     +'</div>'
     +'<div style="text-align:center">'
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">+Einnahmen '+_liqHorizon+'T</div>'
-      +'<div style="font-family:'Fraunces',serif;font-size:18px;color:var(--accent)">+'+fmtS(totalIncAmt)+'</div>'
+      +'<div style="font-family:\'Fraunces\',serif;font-size:18px;color:var(--accent)">+'+fmtS(totalIncAmt)+'</div>'
       +'<div style="font-size:10px;color:var(--muted)">'+incDetails+'</div>'
     +'</div>'
     +'<div style="text-align:center">'
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">−Ausgaben '+_liqHorizon+'T</div>'
-      +'<div style="font-family:'Fraunces',serif;font-size:18px;color:var(--red)">−'+fmtS(totalExpAmt)+'</div>'
+      +'<div style="font-family:\'Fraunces\',serif;font-size:18px;color:var(--red)">−'+fmtS(totalExpAmt)+'</div>'
       +'<div style="font-size:10px;color:var(--muted)">'+expDetails+'</div>'
     +'</div>'
     +'</div>'
     +'<div style="border-top:1px solid var(--border);padding-top:12px;display:flex;justify-content:space-between;align-items:center">'
       +'<div style="font-size:13px;color:var(--muted)">Prognostizierter Saldo per '+fmtDate(hStr)+'</div>'
-      +'<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:500;color:'+projCol+'">'+fmtS(projected)+'</div>'
+      +'<div style="font-family:\'Fraunces\',serif;font-size:22px;font-weight:500;color:'+projCol+'">'+fmtS(projected)+'</div>'
     +'</div>'
     +(projected<0?'<div style="margin-top:8px;padding:8px 12px;background:#fef2f2;border-radius:8px;font-size:12px;color:var(--red)">⚠️ Achtung: Prognostizierter Saldo negativ.</div>':'');
 }
