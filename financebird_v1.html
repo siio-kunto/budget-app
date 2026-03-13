@@ -2079,7 +2079,6 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSidebar(); }
     if(!isOpen && startX<=EDGE) mode='open';
     // Schliessen wenn Sidebar offen
     if(isOpen) mode='close';
-    if(mode) setDrag(true);
   }, {passive:true});
 
   document.addEventListener('touchmove', e=>{
@@ -2088,6 +2087,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSidebar(); }
     const dy=Math.abs(e.touches[0].clientY-startY);
     // Zu viel vertikal — Geste abbrechen
     if(dy>MAX_Y){ reset(); return; }
+    setDrag(true); // erst hier, nicht in touchstart — sonst blockiert click auf Hamburger
     const isOpen=sidebar.classList.contains('open');
     if(mode==='open')  setPos(-W + Math.max(0,dx));
     if(mode==='close') setPos(Math.min(0,dx));
@@ -2276,6 +2276,7 @@ function renderAll(){
   renderDash();
   renderTx();
   renderInv();
+  renderClockifyTab();
   renderProjekte();
   renderLeben();
   updateBadges();
@@ -3036,7 +3037,7 @@ function saveProj(){
   }else{ projs.push(proj); }
   saveLocal('projekte',projs);
   closeProjModal();
-  renderProjekte();
+  renderClockifyTab();
   buildProjektDropdowns();
 }
 
@@ -3175,7 +3176,7 @@ async function syncClockify(){
     saveLocal('lastClockifySync',new Date().toLocaleString('de-CH',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));
 
     hideLoading();
-    renderProjekte();
+    renderClockifyTab();
     buildProjektDropdowns();
 
     const billableProjs=cfProjs.filter(p=>cfProjType(p,mergedProjs)==='auftrag');
@@ -3197,7 +3198,7 @@ function setProjSubtab(tab){
   if(tab==='analyse') renderAnalyse();
 }
 
-function renderProjekte(){
+function renderClockifyTab(){
   const cfKey=loadLocal('clockifyApiKey','');
   const lastSync=loadLocal('lastClockifySync','');
   document.getElementById('clockifyStatus').textContent=cfKey
