@@ -2224,12 +2224,13 @@ function renderAll(){
 // ═══════════════════════════════════════════
 function go(id){
   // BUG-06: remove active from ALL pages and nav tabs before setting new one
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-  updateFab(page);
-  updateSidebarActive(page);
+  // FIX: const page muss VOR updateFab/updateSidebarActive deklariert werden (TDZ-Fix)
   const page=document.getElementById('page-'+id);
   if(!page){ console.warn('go(): unknown page',id); return; }
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  updateFab(id);
+  updateSidebarActive(id);
   page.classList.add('active');
   // Use querySelectorAll (not querySelector) so all matching nav tabs get active (defensive)
   document.querySelectorAll(`[data-page="${id}"]`).forEach(t=>t.classList.add('active'));
