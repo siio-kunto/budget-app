@@ -32,8 +32,8 @@ export default {
       return resp(null, 204, corsHeaders());
     }
 
-    // Shared Secret prüfen (ausser /oauth/callback — kommt von Notion, kein FB-Key)
-    if (path !== '/oauth/callback') {
+    // Shared Secret prüfen (ausser OAuth-Endpoints — werden vom Browser direkt aufgerufen)
+    if (path !== '/oauth/callback' && path !== '/oauth/start') {
       const fbKey = request.headers.get('X-FB-Key');
       if (!fbKey || fbKey !== env.FB_SHARED_SECRET) {
         return json({ error: 'Unauthorized' }, 401);
