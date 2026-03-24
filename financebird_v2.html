@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://lh3.googleusercontent.com; connect-src 'self' https://financebird-proxy.holy-forest-0174.workers.dev https://financebird-auth.holy-forest-0174.workers.dev https://api.frankfurter.app https://www.googleapis.com https://accounts.google.com; frame-src 'none'; object-src 'none';">
 <title>FinanceBird</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -15,7 +16,38 @@
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // SW: Update-Mechanismus — zeigt Toast wenn neue Version wartet
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Neue Version verfügbar — Toast mit Update-Button
+            setTimeout(() => {
+              // Neue Version via showToast mit Action-Button
+              window._swNewWorker = newWorker;
+              setTimeout(() => {
+                if (typeof showToast === 'function') {
+                  showToast('info', '🔄', 'Update verfügbar',
+                    'Eine neue Version von FinanceBird ist bereit.',
+                    [],
+                    { label: 'Jetzt updaten', fn: () => {
+                      window._swNewWorker?.postMessage({ type: 'SKIP_WAITING' });
+                    }},
+                    0 // kein auto-dismiss
+                  );
+                }
+              }, 1500);
+            }, 1500);
+          }
+        });
+      });
+      // Reload wenn neuer SW übernimmt
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) { refreshing = true; window.location.reload(); }
+      });
+    }).catch(() => {});
   });
   // Handle share target (files shared from iOS/Android)
   navigator.serviceWorker.addEventListener('message', e => {
@@ -1335,7 +1367,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
 
       <div style="margin-top:16px;background:var(--bg2);border-radius:10px;padding:14px 16px;font-size:12px;color:var(--ink2);line-height:1.7">
         <div style="font-weight:600;margin-bottom:6px">📋 Was gleich passiert:</div>
-        Notion fragt dich, welche Seiten FinanceBird sehen darf. <strong>Wähle mindestens eine Seite aus</strong> — dort werden deine Datenbanken automatisch angelegt. Du kannst eine bestehende oder eine neue leere Seite wählen.
+        Notion fragt dich, welche Seiten FinanceBird sehen darf. <strong>Wähle mindestens eine Seite aus</strong> — dort werden deine Datenbanken automatisch angelegt.<br><br>
+        <strong>Tipp:</strong> Erstelle in Notion eine leere Seite mit dem Namen <em>„FinanceBird"</em> und wähle diese aus — so bleiben deine Finanzdaten übersichtlich an einem Ort.
       </div>
 
       <div style="margin-top:14px;text-align:center;font-size:12px;color:var(--muted)">
@@ -1391,8 +1424,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
   <div id="onboardQuiz" class="onboard-screen" style="display:none">
     <div class="onboard-card" style="max-width:520px">
       <div class="onboard-step-label">Schritt 3 von 3 — Kurze Fragen</div>
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin-bottom:6px">Fast geschafft</h2>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">8 Fragen, je 1 Tap — konfiguriert FinanceBird für dich.</p>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin-bottom:6px">Kurz einrichten</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">8 kurze Fragen — FinanceBird passt sich an wie du arbeitest.</p>
 
       <div id="quizContent"></div>
 
@@ -1498,7 +1531,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <!-- Block: PWA installieren (Desktop) -->
       <div id="donePwaBlock" style="display:none;margin-bottom:16px;padding:14px 16px;background:var(--bg2);border-radius:12px;font-size:12px;color:var(--muted)">
         <strong style="color:var(--ink);display:block;margin-bottom:4px">💻 Tipp: Als App installieren</strong>
-        Installiere FinanceBird auf diesem Gerät als App für schnelleren Zugriff.
+        Installiere FinanceBird direkt auf deinem Desktop — kein Browser nötig, startet wie eine normale App.
         <button id="donePwaInstallBtn" onclick="triggerPwaInstall()"
           style="margin-top:10px;width:100%;padding:10px;background:var(--ink);color:white;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
           Installieren
@@ -2210,6 +2243,14 @@ function debounce(fn, ms) {
 /** Generate simple unique ID */
 const uid = () => 'fb_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
 
+/** V2: XSS-Escaping — alle Notion-Daten vor innerHTML-Injection schützen */
+const esc = s => (s == null ? '' : String(s)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;'));
+
 
 /* ══════════════════════════════════════════════════════
    LAYER 0 — i18n
@@ -2341,8 +2382,16 @@ const AppState = {
 
 function loadAppState() {
   const saved = loadLocal('fb_appstate', {});
+  // Migration: notionToken könnte als JSON-String gespeichert sein (Bug aus Weg-A-Polling)
+  let migratedToken = saved.notionToken || null;
+  if (typeof migratedToken === 'string' && migratedToken.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(migratedToken);
+      if (parsed.access_token) { migratedToken = parsed.access_token; }
+    } catch { migratedToken = null; }
+  }
   Object.assign(AppState, {
-    notionToken:  saved.notionToken  || null,
+    notionToken:  migratedToken,
     authMode:     saved.authMode     || 'oauth',
     workerUrl:    saved.workerUrl    || loadLocal('fb_worker_url', null) || null,
     lang:         saved.lang         || 'de',
@@ -2629,6 +2678,10 @@ const Auth = {
    * Token anwenden — gemeinsame Logik für alle drei Wege.
    */
   async _applyToken(tokenData) {
+    // tokenData kann sein: Objekt {access_token, ...}, reiner ntn_-String, oder JSON-String
+    if (typeof tokenData === 'string') {
+      try { tokenData = JSON.parse(tokenData); } catch { /* kein JSON → reiner Token-String */ }
+    }
     const token = typeof tokenData === 'string'
       ? tokenData
       : tokenData.access_token;
@@ -2648,21 +2701,27 @@ const Auth = {
       showLoading('Datenbanken einrichten…');
       try {
         const { found, missing } = await discoverDatabases();
+        console.log(`[DB Setup] Discovery: ${found} found, ${missing.length} missing`, missing);
         if (missing.length > 0) {
-          showLoading(`Erstelle ${missing.length} Datenbanken…`);
           const parentPageId = await findSharedParentPage();
+          console.log(`[DB Setup] Parent page: ${parentPageId}`);
           if (parentPageId) {
-            await createMissingDatabases(parentPageId, missing);
+            showLoading(`Erstelle ${missing.length} Datenbanken…`);
+            const created = await createMissingDatabases(parentPageId, missing);
+            console.log(`[DB Setup] Created: ${created} DBs`);
           } else {
             console.warn('No shared parent page found — DB creation skipped');
             showToast('warning', '⚠️', 'Notion-Datenbanken', 'Bitte teile eine Seite mit der FinanceBird-Integration in Notion.');
           }
         }
-        if (found > 0 || dbsConfigured()) {
+        // Always save whatever we have (even partial)
+        saveLocal('fb_db_ids', DB);
+        console.log('[DB Setup] Final DB state:', JSON.stringify(DB));
+        if (dbsConfigured()) {
           showToast('success', '🗄️', `${Object.values(DB).filter(Boolean).length} Datenbanken bereit`, '');
         }
       } catch (e) {
-        console.warn('DB setup failed:', e.message);
+        console.error('DB setup failed:', e);
         showToast('warning', '⚠️', 'Datenbank-Setup fehlgeschlagen',
           'Die Datenbanken konnten nicht erstellt werden. Bitte prüfe die Notion-Verbindung.');
       }
@@ -3164,8 +3223,10 @@ async function notionFetch(path, method = 'GET', body = null, _retry = 0) {
   }
 
   // 403 — Lizenz abgelaufen oder ungültig
+  // Nur Banner zeigen wenn wirklich ein Lizenz-Key vorhanden ist (nicht bei leerem State)
   if (resp.status === 403) {
-    showLicenseExpiredBanner();
+    const lkPresent = !!Auth.licenseKey;
+    if (lkPresent) showLicenseExpiredBanner();
     throw new Error('LICENSE_INVALID');
   }
 
@@ -3752,24 +3813,33 @@ async function fullSync() {
     { key: 'einstellungen', fn: () => NotionAdapter.getEinstellungen() },
   ];
 
-  for (const { key, fn } of entities) {
-    showLoading(`Lade ${entityLabels[key] || key}…`);
-    try {
-      Store[key] = await fn();
+  // V8+T1: Parallel sync mit Progress-Anzeige
+  const total_e = entities.length;
+  let loaded_e  = 0;
+  showLoading(`Synchronisiere… (0/${total_e})`);
+  const results = await Promise.allSettled(entities.map(({ key, fn }) =>
+    fn().then(data => {
+      loaded_e++;
+      showLoading(`Synchronisiere… (${loaded_e}/${total_e})`);
+      return { key, data };
+    })
+  ));
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      const { key, data } = result.value;
+      Store[key] = data;
       if (key === 'buchungen') {
         const thumbs = loadLocal(CACHE.thumbs, {});
         Store[key].forEach(b => { if (thumbs[b._id]) b.receipt = thumbs[b._id]; });
-        // Warn if approaching archive threshold
         if (Store.buchungen.length > 3000) {
           console.warn(`${Store.buchungen.length} Buchungen — Archivierung empfohlen`);
-          showToast('warning', '📦',
-            `${Store.buchungen.length} Buchungen`,
+          showToast('warning', '📦', `${Store.buchungen.length} Buchungen`,
             'Archivierung älterer Einträge empfohlen für bessere Performance');
         }
       }
       saveCache(key);
-    } catch (e) {
-      console.warn(`Sync failed for ${key}:`, e.message);
+    } else {
+      console.warn(`Sync failed for entity:`, result.reason?.message);
       // Keep existing cache — app stays functional
     }
   }
@@ -3941,8 +4011,14 @@ async function flushQueue() {
   for (const entry of pending) {
     queueSetStatus(entry.id, 'sending');
     try {
-      const result = await notionCreate(entry.dbId, entry.props);
-      if (result.object === 'error') throw new Error(result.message);
+      // V11: Queue unterstützt jetzt auch Updates (op: 'update')
+      let result;
+      if (entry.op === 'update') {
+        result = await notionUpdate(entry.pageId, entry.props);
+      } else {
+        result = await notionCreate(entry.dbId, entry.props);
+      }
+      if (result && result.object === 'error') throw new Error(result.message);
       queueRemove(entry.id);
       sent++;
     } catch (e) {
@@ -3957,6 +4033,23 @@ async function flushQueue() {
   } else {
     showToast('error', '❌', `${failed} fehlgeschlagen`, `${sent} OK · ${failed} Fehler`, [],
       { label: 'Nochmals', fn: flushQueue }, 0);
+  }
+}
+
+/**
+ * V11: updateWithQueue — Update mit Queue-Fallback (offline-sicher).
+ * Direkt versuchen, bei Fehler in Queue speichern.
+ */
+async function updateWithQueue(pageId, props, meta = {}) {
+  const qId = queueAdd({ op: 'update', pageId, props, meta });
+  try {
+    const result = await notionUpdate(pageId, props);
+    if (result && result.object === 'error') throw new Error(result.message);
+    queueRemove(qId);
+    return { success: true };
+  } catch (e) {
+    queueSetStatus(qId, 'error', e.message);
+    return { success: false, error: e.message, qId };
   }
 }
 
@@ -5086,6 +5179,8 @@ function triggerReset() {
     const keys = Object.keys(localStorage).filter(k => k.startsWith('fb_') || k.startsWith('buchungen') || k.startsWith('rechnungen'));
     keys.forEach(k => localStorage.removeItem(k));
   } catch {}
+  // Force welcome screen on next load (nicht Pairing-Screen)
+  saveLocal('fb_reset_pending', true);
   showToast('info', '↺', 'Zurückgesetzt', 'Bitte neu verbinden');
   setTimeout(() => window.location.reload(), 1500);
 }
@@ -5190,7 +5285,7 @@ function nav(tabId) {
 
   // FAB mobile: hidden on Cockpit (FAB-desktop handles it there)
   const fabMobile = document.getElementById('fabMobile');
-  if (fabMobile) fabMobile.classList.toggle('fab-hidden', tabId === 'cockpit');
+  if (fabMobile) fabMobile.classList.remove('fab-hidden'); // U1: FAB immer sichtbar
 
   // Hash routing — enables back/forward + PWA deep-links
   if (window.location.hash !== '#' + tabId) {
@@ -5368,11 +5463,13 @@ document.getElementById('erfassenOverlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('erfassenOverlay')) closeErfassen();
 });
 
-// Close on Escape
+// V5: Globaler Escape-Handler für alle Modals
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    if (document.getElementById('erfassenOverlay')?.style.display !== 'none') closeErfassen();
-  }
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('erfassenOverlay')?.style.display !== 'none') { closeErfassen(); return; }
+  if (document.getElementById('inboxOverlay')?.style.display !== 'none')    { closeInbox();    return; }
+  if (document.getElementById('saldoModalOverlay')?.style.display !== 'none') { closeSaldoModal(); return; }
+  if (document.getElementById('csvImportModal')?.style.display !== 'none')  { closeCSVImport(); return; }
 });
 
 /* ── Screen management ── */
@@ -5750,7 +5847,7 @@ function erfPopulateProjektSelect() {
   if (!sel) return;
   const active = Store.projekte.filter(p => p.aktiv !== false);
   sel.innerHTML = '<option value="">— kein Projekt —</option>' +
-    active.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+    active.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
 }
 
 function erfUpdateTransferProjekt() {
@@ -5765,7 +5862,7 @@ function erfUpdateTransferProjekt() {
   });
   wrap.style.display = linked.length ? '' : 'none';
   sel.innerHTML = '<option value="">— kein Projekt —</option>' +
-    linked.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
+    linked.map(p => `<option value="${esc(p._id)}">${esc(p.name)}</option>`).join('');
 }
 
 function erfPrefillDate() {
@@ -5800,7 +5897,7 @@ function erfPrefillInvNr() {
       ...Store.rechnungen.map(r => r.client),
       ...Store.buchungen.map(b => b.counterpart)
     ].filter(Boolean))].sort();
-    dl.innerHTML = clients.map(c => `<option value="${c}">`).join('');
+    dl.innerHTML = clients.map(c => `<option value="${esc(c)}">`).join('');
   }
 }
 
@@ -5810,7 +5907,7 @@ function erfBuildCounterpartList() {
     ...Store.rechnungen.map(r => r.client),
   ].filter(Boolean))].sort();
   const dl = document.getElementById('erfCounterpartList');
-  if (dl) dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
+  if (dl) dl.innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
 }
 
 function erfBuildFilename(ext, date, amt, cat, desc) {
@@ -6082,7 +6179,7 @@ function inboxInvCard(inv) {
     <div class="inbox-card" id="inboxInv_${inv._id}">
       <div class="inbox-card-header">
         <div>
-          <div class="inbox-card-name">${inv.nr} — ${inv.client}</div>
+          <div class="inbox-card-name">${esc(inv.nr)} — ${esc(inv.client)}</div>
           <div class="inbox-card-meta">${inv.desc || ''}</div>
           <div class="inbox-card-due">${dueLabel}</div>
         </div>
@@ -6123,7 +6220,7 @@ function inboxRecurCard(r) {
     <div class="inbox-card" id="inboxRecur_${r._id}">
       <div class="inbox-card-header">
         <div>
-          <div class="inbox-card-name">${r.name}${stackBadge}</div>
+          <div class="inbox-card-name">${esc(r.name)}${stackBadge}</div>
           <div class="inbox-card-meta">${freqLabel}${r.cat ? ' · ' + r.cat : ''}${r.account ? ' · ' + r.account : ''}</div>
           <div class="inbox-card-due">${dueLabel}</div>
         </div>
@@ -6222,22 +6319,20 @@ async function inboxInvPaid(invId) {
   const card = document.getElementById('inboxInv_' + invId);
   if (card) { card.style.opacity = '.4'; card.style.pointerEvents = 'none'; }
 
-  try {
-    await notionUpdate(invId, {
-      'Status':     { select: { name: 'Bezahlt' } },
-      'Bezahlt am': { date:   { start: toDay() } },
-    });
-    // Update Store
-    const inv = Store.rechnungen.find(r => r._id === invId);
-    if (inv) { inv.status = 'Bezahlt'; inv.paidDate = toDay(); saveCache('rechnungen'); }
-    InboxEngine.updateBadge();
-    showToast('success', '💰', 'Zahlungseingang bestätigt',
-      inv ? `${inv.nr} · CHF ${fmt(inv.amount)}` : '');
-    inboxDoneByCardId('inboxInv_' + invId);
-  } catch (e) {
-    if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
-    showToast('error', '❌', 'Fehler', e.message);
-  }
+  const inv = Store.rechnungen.find(r => r._id === invId);
+  // Optimistic update
+  if (inv) { inv.status = 'Bezahlt'; inv.paidDate = toDay(); saveCache('rechnungen'); }
+  InboxEngine.updateBadge();
+  inboxDoneByCardId('inboxInv_' + invId);
+  showToast('success', '💰', 'Zahlungseingang bestätigt',
+    inv ? `${esc(inv.nr)} · CHF ${fmt(inv.amount)}` : '');
+  // V11: Queue-backed update
+  updateWithQueue(invId, {
+    'Status':     { select: { name: 'Bezahlt' } },
+    'Bezahlt am': { date:   { start: toDay() } },
+  }, { label: 'Rechnung bezahlt', entity: 'rechnung' }).catch(e => {
+    console.warn('inboxInvPaid queue failed:', e.message);
+  });
 }
 
 function inboxInvShowShift(invId) {
@@ -6250,17 +6345,17 @@ async function inboxInvConfirmShift(invId) {
   if (!inp?.value) return;
   const card = document.getElementById('inboxInv_' + invId);
   if (card) { card.style.opacity = '.4'; card.style.pointerEvents = 'none'; }
-  try {
-    await notionUpdate(invId, { 'Fällig am': { date: { start: inp.value } } });
-    const inv = Store.rechnungen.find(r => r._id === invId);
-    if (inv) { inv.due = inp.value; saveCache('rechnungen'); }
-    InboxEngine.updateBadge();
-    showToast('success', '📅', 'Fälligkeit verschoben', fmtDate(inp.value));
-    inboxDoneByCardId('inboxInv_' + invId);
-  } catch (e) {
-    if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
-    showToast('error', '❌', 'Fehler', e.message);
-  }
+  const inv2 = Store.rechnungen.find(r => r._id === invId);
+  // Optimistic update
+  if (inv2) { inv2.due = inp.value; saveCache('rechnungen'); }
+  InboxEngine.updateBadge();
+  showToast('success', '📅', 'Fälligkeit verschoben', fmtDate(inp.value));
+  inboxDoneByCardId('inboxInv_' + invId);
+  // V11: Queue-backed update
+  updateWithQueue(invId, { 'Fällig am': { date: { start: inp.value } } },
+    { label: 'Fälligkeit verschoben', entity: 'rechnung' }).catch(e => {
+    console.warn('inboxInvConfirmShift queue failed:', e.message);
+  });
 }
 
 /* ── Recurring actions ── */
@@ -6308,17 +6403,19 @@ async function inboxRecurBook(recurId) {
       }));
     }
 
-    // Advance nextDate in Notion + Store
+    // Advance nextDate — optimistic + V11 queue-backed
     const newNextDate = nextOccurrence(r.nextDate || toDay(), r.freq);
-    await notionUpdate(recurId, recurringToProps({ ...r, nextDate: newNextDate }));
     r.nextDate = newNextDate;
     saveCache('recurrings');
     InboxEngine.updateBadge();
-
     showToast('success', isTransfer ? '↔' : '💸',
       isTransfer ? 'Transfer gebucht' : 'Buchung gespeichert',
-      `${r.name} · CHF ${fmt(r.amt)}`);
+      `${esc(r.name)} · CHF ${fmt(r.amt)}`);
     inboxDoneByCardId('inboxRecur_' + recurId);
+    updateWithQueue(recurId, recurringToProps({ ...r, nextDate: newNextDate }),
+      { label: 'Recurring nextDate', entity: 'recurring' }).catch(e => {
+      console.warn('inboxRecurBook nextDate queue failed:', e.message);
+    });
   } catch (e) {
     if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
     showToast('error', '❌', 'Fehler', e.message);
@@ -6330,8 +6427,11 @@ function inboxRecurSkip(recurId) {
   if (!r) return;
   // Advance nextDate without booking
   const newNextDate = nextOccurrence(r.nextDate || toDay(), r.freq);
-  notionUpdate(recurId, recurringToProps({ ...r, nextDate: newNextDate }))
-    .catch(e => console.warn('Recurring skip failed:', e.message));
+  // V11: Queue-backed
+  updateWithQueue(recurId, recurringToProps({ ...r, nextDate: newNextDate }),
+    { label: 'Recurring skip', entity: 'recurring' }).catch(e => {
+    console.warn('Recurring skip queue failed:', e.message);
+  });
   r.nextDate = newNextDate;
   saveCache('recurrings');
   InboxEngine.updateBadge();
@@ -6927,7 +7027,7 @@ function renderVermKontoList() {
         <input type="checkbox" style="width:14px;height:14px;accent-color:var(--green);flex-shrink:0;cursor:pointer"
           ${checked ? 'checked' : ''}
           onchange="toggleVermKonto('${k._id}', this.checked)">
-        <span class="verm-name">${k.icon || '💰'} ${k.name}</span>
+        <span class="verm-name">${esc(k.icon || '💰')} ${esc(k.name)}</span>
         <span class="verm-bal ${isNeg ? 'neg' : ''}">${balStr}</span>
       </label>`;
   }).join('');
@@ -6963,7 +7063,7 @@ function renderRecentBookingsHTML() {
     </tr></thead>
     <tbody>${recent.map(b => `<tr>
       <td style="color:var(--muted);font-size:12px">${fmtDate(b.date)}</td>
-      <td><a href="${b._url}" target="_blank" style="color:inherit;text-decoration:none">${b.desc}</a></td>
+      <td><a href="${esc(b._url)}" target="_blank" style="color:inherit;text-decoration:none">${esc(b.desc)}</a></td>
       <td style="font-size:12px;color:var(--muted)">${b.counterpart || '—'}</td>
       <td><span class="tag ${b.type === 'Einnahme' ? 'income' : 'expense'}">${b.type}</span></td>
       <td class="amt ${b.type === 'Einnahme' ? 'pos' : 'neg'}">${b.type === 'Einnahme' ? '+' : '−'}${fmt(b.amount)}</td>
@@ -7309,7 +7409,7 @@ function kontoCardHTML(k) {
       <div style="display:flex;align-items:center;gap:10px;flex:1">
         <span style="font-size:20px">${k.icon||'💰'}</span>
         <div>
-          <div style="font-weight:600;font-size:13.5px">${k.name}</div>
+          <div style="font-weight:600;font-size:13.5px">${esc(k.name)}</div>
           <div style="font-size:11px;color:var(--muted)">${k.group||''} · ${k.typ||''}</div>
           ${k.saldoDatum
             ? `<div style="font-size:10px;color:var(--muted)">Basis ${fmtDate(k.saldoDatum)}: ${fmtS(k.stand||0)}</div>`
@@ -7564,7 +7664,7 @@ function renderRecurringsHTML() {
           ${FREQ_LABEL[r.freq]||r.freq}
         </span>
         <div style="flex:1">
-          <div style="font-size:13.5px;font-weight:500">${r.name}${r.paused?' <span style="font-size:10px;color:var(--muted)">(pausiert)</span>':''}</div>
+          <div style="font-size:13.5px;font-weight:500">${esc(r.name)}${r.paused?' <span style="font-size:10px;color:var(--muted)">(pausiert)</span>':''}</div>
           <div style="font-size:11px;color:var(--muted)">${r.cat||''}${r.account?' · '+r.account:''}</div>
         </div>
         <div style="text-align:right">
@@ -7613,14 +7713,7 @@ function renderAbschluesseHTML() {
     </div>`).join('');
 
   return `
-    <div class="section-head" style="margin-top:16px"><h3>Steuer-Mapping</h3></div>
-    <div class="card" style="margin-bottom:16px">
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">
-        Ordne deine Kategorien den Steuerkategorien zu — für den Jahresabschluss-Export.
-      </div>
-      ${mappingRows}
-    </div>
-    <div class="section-head"><h3>Jahresabschluss exportieren</h3></div>
+    <div class="section-head" style="margin-top:16px"><h3>Jahresabschluss exportieren</h3></div>
     <div id="abschlussChecklist" class="card" style="margin-bottom:12px">
       ${renderAbschlussChecklist()}
     </div>
@@ -7636,6 +7729,13 @@ function renderAbschluesseHTML() {
         <button class="btn btn-outline" onclick="printJahresabschluss()">🖨 PDF drucken</button>
         <button class="btn btn-outline" onclick="exportBuchungenCSV()">📋 Alle Buchungen</button>
       </div>
+    </div>
+    <div class="section-head" style="margin-top:16px"><h3>Steuer-Mapping</h3></div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">
+        Ordne deine Kategorien den Steuerkategorien zu — für den Jahresabschluss-Export.
+      </div>
+      ${mappingRows}
     </div>`;
 }
 
@@ -7889,7 +7989,7 @@ function zielCardHTML(p) {
     <div style="background:var(--paper);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
         <div>
-          <div style="font-size:15px;font-weight:700">${ICON[p.typ]||'📁'} ${p.name}</div>
+          <div style="font-size:15px;font-weight:700">${ICON[p.typ]||'📁'} ${esc(p.name)}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px">${p.typ}${p.konto?' · '+p.konto:''}${p.zieldatum?' · Ziel: '+fmtDate(p.zieldatum):''}</div>
         </div>
         <div style="font-family:'Libre Baskerville',serif;font-size:18px;color:${COL[p.typ]||'var(--ink)'};font-weight:500">
@@ -8075,6 +8175,7 @@ function renderEinstellungen() {
   const el = document.getElementById('einstellungenContent');
   if (!el) return;
 
+  try {
   const cfKey      = loadLocal('fb_clockify_key', '');
   const claudeKey  = loadLocal('fb_claude_key', '');
   const cfLastSync = loadLocal('fb_clockify_last_sync', null);
@@ -8282,6 +8383,15 @@ function renderEinstellungen() {
         </div>
       </div>
     </div>`;
+  } catch (e) {
+    console.error('renderEinstellungen error:', e);
+    el.innerHTML = `<div style="padding:40px;text-align:center">
+      <div style="font-size:28px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">Einstellungen konnten nicht geladen werden</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${e.message || 'Unbekannter Fehler'}</div>
+      <button class="btn btn-outline" onclick="renderEinstellungen()">Nochmal versuchen</button>
+    </div>`;
+  }
 }
 
 function setCurrency(val) {
@@ -8602,7 +8712,7 @@ Antworte nur mit dem JSON.` });
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'claude-haiku-4-5-20251001', // V14: haiku statt opus (günstiger, schneller)
         max_tokens: 600,
         messages: [{ role: 'user', content: msgContent }],
       }),
@@ -8791,6 +8901,11 @@ function showApp() {
 }
 
 function showQuizAfterAuth() {
+  // setupScreen sicherstellen (nach OAuth-Redirect kann mainApp bereits sichtbar sein)
+  const setupEl = document.getElementById('setupScreen');
+  const mainEl  = document.getElementById('mainApp');
+  if (setupEl) setupEl.style.display = 'block';
+  if (mainEl)  mainEl.style.display  = 'none';
   onboardNext(null, 'quiz');
 }
 
@@ -8922,7 +9037,7 @@ function renderDoneQrCode() {
     });
   } else {
     // Fallback: einfacher Link
-    container.innerHTML = `<div style="font-size:11px;color:var(--muted);padding:10px;word-break:break-all;line-height:1.4">${url}</div>`;
+    container.innerHTML = `<div style="font-size:11px;color:var(--muted);padding:10px;word-break:break-all;line-height:1.4">${esc(url)}</div>`;
   }
 }
 
@@ -9042,18 +9157,25 @@ function renderDatenschutz(containerId) {
 /* ── QR-Code Rendering ── */
 
 function renderQrCodeSvg(url, container) {
-  const size = 140;
-  const img  = document.createElement('img');
-  img.src    = 'https://chart.googleapis.com/chart?chs=' + size + 'x' + size + '&cht=qr&chl=' + encodeURIComponent(url) + '&choe=UTF-8';
-  img.width  = size;
-  img.height = size;
-  img.style.cssText = 'border-radius:8px;display:block';
-  img.alt = 'QR-Code';
-  img.onerror = () => {
-    container.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">QR-Code nicht verfügbar</div>';
+  // V12: QR via qrcodejs (kein Google Charts) — lädt dynamisch, kein externer Tracking
+  container.innerHTML = '<div id="qrInner" style="display:flex;justify-content:center"></div>';
+  const inner = container.querySelector('#qrInner');
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  script.onload = () => {
+    try {
+      new QRCode(inner, { text: url, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M });
+    } catch { inner.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">QR-Code nicht verfügbar</div>'; }
   };
-  container.innerHTML = '';
-  container.appendChild(img);
+  script.onerror = () => {
+    inner.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">QR-Code nicht verfügbar (offline)</div>';
+  };
+  // Nur einmal laden
+  if (!document.querySelector('script[src*="qrcodejs"]')) document.head.appendChild(script);
+  else if (window.QRCode) {
+    try { new QRCode(inner, { text: url, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M }); }
+    catch { inner.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px">QR-Code nicht verfügbar</div>'; }
+  }
 }
 
 /* ── Done-Screen Init ── */
@@ -9191,7 +9313,7 @@ const QUIZ_QUESTIONS = [
   {
     id:'zeiterfassung', q:'Verwendest du ein Zeiterfassungstool?',
     opts:[{val:'clockify',label:'Clockify'},{val:'other',label:'Anderes Tool'},{val:'manual',label:'Manuell'},{val:'none',label:'Noch keines'}],
-    hint: 'Weitere Integrationen (Toggl, Harvest) folgen.',
+    hint: 'Toggl und Harvest folgen in Kürze.',
   },
   {
     id:'kategorien', q:'Wie detailliert möchtest du deine Ausgaben aufschlüsseln?',
@@ -9218,7 +9340,7 @@ const QUIZ_QUESTIONS = [
   {
     id:'belegspeicher', q:'Wo sollen Belegfotos gespeichert werden?',
     opts:[{val:'drive',label:'Google Drive'}],
-    hint: 'Weitere Speicherorte folgen.',
+    hint: 'OneDrive und Dropbox folgen in Kürze.',
     singleOption: true,
   },
 ];
@@ -9270,7 +9392,13 @@ function renderQuizStep() {
         <input type="password" class="form-input" placeholder="sk-ant-…"
           value="${loadLocal('fb_claude_key','')}"
           oninput="saveLocal('fb_claude_key', this.value.trim())">
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Einmalig einrichten. Ab dann scannt FinanceBird deine Belege automatisch. Kosten: ca. CHF 0.01–0.03 pro Beleg.</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">
+          <strong>Wo finde ich den Key?</strong><br>
+          console.anthropic.com → API Keys → Create Key.
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--bg2);border-radius:9px;font-size:11px;color:var(--ink2);line-height:1.6">
+        <strong>Was die KI macht:</strong> Beleg fotografieren → Betrag, Datum, Kategorie werden automatisch erkannt. Kosten: ca. CHF 0.01–0.03 pro Scan. Läuft direkt in deinem Browser — deine Daten verlassen FinanceBird nicht.
       </div>` : ''}
     ${q.id === 'zeiterfassung' && selected === 'clockify' ? `
       <div class="form-group" style="margin-top:12px">
@@ -9278,6 +9406,13 @@ function renderQuizStep() {
         <input type="password" class="form-input" placeholder="API Key aus Profile Settings"
           value="${loadLocal('fb_clockify_key','')}"
           oninput="saveLocal('fb_clockify_key', this.value.trim())">
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">
+          <strong>Wo finde ich den Key?</strong><br>
+          clockify.me → Profilbild → Profile Settings → API → API Key kopieren.
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--bg2);border-radius:9px;font-size:11px;color:var(--ink2);line-height:1.6">
+        <strong>Was du gewinnst:</strong> Echter Stundensatz pro Projekt, Deckungsbeitrag, und die Antwort auf "Wofür geht meine Zeit wirklich?"
       </div>` : ''}
     ${q.id === 'zeiterfassung' && selected === 'other' ? `
       <div class="form-group" style="margin-top:12px">
@@ -9515,7 +9650,7 @@ function nav(tabId) {
   document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(el => el.classList.add('active'));
   closeSidebar();
   const fabMobile = document.getElementById('fabMobile');
-  if (fabMobile) fabMobile.classList.toggle('fab-hidden', tabId === 'cockpit');
+  if (fabMobile) fabMobile.classList.remove('fab-hidden'); // U1: FAB immer sichtbar
   if (window.location.hash !== '#' + tabId) history.pushState({ tab: tabId }, '', '#' + tabId);
   switch (tabId) {
     case 'cockpit':       renderCockpit();         break;
@@ -9916,7 +10051,40 @@ function renderEinstellungen() {
   }
 }
 
+/**
+ * SW2: localStorage-Migrations-Funktion
+ * Mappt veraltete Keys auf neue — einmalig beim Start.
+ * Neue Migrationen hier ergänzen mit klarer Version-Kommentierung.
+ */
+function migrateLocalStorage() {
+  // v2.1: fb_worker_url → Teil von fb_appstate (bereits in loadAppState gehandelt)
+  localStorage.removeItem('fb_worker_url');
+
+  // v2.1: fb_onboarded → fb_onboard_complete (alter Key aus v1)
+  const oldOnboard = localStorage.getItem('fb_onboarded');
+  if (oldOnboard === 'true' && !localStorage.getItem('fb_onboard_complete')) {
+    localStorage.setItem('fb_onboard_complete', 'true');
+    localStorage.removeItem('fb_onboarded');
+    console.info('[Migration] fb_onboarded → fb_onboard_complete');
+  }
+
+  // v2.1: notion_token (v1 direkter Key) → Teil von fb_appstate
+  const oldToken = localStorage.getItem('notion_token');
+  if (oldToken) {
+    const appstate = JSON.parse(localStorage.getItem('fb_appstate') || '{}');
+    if (!appstate.notionToken) {
+      appstate.notionToken = oldToken;
+      localStorage.setItem('fb_appstate', JSON.stringify(appstate));
+      console.info('[Migration] notion_token → fb_appstate.notionToken');
+    }
+    localStorage.removeItem('notion_token');
+  }
+}
+
 (async function init() {
+  // 0. SW2: localStorage-Migrationen (vor allem anderen)
+  migrateLocalStorage();
+
   // 1. Load persisted state
   loadAppState();
 
@@ -10017,7 +10185,12 @@ function renderEinstellungen() {
     const hasLicense = !!Auth.licenseKey;
     const seen       = loadLocal('fb_onboard_seen', false);
 
-    if (isPwa && !seen && !hasLicense) {
+    // Reset-Flag: nach triggerReset() immer Welcome-Flow statt Pairing
+    const resetPending = loadLocal('fb_reset_pending', false);
+    if (resetPending) {
+      localStorage.removeItem('fb_reset_pending');
+      onboardNext(null, 'welcome');
+    } else if (isPwa && !seen && !hasLicense) {
       // Installierte PWA ohne Setup — Kopplungscode-Screen
       saveLocal('fb_onboard_seen', true);
       onboardNext(null, 'mobile-pairing');
