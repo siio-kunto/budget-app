@@ -9,7 +9,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="fb-version" content="2.4b.2026-03-26">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FinanceBird">
 <meta name="theme-color" content="#2c1f0e">
@@ -1395,7 +1396,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div style="margin-top:16px;background:var(--bg2);border-radius:10px;padding:14px 16px;font-size:12px;color:var(--ink2);line-height:1.7">
         <div style="font-weight:600;margin-bottom:6px">📋 Was gleich passiert:</div>
         Notion fragt dich, welche Seiten FinanceBird sehen darf. <strong>Wähle mindestens eine Seite aus</strong> — dort werden deine Datenbanken automatisch angelegt.<br><br>
-        <strong>Tipp:</strong> Erstelle in Notion eine leere Seite mit dem Namen <em>„FinanceBird"</em> und wähle diese aus — so bleiben deine Finanzdaten übersichtlich an einem Ort.
+        <strong>Tipp:</strong> Erstelle in Notion eine leere Seite mit dem Namen <em>„FinanceBird"</em> unter <em>Privat</em> und wähle diese aus — so bleiben deine Finanzdaten übersichtlich an einem Ort.
       </div>
 
       <div style="margin-top:14px;text-align:center;font-size:12px;color:var(--muted)">
@@ -1494,7 +1495,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px;text-align:center" id="obAccountsTitle">
         Welche Konten nutzt du?
       </h2>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;text-align:center" id="obAccountsSub">Wähle oder tippe eigene Namen ein.</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;text-align:center" id="obAccountsSub">Wähle oder tippe eigene Namen ein.<br><span style="font-size:11px">Du kannst Konten später jederzeit anpassen — du brauchst jetzt mindestens 1.</span></p>
       <div class="onboard-chips" id="obAccountChips" style="margin-bottom:14px"></div>
       <div style="display:flex;gap:8px;margin-bottom:20px">
         <input type="text" id="obAccountCustom" class="form-input" placeholder="Eigenes Konto…" style="flex:1"
@@ -1528,11 +1529,11 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         <div class="onboard-tile" id="obTileDrive" onclick="obConnectDrive()">
           <div class="tile-icon">📎</div>
           <div class="tile-label">Belege</div>
-          <div class="tile-sub">Google Drive</div>
+          <div class="tile-sub">Ablage konfigurieren</div>
         </div>
         <div class="onboard-tile" id="obTileClock" onclick="obConnectClockify()">
           <div class="tile-icon">⏱</div>
-          <div class="tile-label">Zeit</div>
+          <div class="tile-label">Zeit & Projekte</div>
           <div class="tile-sub">Clockify</div>
         </div>
         <div class="onboard-tile" id="obTileKi" onclick="obConnectKi()">
@@ -1568,13 +1569,13 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
     <div class="onboard-card" style="max-width:480px">
       <button class="onboard-back" onclick="onboardNext('summary','integrations')">← Zurück</button>
       <div style="font-size:40px;margin-bottom:8px;text-align:center">🎉</div>
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin-bottom:16px;text-align:center" id="obSummaryTitle">
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin-bottom:6px;text-align:center" id="obSummaryTitle">
         Dein FinanceBird ist bereit!
       </h2>
-      <div id="obSummaryTable" style="background:var(--bg2);border-radius:12px;padding:14px 18px;margin-bottom:16px"></div>
-      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:18px">
-        All das kannst du jederzeit in den Einstellungen anpassen.
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">
+        Alles jederzeit in den Einstellungen anpassbar.
       </div>
+      <div id="obSummaryTable" style="background:var(--bg2);border-radius:12px;padding:14px 18px;margin-bottom:16px"></div>
       <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="onboardFinish()">
         Los geht's →
       </button>
@@ -3284,26 +3285,40 @@ async function createMissingDatabases(parentPageId, missingKeys) {
   };
 
   let created = 0;
+  const failed = [];
   for (const key of missingKeys) {
     const schema = schemas[key];
     const meta   = DB_SCHEMAS[key];
     if (!schema || !meta) continue;
-    try {
-      const result = await notionFetch('/databases', 'POST', {
-        parent: { type: 'page_id', page_id: parentPageId },
-        title: [{ type: 'text', text: { content: meta.title } }],
-        icon: { type: 'emoji', emoji: meta.icon },
-        properties: schema,
-      });
-      if (result.id) {
-        DB[key] = result.id;
-        created++;
+    // PATCH B4: Retry logic (up to 2 retries with backoff)
+    let success = false;
+    for (let attempt = 0; attempt < 3 && !success; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
+        const result = await notionFetch('/databases', 'POST', {
+          parent: { type: 'page_id', page_id: parentPageId },
+          title: [{ type: 'text', text: { content: meta.title } }],
+          icon: { type: 'emoji', emoji: meta.icon },
+          properties: schema,
+        });
+        if (result.id) {
+          DB[key] = result.id;
+          created++;
+          success = true;
+        }
+      } catch (e) {
+        console.warn(`DB create ${key} attempt ${attempt + 1} failed:`, e.message);
       }
-    } catch (e) {
-      console.warn(`Failed to create DB ${key}:`, e.message);
     }
+    if (!success) failed.push(meta.title);
   }
   saveLocal('fb_db_ids', DB);
+  // PATCH B4: User feedback if some DBs failed
+  if (failed.length > 0) {
+    showToast('error', '⚠️', `${failed.length} Datenbank(en) nicht erstellt`,
+      failed.join(', '),
+      [], { label: 'Erneut versuchen →', fn: () => location.reload() }, 0);
+  }
   return created;
 }
 
@@ -4010,7 +4025,8 @@ async function fullSync() {
   if (!dbsConfigured()) {
     console.warn('fullSync aborted — DBs not configured');
     setAppStatus('error', 'Datenbanken nicht eingerichtet');
-    showToast('warning', '⚠️', 'Notion-Datenbanken fehlen', 'Bitte Onboarding abschliessen oder Einstellungen prüfen');
+    showToast('warning', '⚠️', 'Notion-Datenbanken fehlen', 'Bitte Onboarding abschliessen.',
+      [], { label: 'Einstellungen öffnen →', fn: () => { nav('einstellungen'); } }, 0);
     return;
   }
   setAppStatus('syncing', t('app.syncing'));
@@ -4197,6 +4213,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
+const APP_VERSION = '2.4b.2026-03-26';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5216,7 +5233,8 @@ async function manualSync() {
     InboxEngine.updateBadge();
   } catch (e) {
     setAppStatus('error', t('app.error'));
-    showToast('error', '❌', 'Sync fehlgeschlagen', e.message);
+    showToast('error', '❌', 'Sync fehlgeschlagen', e.message,
+      [], { label: 'Erneut versuchen →', fn: () => { fullSync().then(renderAll).catch(() => {}); } });
   }
 }
 
@@ -9237,6 +9255,11 @@ function renderEinstellungen() {
           <button class="btn btn-danger btn-sm" onclick="clearAllLocal()">🗑 Reset</button>
         </div>
       </div>
+
+      <!-- Version -->
+      <div style="text-align:center;padding:24px 0 8px;font-family:'Courier Prime',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);opacity:.6">
+        FinanceBird v${APP_VERSION}
+      </div>
     </div>`;
   } catch (e) {
     console.error('renderEinstellungen error:', e);
@@ -9756,6 +9779,11 @@ function onboardNext(from, to) {
     'mobile-install': 'onboardMobileInstall',
     'mobile-pairing': 'onboardMobilePairing',
   };
+  // PATCH B2: Save current step for resume after page refresh
+  const persistSteps = ['lang', 'country', 'accounts', 'integrations', 'summary'];
+  if (persistSteps.includes(to)) {
+    saveLocal('fb_onboard_step', to);
+  }
   Object.values(screenIds).forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
@@ -9797,9 +9825,9 @@ function showSetup() {
     saveLocal('fb_onboard_seen', true);
     onboardNext(null, 'welcome');
   } else {
-    // Returning user — zurück zum Connect (Lizenz-Key bereits gesetzt)
-    onboardNext(null, 'connect');
-    setAuthMode(AppState.authMode || 'oauth');
+    // PATCH B1: Returning user — gespeicherten Step oder license
+    const savedStep = loadLocal('fb_onboard_step', null);
+    onboardNext(null, savedStep || 'license');
   }
 }
 
@@ -9814,8 +9842,17 @@ function showQuizAfterAuth() {
   const mainEl  = document.getElementById('mainApp');
   if (setupEl) setupEl.style.display = 'block';
   if (mainEl)  mainEl.style.display  = 'none';
-  // Session 3: Route to new onboarding lang screen instead of quiz
-  onboardNext(null, 'lang');
+  // PATCH B1: Context-aware routing after OAuth
+  // If user was on integrations screen, stay there (OAuth just connected Notion)
+  const savedStep = loadLocal('fb_onboard_step', null);
+  if (savedStep === 'integrations') {
+    OB.notionConnected = true;
+    onboardNext(null, 'integrations');
+  } else if (savedStep) {
+    onboardNext(null, savedStep);
+  } else {
+    onboardNext(null, 'lang');
+  }
 }
 
 /* ── Lizenz-Key (E2) ── */
@@ -9853,8 +9890,7 @@ async function onboardCheckLicense() {
     setTimeout(() => {
       btn.textContent = 'Prüfen';
       btn.style.background = '';
-      onboardNext('license', 'connect');
-      setAuthMode('oauth');
+      onboardNext('license', 'lang');
     }, 800);
   } else {
     const msgs = {
@@ -10006,9 +10042,8 @@ async function submitPairingCode() {
 
   if (result.licenseKey) {
     saveLocal('fb_license_key', result.licenseKey);
-    // Weiter zu Notion OAuth
-    onboardNext('mobile-pairing', 'connect');
-    setAuthMode('oauth');
+    // PATCH B1: Weiter zu Sprachauswahl (neuer Onboarding-Flow)
+    onboardNext('mobile-pairing', 'lang');
   } else if (result.error === 'expired') {
     errEl.textContent = 'Code abgelaufen. Generiere einen neuen Code am anderen Gerät, oder gib deinen Lizenz-Key direkt ein.';
   } else {
@@ -10197,6 +10232,7 @@ async function onboardFinish() {
       merchantRules = getDefaultRules(OB.country);
       await saveMerchantRules();
       saveLocal('fb_onboard_complete', true);
+      localStorage.removeItem('fb_onboard_step'); // PATCH B2: cleanup
       await ensureBuchungenSchema();
       await loadMerchantRules();
       await fullSync();
@@ -10207,8 +10243,9 @@ async function onboardFinish() {
       // DBs still not configured — show actionable error
       saveLocal('fb_onboard_complete', false);
       showToast('error', '⚠️', 'Datenbanken konnten nicht erstellt werden',
-        'Bitte stelle sicher dass du in Notion mindestens eine Seite mit FinanceBird geteilt hast. Gehe zu Einstellungen → Neu verbinden.');
-      setAppStatus('error', 'Datenbanken fehlen — bitte Notion-Verbindung prüfen');
+        'Stelle sicher, dass du in Notion mindestens eine Seite mit FinanceBird geteilt hast.',
+        [], { label: 'Notion neu verbinden →', fn: () => { startOAuth(); } }, 0);
+      setAppStatus('error', 'Datenbanken fehlen');
     }
   } catch (e) {
     console.error('onboardFinish error:', e);
@@ -10311,9 +10348,9 @@ function obConnectNotion() {
 }
 
 function obConnectDrive() {
-  // Existing GDrive auth logic
+  // PATCH C4: Belege — Konfiguration direkt anbieten
   if (typeof gdriveAuth === 'function') gdriveAuth();
-  else showToast('info', '📎', 'Google Drive', 'Wird in den Einstellungen eingerichtet.');
+  else showToast('info', '📎', 'Belege-Ablage', 'Belege werden auf der Ablage deiner Wahl gespeichert. Konfigurierbar in den Einstellungen.');
 }
 
 function obConnectClockify() {
@@ -10401,6 +10438,7 @@ async function claimPairingCode() {
       if (data.licenseKey) saveLocal('fb_license_key', data.licenseKey);
       saveAppState();
       saveLocal('fb_onboard_complete', true);
+      localStorage.removeItem('fb_onboard_step'); // PATCH B2: cleanup
       showApp();
       showLoading('Synchronisiere…');
       if (!dbsConfigured()) {
@@ -11055,21 +11093,24 @@ function firmaDataSection() {
     </div>`;
 }
 
-// Inject firma section into renderEinstellungen output
-const _origRenderEinstellungen = renderEinstellungen;
-function renderEinstellungen() {
-  _origRenderEinstellungen();
-  const el = document.getElementById('einstellungenContent');
-  if (!el) return;
-  // Session 3: Render collaborator list
-  renderCollabList();
-  // Insert after Schwellenwerte card (before Diagnose)
-  const diagSection = el.querySelector('.section-head h3');
-  if (diagSection && diagSection.textContent === 'Diagnose & Daten') {
-    const firmaDiv = document.createElement('div');
-    firmaDiv.innerHTML = firmaDataSection();
-    diagSection.closest('.section-head').before(firmaDiv);
-  }
+// Inject firma section + collab list into renderEinstellungen output
+// PATCH B3: Avoid infinite loop — extend the original function directly
+{
+  const _baseRenderEinstellungen = renderEinstellungen;
+  renderEinstellungen = function() {
+    _baseRenderEinstellungen();
+    const el = document.getElementById('einstellungenContent');
+    if (!el) return;
+    // Session 3: Render collaborator list
+    renderCollabList();
+    // Insert after Schwellenwerte card (before Diagnose)
+    const diagSection = el.querySelector('.section-head h3');
+    if (diagSection && diagSection.textContent === 'Diagnose & Daten') {
+      const firmaDiv = document.createElement('div');
+      firmaDiv.innerHTML = firmaDataSection();
+      diagSection.closest('.section-head').before(firmaDiv);
+    }
+  };
 }
 
 /**
@@ -11169,7 +11210,8 @@ function migrateLocalStorage() {
         hideLoading();
         if (!dbsConfigured()) {
           showToast('error', '⚠️', 'Notion-Datenbanken fehlen',
-            'Gehe zu Einstellungen → Neu verbinden und teile mindestens eine Seite.');
+            'Bitte Notion neu verbinden und mindestens eine Seite teilen.',
+            [], { label: 'Jetzt verbinden →', fn: () => { nav('einstellungen'); } }, 0);
         }
       }
       // 8. Session 3: Ensure new DB properties exist + load merchant rules
@@ -11223,12 +11265,18 @@ function migrateLocalStorage() {
       saveLocal('fb_onboard_seen', true);
       onboardNext(null, 'welcome');
     } else if (hasLicense) {
-      // Lizenz bekannt, Token fehlt — direkt zu Notion-Connect
-      onboardNext(null, 'connect');
-      setAuthMode('oauth');
+      // PATCH B1: Lizenz bekannt, Token fehlt — gespeicherten Step oder lang
+      const savedStep = loadLocal('fb_onboard_step', null);
+      onboardNext(null, savedStep || 'lang');
     } else {
-      // Lizenz-Key fehlt noch
-      onboardNext(null, 'license');
+      // PATCH B2: Gespeicherten Onboarding-Step wiederherstellen
+      const savedStep = loadLocal('fb_onboard_step', null);
+      if (savedStep) {
+        onboardNext(null, savedStep);
+      } else {
+        // Lizenz-Key fehlt noch
+        onboardNext(null, 'license');
+      }
     }
   }
 })();
