@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.5b.2026-03-27">
+<meta name="fb-version" content="2.5c.2026-03-27">
   <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FinanceBird">
@@ -1248,6 +1248,13 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
     </div>
   </div>
   <div class="loading-text-label" id="loadingText">Lade Daten…</div>
+  <!-- PATCH B12: progress bar for DB creation -->
+  <div id="loadingProgressWrap" style="display:none;width:200px;margin-top:4px">
+    <div style="height:3px;background:rgba(196,68,26,0.15);border-radius:2px;overflow:hidden">
+      <div id="loadingProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#c4441a,#c8922a);border-radius:2px;transition:width 0.4s ease"></div>
+    </div>
+    <div id="loadingProgressLabel" style="font-size:9px;font-family:'Courier Prime',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:4px"></div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════
@@ -3289,10 +3296,17 @@ async function createMissingDatabases(parentPageId, missingKeys) {
 
   let created = 0;
   const failed = [];
+  // PATCH B12: progress bar during DB creation
+  const total = missingKeys.length;
+  let step = 0;
   for (const key of missingKeys) {
     const schema = schemas[key];
     const meta   = DB_SCHEMAS[key];
     if (!schema || !meta) continue;
+    step++;
+    if (typeof showLoadingProgress === 'function') {
+      showLoadingProgress(step - 0.5, total, `${meta.title}…`);
+    }
     // PATCH B4: Retry logic (up to 2 retries with backoff)
     let success = false;
     for (let attempt = 0; attempt < 3 && !success; attempt++) {
@@ -4233,7 +4247,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.5b.2026-03-27';
+const APP_VERSION = '2.5c.2026-03-27';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5504,7 +5518,22 @@ function showLoading(text) {
 }
 function hideLoading() {
   document.getElementById('loadingOverlay').classList.remove('show');
+  // PATCH B12: reset progress bar on hide
+  const wrap = document.getElementById('loadingProgressWrap');
+  const bar  = document.getElementById('loadingProgressBar');
+  if (wrap) wrap.style.display = 'none';
+  if (bar)  bar.style.width = '0%';
   hideSplashOnce();
+}
+// PATCH B12: progress bar for DB creation steps
+function showLoadingProgress(step, total, label) {
+  const wrap  = document.getElementById('loadingProgressWrap');
+  const bar   = document.getElementById('loadingProgressBar');
+  const lbl   = document.getElementById('loadingProgressLabel');
+  if (!wrap || !bar) return;
+  wrap.style.display = '';
+  bar.style.width = Math.round((step / total) * 100) + '%';
+  if (lbl && label) lbl.textContent = label;
 }
 function showAiAnalysis()  { document.getElementById('ai-overlay').classList.add('show'); }
 function hideAiAnalysis()  { document.getElementById('ai-overlay').classList.remove('show'); }
@@ -10315,11 +10344,30 @@ function obShowOtherCountry() {
 function obRenderAccountChips() {
   const el = document.getElementById('obAccountChips');
   if (!el) return;
-  el.innerHTML = OB_ACCOUNT_PRESETS.map(name => {
+  // PATCH B13: preset chips + custom chips with × for removal
+  const presetChips = OB_ACCOUNT_PRESETS.map(name => {
     const sel = OB.accounts.includes(name);
-    return `<button class="onboard-chip ${sel ? 'selected' : ''}" onclick="obToggleAccount('${name}')">${name}</button>`;
+    const removeBtn = sel
+      ? `<span onclick="event.stopPropagation();obRemoveAccount('${name}')" style="margin-left:6px;opacity:0.6;font-size:11px;line-height:1" title="Entfernen">×</span>`
+      : '';
+    return `<button class="onboard-chip ${sel ? 'selected' : ''}" onclick="obToggleAccount('${name}')">${name}${removeBtn}</button>`;
   }).join('');
+  // Custom accounts (not in presets)
+  const customChips = OB.accounts
+    .filter(name => !OB_ACCOUNT_PRESETS.includes(name))
+    .map(name => `<button class="onboard-chip selected" onclick="obRemoveAccount('${name}')">${name}<span style="margin-left:6px;opacity:0.6;font-size:11px;line-height:1" title="Entfernen">×</span></button>`)
+    .join('');
+  el.innerHTML = presetChips + customChips;
   obUpdateAccountsUI();
+}
+
+function obRemoveAccount(name) {
+  const idx = OB.accounts.indexOf(name);
+  if (idx >= 0) {
+    OB.accounts.splice(idx, 1);
+    saveLocal('fb_ob_accounts', OB.accounts);
+    obRenderAccountChips();
+  }
 }
 
 function obToggleAccount(name) {
