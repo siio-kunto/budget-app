@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.5a.2026-03-27">
+<meta name="fb-version" content="2.5b.2026-03-27">
   <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FinanceBird">
@@ -1367,8 +1367,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
 
       <div style="margin-top:16px;font-size:12px;color:var(--muted);line-height:1.7">
         Noch keinen Key?
-        <a href="mailto:hello@oswaldkoenig.ch" style="color:var(--accent);text-decoration:none">
-          hello@oswaldkoenig.ch
+        <a href="/cdn-cgi/l/email-protection#a6cec3cacac9e6c9d5d1c7cac2cdc9c3c8cfc188c5ce" style="color:var(--accent);text-decoration:none">
+          <span class="__cf_email__" data-cfemail="48202d24242708273b3f29242c23272d26212f662b20">[email&#160;protected]</span>
         </a><br>
         <span style="font-size:11px">Jederzeit in den Einstellungen änderbar.</span>
       </div>
@@ -1794,7 +1794,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div class="sidebar-item" data-tab="einstellungen" onclick="nav('einstellungen')"><span class="nav-icon">🦤</span> Einstellungen</div>
     </nav>
     <div class="sidebar-footer">
-      <a class="sidebar-contact" href="mailto:hello@oswaldkoenig.ch">
+      <a class="sidebar-contact" href="/cdn-cgi/l/email-protection#bfd7dad3d3d0ffd0ccc8ded3dbd4d0dad1d6d891dcd7">
         <span>✉</span> Kontakt
       </a>
     </div>
@@ -2310,7 +2310,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
   <div class="toast-action" id="toastAction" style="display:none"></div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 'use strict';
 /* ═══════════════════════════════════════════════════════════════
    FINANCEBIRD v2
@@ -3188,7 +3188,7 @@ async function createMissingDatabases(parentPageId, missingKeys) {
       'Datum': { date: {} },
       'Typ': { select: { options: [{ name: 'Einnahme', color: 'green' }, { name: 'Ausgabe', color: 'red' }] } },
       'Bereich': { select: { options: [{ name: 'Geschäftlich', color: 'blue' }, { name: 'Privat', color: 'purple' }] } },
-      'Kategorie': { select: { options: CATEGORIES_20.concat(CATS_PRIVATE).map(c => ({ name: c })) } },
+      'Kategorie': { select: { options: CATEGORIES_20.map(c => ({ name: c })) } }, // PATCH B9b: max 20 at creation; CATS_PRIVATE added via ensureBuchungenSchema
       'Steuerkategorie': { select: { options: [] } },
       'Einnahmequelle': { select: { options: CATS_INCOME.map(c => ({ name: c })) } },
       'Betrag': { number: { format: 'number' } },
@@ -3213,7 +3213,7 @@ async function createMissingDatabases(parentPageId, missingKeys) {
       ]}},
       'Teilabzug': { number: { format: 'percent' } },
       // ── Session 3: Treuhänder-Korrektur Properties ──
-      'Korrektur-Kategorie': { select: { options: CATEGORIES_20.map(c => ({ name: c })) } },
+      'Korrektur-Kategorie': { select: { options: [] } }, // PATCH B9b: options added via ensureBuchungenSchema
       'Korrektur-Von': { rich_text: {} },
       'Korrektur-Datum': { date: {} },
     },
@@ -3325,8 +3325,7 @@ async function createMissingDatabases(parentPageId, missingKeys) {
         const pid = await findSharedParentPage();
         if (!pid) { showToast('error', '⚠️', 'Keine Notion-Seite gefunden', 'Bitte Notion neu verbinden.', [], { label: 'Notion neu verbinden →', fn: () => Auth.startOAuth() }, 8000); return; }
         // Re-discover to get IDs of already-created DBs
-        await discoverDatabases();
-        const { missing } = await discoverDatabases();
+        const { missing } = await discoverDatabases(); // PATCH B9b: single call
         if (missing.length === 0) {
           showToast('success', '✅', 'Alle Datenbanken bereit', 'Deine Notion-Datenbanken sind vollständig eingerichtet.', [], null, 4000);
           return;
@@ -4234,7 +4233,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.5a.2026-03-27';
+const APP_VERSION = '2.5b.2026-03-27';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -11787,16 +11786,4 @@ async function csvExecuteImport() {
   document.getElementById('csvResultBody').innerHTML    =
     `<strong style="color:var(--green)">${done} Buchungen</strong> erfolgreich importiert.` +
     (failed ? `<br><span style="color:var(--amber)">${failed} konnten nicht importiert werden.</span>` : '') +
-    '<br><br>Tipp: Prüfe importierte Buchungen und ergänze fehlende Kategorien.';
-}
-
-/* ── Screen 2→3 transition ── */
-const _csvGoToScreen_orig = csvGoToScreen;
-/* Override to run csvBuildParsedRows when going to screen 3 */
-window.csvGoToScreen = function(n) {
-  if (n === 3) csvBuildParsedRows();
-  _csvGoToScreen_orig(n);
-};
-</script>
-</body>
-</html>
+    '<br><br>Tipp: Prüfe importierte Buchungen und ergänze fehlende Katego
