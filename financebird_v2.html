@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.5c.2026-03-27">
+<meta name="fb-version" content="2.5d.2026-03-27">
   <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FinanceBird">
@@ -1583,8 +1583,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         Alles jederzeit in den Einstellungen anpassbar.
       </div>
       <div id="obSummaryTable" style="background:var(--bg2);border-radius:12px;padding:14px 18px;margin-bottom:16px"></div>
-      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="onboardFinish()">
-        Los geht's →
+      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="onboardNext('summary','done')">
+        Fast fertig — App einrichten →
       </button>
       <div class="onboard-dots"><div class="onboard-dot done"></div><div class="onboard-dot done"></div><div class="onboard-dot done"></div><div class="onboard-dot active"></div></div>
     </div>
@@ -1595,16 +1595,20 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
     <div class="onboard-card" style="max-width:480px">
       <div style="font-size:48px;margin-bottom:12px;text-align:center">🎉</div>
       <div class="setup-logo" style="font-size:28px;margin-bottom:4px;text-align:center">Finance<em style="color:var(--nav-active);font-style:italic">Bird</em></div>
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:20px;text-align:center">
-        Dein FinanceBird Start-Set-Up ist startklar.
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px;text-align:center">
+        Dein FinanceBird ist startklar.
       </h2>
+      <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.6">
+        Möchtest du FinanceBird gleich auch als App auf dem Desktop und auf deinem Mobile einrichten?<br>
+        <span style="font-size:11px">Du kannst das auch jederzeit später unter Einstellungen nachholen.</span>
+      </p>
 
       <!-- Block: Weiteres Gerät -->
-      <details id="doneDeviceBlock" style="margin-bottom:16px;border:1.5px solid var(--border);border-radius:14px;overflow:hidden">
+      <details id="doneDeviceBlock" open style="margin-bottom:16px;border:1.5px solid var(--border);border-radius:14px;overflow:hidden">
         <summary style="padding:14px 16px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;color:var(--ink);user-select:none"
           onclick="onDoneDeviceOpen(this)">
           <span>📱 App auf weiteren Geräten nutzen</span>
-          <span style="font-size:16px;color:var(--muted)">+</span>
+          <span style="font-size:16px;color:var(--muted)">−</span>
         </summary>
         <div style="padding:0 16px 16px">
           <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
@@ -1752,6 +1756,46 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
 </div>
 
 <!-- ═══════════════════════════════════════════════
+     COLLABORATOR MODAL — PATCH B-COLLAB
+     ═══════════════════════════════════════════════ -->
+<div id="collabModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(44,31,14,0.55);backdrop-filter:blur(3px);align-items:center;justify-content:center">
+  <div style="background:var(--paper);border-radius:20px;padding:28px 24px;width:100%;max-width:380px;margin:20px;box-shadow:0 20px 60px rgba(44,31,14,0.25)">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin-bottom:6px">Treuhänder:in oder Buchhalter:in hinzufügen</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      Nach dem Hinzufügen erhältst du eine Einladungsnachricht, die du direkt per E-Mail oder Messenger weiterschicken kannst.
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;font-family:'Courier Prime',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">Name</label>
+      <input type="text" id="collabNameInput" class="form-input" placeholder="z.B. Maria Muster" autocomplete="off">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:11px;font-family:'Courier Prime',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">E-Mail (optional)</label>
+      <input type="email" id="collabEmailInput" class="form-input" placeholder="maria@muster.ch" autocomplete="off">
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeCollabModal()">Abbrechen</button>
+      <button class="btn btn-primary" style="flex:2" onclick="confirmAddCollaborator()">Einladung erstellen →</button>
+    </div>
+  </div>
+</div>
+
+<!-- COLLABORATOR INVITE SHEET — PATCH B-COLLAB -->
+<div id="collabInviteSheet" style="display:none;position:fixed;inset:0;z-index:9001;background:rgba(44,31,14,0.55);backdrop-filter:blur(3px);align-items:center;justify-content:center">
+  <div style="background:var(--paper);border-radius:20px;padding:28px 24px;width:100%;max-width:400px;margin:20px;box-shadow:0 20px 60px rgba(44,31,14,0.25)">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin-bottom:6px">Einladung bereit</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+      Schicke diese Nachricht an deine Treuhänder:in / Buchhalter:in — per E-Mail, WhatsApp oder wie es einfacher ist.
+    </div>
+    <div id="collabInviteText" style="background:var(--bg2);border-radius:12px;padding:14px 16px;font-size:12.5px;color:var(--ink2);line-height:1.7;margin-bottom:16px;white-space:pre-wrap;word-break:break-word"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline" style="flex:1;min-width:120px" onclick="copyCollabInvite()">📋 Kopieren</button>
+      <button id="collabMailBtn" class="btn btn-outline" style="flex:1;min-width:120px" onclick="mailCollabInvite()">✉️ E-Mail öffnen</button>
+      <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="closeCollabInviteSheet()">Fertig</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
      MAIN APP
      ═══════════════════════════════════════════════ -->
 <div id="mainApp" style="display:none">
@@ -1775,6 +1819,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         📬
         <span class="inbox-badge" id="inboxBadge" style="display:none">0</span>
       </button>
+      <!-- FAB Desktop — always visible on all tabs (PATCH B-FAB2) -->
+      <button class="fab-desktop" id="fabDesktopHeader" onclick="openErfassen()" style="margin-right:4px">+ Erfassen</button>
       <!-- Dark Mode -->
       <div class="dark-toggle" onclick="toggleDarkMode()" title="Dark Mode">
         <span id="darkLabel">☀</span>
@@ -1838,7 +1884,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
           <h2 style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600">Cockpit</h2>
           <div style="font-size:12px;color:var(--muted)" id="cockpitSubtitle">—</div>
         </div>
-        <button class="fab-desktop" onclick="openErfassen()">+ Erfassen</button>
+        <!-- fab-desktop moved to header (PATCH B-FAB2) -->
       </div>
       <div id="cockpitContent">
         <div class="empty"><div class="ico">🦅</div><p>Lade Daten…</p></div>
@@ -4247,7 +4293,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.5c.2026-03-27';
+const APP_VERSION = '2.5d.2026-03-27';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5578,9 +5624,17 @@ function nav(tabId) {
   // Close sidebar on mobile after nav
   closeSidebar();
 
-  // FAB mobile: hidden on Cockpit (FAB-desktop handles it there)
+  // PATCH B-FAB: Cockpit shows text in desktop header; mobile FAB = "+" only on other tabs
   const fabMobile = document.getElementById('fabMobile');
-  if (fabMobile) fabMobile.classList.remove('fab-hidden'); // U1: FAB immer sichtbar
+  if (fabMobile) {
+    fabMobile.classList.remove('fab-hidden');
+    if (tabId === 'cockpit') {
+      fabMobile.innerHTML = '<span style="font-size:18px;line-height:1">+</span> Erfassen';
+    } else {
+      fabMobile.innerHTML = '<span style="font-size:20px;line-height:1;font-weight:300">+</span>';
+      fabMobile.style.padding = '14px 18px';
+    }
+  }
 
   // Hash routing — enables back/forward + PWA deep-links
   if (window.location.hash !== '#' + tabId) {
@@ -9200,7 +9254,7 @@ function renderEinstellungen() {
       <div class="section-head"><h3>Zusammenarbeit</h3></div>
       <div class="card" style="margin-bottom:14px">
         <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5">
-          Arbeite mit Treuhänder:innen oder Buchhalter:innen zusammen. Sie können Buchungen prüfen und Korrekturen vorschlagen.
+          Arbeite mit einer Treuhänder:in oder Buchhalter:in zusammen. Sie können Buchungen prüfen und Korrekturen vorschlagen.
         </div>
         <div id="settingsCollabList"></div>
         <button class="btn btn-outline btn-sm" onclick="addCollaborator()" style="width:100%;margin-top:8px">
@@ -10825,13 +10879,67 @@ function saveCollaborators() {
 }
 
 function addCollaborator() {
-  const name = prompt('Name der Person:');
-  if (!name) return;
-  const email = prompt('E-Mail-Adresse:');
+  // PATCH B-COLLAB: replace prompt() with in-app modal
+  const modal = document.getElementById('collabModal');
+  if (!modal) return;
+  document.getElementById('collabNameInput').value = '';
+  document.getElementById('collabEmailInput').value = '';
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('collabNameInput').focus(), 100);
+}
+
+function closeCollabModal() {
+  const modal = document.getElementById('collabModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function confirmAddCollaborator() {
+  const name  = (document.getElementById('collabNameInput')?.value || '').trim();
+  const email = (document.getElementById('collabEmailInput')?.value || '').trim();
+  if (!name) { document.getElementById('collabNameInput').focus(); return; }
   const role = 'Treuhänder:in';
   collaborators.push({ id: Date.now().toString(), name, email: email || '', role, active: true });
   saveCollaborators();
+  closeCollabModal();
+  // Show invite sheet
+  const appUrl = window.location.origin + window.location.pathname;
+  const inviteText = `Hallo ${name},
+
+ich nutze FinanceBird für meine Buchhaltung und möchte dich als ${role} hinzufügen, damit du meine Buchungen prüfen und Korrekturen vorschlagen kannst.
+
+📎 FinanceBird öffnen:
+${appUrl}
+
+Bitte melde dich bei mir, damit ich dir den Kopplungscode weitergeben kann — den findest du unter Einstellungen → Weiteres Gerät einrichten.
+
+Danke & beste Grüsse`;
+  const sheet = document.getElementById('collabInviteSheet');
+  const textEl = document.getElementById('collabInviteText');
+  const mailBtn = document.getElementById('collabMailBtn');
+  if (textEl) textEl.textContent = inviteText;
+  if (mailBtn) {
+    const subject = encodeURIComponent('FinanceBird – Einladung zur Zusammenarbeit');
+    const body = encodeURIComponent(inviteText);
+    const mailto = email ? `mailto:${email}?subject=${subject}&body=${body}` : `mailto:?subject=${subject}&body=${body}`;
+    mailBtn.onclick = () => window.open(mailto);
+    mailBtn.style.display = email ? '' : 'none';
+  }
+  if (sheet) sheet.style.display = 'flex';
   renderEinstellungen();
+}
+
+function copyCollabInvite() {
+  const text = document.getElementById('collabInviteText')?.textContent || '';
+  navigator.clipboard?.writeText(text).then(() => {
+    showToast('success', '✅', 'Kopiert', 'Einladungstext in Zwischenablage');
+  }).catch(() => {});
+}
+
+function mailCollabInvite() { /* handled via onclick in confirmAddCollaborator */ }
+
+function closeCollabInviteSheet() {
+  const sheet = document.getElementById('collabInviteSheet');
+  if (sheet) sheet.style.display = 'none';
 }
 
 function toggleCollaborator(id) {
