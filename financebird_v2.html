@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.7d.2026-03-30">
+<meta name="fb-version" content="2.7e.2026-03-30">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2818,9 +2818,13 @@ const Auth = {
     const state = uid();
     saveLocal('fb_oauth_state', state);
     saveLocal('fb_oauth_worker', base);
+    // Lizenz-Key im State-Prefix enkodieren — überlebt den OAuth-Redirect auch wenn localStorage geleert wird
+    const lk = this.licenseKey;
+    const stateWithLk = lk ? `${state}__lk_${lk}` : state;
+    saveLocal('fb_oauth_state', stateWithLk);
     // Polling starten — wartet bis Token in KV landet (iOS PWA Fix)
-    this._startPolling(state, base);
-    const authUrl = `${base}/oauth/start?state=${encodeURIComponent(state)}`;
+    this._startPolling(stateWithLk, base);
+    const authUrl = `${base}/oauth/start?state=${encodeURIComponent(stateWithLk)}`;
     window.open(authUrl, '_blank');
   },
 
@@ -2880,10 +2884,20 @@ const Auth = {
       if (!tokenStr) return false;
       try {
         const tokenData  = JSON.parse(decodeURIComponent(tokenStr));
-        // CSRF: state prüfen
+        // CSRF: state prüfen (state kann __lk_KEY suffix enthalten)
         const savedState = loadLocal('fb_oauth_state', null);
-        if (returnState && savedState && returnState !== savedState) {
+        const savedStateBase = savedState?.split('__lk_')[0];
+        const returnStateBase = returnState?.split('__lk_')[0];
+        if (returnState && savedState && returnStateBase !== savedStateBase) {
           throw new Error('OAuth state mismatch');
+        }
+        // Lizenz-Key aus State wiederherstellen falls localStorage geleert wurde
+        const lkFromState = returnState?.includes('__lk_')
+          ? returnState.split('__lk_')[1]
+          : savedState?.includes('__lk_') ? savedState.split('__lk_')[1] : null;
+        if (lkFromState && !this.licenseKey) {
+          saveLocal('fb_license_key', lkFromState);
+          console.log('[Auth] Lizenz-Key aus OAuth-State wiederhergestellt');
         }
         this._stopPolling();
         await this._applyToken(tokenData);
@@ -4520,7 +4534,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.7d.2026-03-30';
+const APP_VERSION = '2.7e.2026-03-30';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
