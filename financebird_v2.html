@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.7b.2026-03-30">
+<meta name="fb-version" content="2.7d.2026-03-30">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1080,7 +1080,7 @@ body.dark .inbox-card.overdue { background: rgba(200,146,42,.07); }
   color: var(--ink2); user-select: none;
 }
 .onboard-chip:hover { border-color: var(--accent); background: var(--accent-light); }
-.onboard-chip.selected { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.onboard-chip.selected { border-color: #5a7a4a; background: rgba(74,122,82,.08); color: #3d5c32; font-weight: 600; }
 .onboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .onboard-tile {
   border: 1.5px solid var(--border); border-radius: 12px; padding: 16px;
@@ -1373,7 +1373,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         <strong style="color:var(--ink2)">Deine Daten gehören dir, leben bei dir, und wir sehen sie nie.</strong></div>
       </div>
 
-      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="saveLocal('fb_onboard_seen',true);onboardNext('welcome','lang')">
+      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="saveLocal('fb_onboard_seen',true);onboardNext('welcome','country')">
         Neu einrichten →
       </button>
       <div style="text-align:center;font-size:11.5px;color:var(--muted);margin-top:8px;margin-bottom:4px">
@@ -1508,16 +1508,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
 
   <!-- ══ SESSION 3: Neues Onboarding (5 Screens) ══ -->
 
-  <!-- ── Screen 0: Sprache ── -->
-  <div id="onboardLang" class="onboard-screen" style="display:none">
-    <div class="onboard-card" style="max-width:440px;text-align:center">
-      <div class="setup-logo" style="font-size:28px;margin-bottom:20px">Finance<em style="color:var(--nav-active);font-style:italic">Bird</em></div>
-      <div style="display:flex;flex-direction:column;gap:12px;max-width:280px;margin:0 auto">
-        <button class="btn btn-primary" style="padding:16px;font-size:16px" onclick="obSetLang('de')">🇩🇪 Deutsch</button>
-        <button class="btn btn-outline" style="padding:16px;font-size:16px" onclick="obSetLang('en')">🇬🇧 English</button>
-      </div>
-    </div>
-  </div>
+  <!-- Sprachwahl entfernt — Sprache wird im Welcome-Screen per Flag gesetzt -->
 
   <!-- ── Screen 1: Land & Steuern ── -->
   <div id="onboardCountry" class="onboard-screen" style="display:none">
@@ -3001,7 +2992,9 @@ const Auth = {
             }
           } else {
             console.warn('No shared parent page found — DB creation skipped');
-            showToast('warning', '⚠️', 'Notion-Datenbanken', 'Bitte teile eine Seite mit der FinanceBird-Integration in Notion.');
+            showToast('warning', '⚠️', 'Seite nicht gefunden',
+              'Öffne Notion → wähle eine Seite → Teilen → FinanceBird-Integration hinzufügen. Dann nochmals versuchen.',
+              [], { label: 'Nochmals versuchen', fn: () => onboardNext(null, 'integrations') }, 0);
           }
         }
         // Always save whatever we have (even partial)
@@ -3648,16 +3641,34 @@ async function ensureBuchungenSchema() {
  * Uses Notion Search to find pages the integration has access to.
  */
 async function findSharedParentPage() {
-  try {
-    const resp = await notionFetch('/search', 'POST', {
-      filter: { value: 'page', property: 'object' },
-      page_size: 5,
-      sort: { direction: 'descending', timestamp: 'last_edited_time' },
-    });
-    // Return first page that's not a child of a database
-    const page = resp.results?.find(r => r.parent?.type === 'workspace' || r.parent?.type === 'page_id');
-    return page?.id || resp.results?.[0]?.id || null;
-  } catch { return null; }
+  // Retry bis zu 3× mit 1.5s Abstand — Notion-Index kann nach OAuth kurz verzögert sein
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1500));
+      const resp = await notionFetch('/search', 'POST', {
+        filter: { value: 'page', property: 'object' },
+        page_size: 10,
+        sort: { direction: 'descending', timestamp: 'last_edited_time' },
+      });
+      if (!resp.results || resp.results.length === 0) {
+        console.log(`[findSharedParentPage] attempt ${attempt+1}: no results`);
+        continue;
+      }
+      // Bevorzuge Top-Level Seiten (parent = workspace), akzeptiere aber alle
+      const topLevel = resp.results.find(r =>
+        r.parent?.type === 'workspace' || r.parent?.type === 'page_id' || r.parent?.type === 'block_id'
+      );
+      const pageId = topLevel?.id || resp.results[0]?.id;
+      if (pageId) {
+        console.log(`[findSharedParentPage] found on attempt ${attempt+1}: ${pageId}`);
+        return pageId;
+      }
+    } catch (e) {
+      console.warn(`[findSharedParentPage] attempt ${attempt+1} failed:`, e.message);
+    }
+  }
+  console.warn('[findSharedParentPage] no page found after 3 attempts');
+  return null;
 }
 
 /*
@@ -4509,7 +4520,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.7b.2026-03-30';
+const APP_VERSION = '2.7d.2026-03-30';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -10277,7 +10288,6 @@ function onboardNext(from, to) {
     'welcome':        'onboardWelcome',
     'license':        'onboardLicense',
     'connect':        'onboardConnect',
-    'lang':           'onboardLang',
     'country':        'onboardCountry',
     'accounts':       'onboardAccounts',
     'integrations':   'onboardIntegrations',
@@ -10354,6 +10364,8 @@ function showQuizAfterAuth() {
   const mainEl  = document.getElementById('mainApp');
   if (setupEl) setupEl.style.display = 'block';
   if (mainEl)  mainEl.style.display  = 'none';
+  // Notion ist jetzt verbunden (OAuth erfolgreich) — OB-State synchronisieren
+  if (Auth.isAuthenticated) OB.notionConnected = true;
   // BUG-025: Gepaartes Gerät hat keinen Setup-Durchlauf — licenseKey vorhanden aber kein savedStep
   // → direkt in die App, Setup als abgeschlossen markieren
   const savedStep = loadLocal('fb_onboard_step', null);
@@ -10376,7 +10388,7 @@ function showQuizAfterAuth() {
   } else if (savedStep) {
     onboardNext(null, savedStep);
   } else {
-    onboardNext(null, 'lang');
+    onboardNext(null, 'country');
   }
 }
 
@@ -10415,7 +10427,7 @@ async function onboardCheckLicense() {
     setTimeout(() => {
       btn.textContent = 'Prüfen';
       btn.style.background = '';
-      onboardNext('license', 'lang');
+      onboardNext('license', 'country');
     }, 800);
   } else {
     const msgs = {
@@ -10513,7 +10525,9 @@ function renderDoneQrCode() {
 }
 
 function copyDoneUrl() {
-  const url = window.location.origin + window.location.pathname;
+  // URL-Feld hat bereits die korrekte URL mit Code+Lang (gesetzt von initDoneScreen)
+  const urlInput = document.getElementById('doneAppUrl');
+  const url = urlInput ? urlInput.value : (window.location.origin + window.location.pathname);
   navigator.clipboard?.writeText(url).then(() => {
     const btn = document.getElementById('doneCopyUrlBtn');
     if (btn) { btn.textContent = '✓'; setTimeout(() => btn.textContent = 'Kopieren', 1500); }
@@ -10657,11 +10671,31 @@ function renderQrCodeSvg(url, container) {
 /* ── Done-Screen Init ── */
 
 async function initDoneScreen() {
-  const appUrl = window.location.origin + window.location.pathname;
-  const qrEl   = document.getElementById('doneQrCode');
-  if (qrEl) renderQrCodeSvg(appUrl, qrEl);
+  const base = window.location.origin + window.location.pathname;
+  const lang = AppState.lang || 'de';
+
+  // Kopplungscode generieren und direkt in URL einbetten
+  // So muss der User auf dem Zweitgerät nichts manuell eingeben
   const urlInput = document.getElementById('doneAppUrl');
-  if (urlInput) urlInput.value = appUrl;
+  const qrEl     = document.getElementById('doneQrCode');
+
+  // Zeige sofort Base-URL während Code lädt
+  if (urlInput) urlInput.value = base + '?pair=1&lang=' + lang;
+  if (qrEl) renderQrCodeSvg(base + '?pair=1&lang=' + lang, qrEl);
+
+  // Code generieren und URL aktualisieren
+  const result = await Auth.generatePairingCode();
+  if (result && result.code) {
+    const pairUrl = base + '?pair=' + result.code.toUpperCase() + '&lang=' + lang;
+    if (urlInput) urlInput.value = pairUrl;
+    if (qrEl) renderQrCodeSvg(pairUrl, qrEl);
+    // Countdown im Pairing-Block auch aktualisieren
+    const codeEl = document.getElementById('donePairingCode');
+    const countdownEl = document.getElementById('donePairingCountdown');
+    if (codeEl) codeEl.textContent = result.code.toUpperCase();
+    if (result.expiresAt) startPairingCountdown(result.expiresAt, countdownEl);
+  }
+
   const pwaBlock = document.getElementById('donePwaBlock');
   if (pwaBlock && _deferredPwaPrompt) pwaBlock.style.display = 'block';
 }
@@ -11956,7 +11990,26 @@ function migrateLocalStorage() {
     } else if (hasPairParam) {
       // Direkt-Einstieg über Pairing-Link oder QR-Code
       saveLocal('fb_onboard_seen', true);
-      onboardNext(null, 'mobile-pairing');
+      // Sprache aus URL übernehmen falls mitgeschickt
+      const urlLang = urlParams.get('lang');
+      if (urlLang && (urlLang === 'de' || urlLang === 'en')) {
+        AppState.lang = urlLang;
+        OB.lang = urlLang;
+        saveAppState();
+      }
+      const pairCode = urlParams.get('pair');
+      if (pairCode && pairCode.length === 6) {
+        // Code direkt in Input vorausfüllen + Auto-Submit
+        onboardNext(null, 'mobile-pairing');
+        setTimeout(async () => {
+          const inp = document.getElementById('mobilePairingInput');
+          if (inp) inp.value = pairCode.toUpperCase();
+          await submitPairingCode();
+        }, 300);
+      } else {
+        // Fallback: ?pair=1 → manueller Input-Screen
+        onboardNext(null, 'mobile-pairing');
+      }
     } else if (isPwa && !seen && !hasLicense) {
       // Installierte PWA ohne Setup — Kopplungscode-Screen
       saveLocal('fb_onboard_seen', true);
@@ -11969,13 +12022,74 @@ function migrateLocalStorage() {
     } else if (hasLicense) {
       // Returning user: Lizenz bekannt, Token fehlt — gespeicherten Step oder lang
       const savedStep = loadLocal('fb_onboard_step', null);
-      onboardNext(null, savedStep || 'lang');
+      onboardNext(null, savedStep || 'country');
     } else {
       // Fallback (sollte durch obigen Branch abgedeckt sein)
       onboardNext(null, 'license');
     }
   }
 })();
+
+/* ══════════════════════════════════════════════════════
+   DEBUG — nur für Entwicklung, in Konsole aufrufbar
+   Aufruf: await fbDebugNotion()
+   ══════════════════════════════════════════════════ */
+window.fbDebugNotion = async function() {
+  console.group('🔍 FinanceBird Notion Debug');
+
+  // 1. Auth State
+  console.log('Token vorhanden:', !!AppState.notionToken);
+  console.log('Token (erste 20 Zeichen):', AppState.notionToken?.slice(0, 20) + '…');
+  console.log('Worker URL:', AppState.workerUrl);
+  console.log('Lizenz-Key:', Auth.licenseKey);
+
+  // 2. /search für Seiten (was findSharedParentPage macht)
+  console.group('📄 Notion /search (Seiten)');
+  try {
+    const r1 = await notionFetch('/search', 'POST', {
+      filter: { value: 'page', property: 'object' },
+      page_size: 10,
+    });
+    console.log('Anzahl Seiten:', r1.results?.length ?? 'Fehler');
+    r1.results?.forEach((p, i) => {
+      console.log(`  Seite ${i+1}: "${p.properties?.title?.[0]?.plain_text || p.id}" | parent.type: ${p.parent?.type}`);
+    });
+    if (!r1.results?.length) console.warn('⚠️ Keine Seiten gefunden — Integration hat keinen Zugriff auf geteilte Seiten');
+  } catch(e) { console.error('Search Seiten Fehler:', e.message); }
+  console.groupEnd();
+
+  // 3. /search für Datenbanken
+  console.group('🗄️ Notion /search (Datenbanken)');
+  try {
+    const r2 = await notionFetch('/search', 'POST', {
+      filter: { value: 'database', property: 'object' },
+      page_size: 20,
+    });
+    console.log('Anzahl DBs:', r2.results?.length ?? 'Fehler');
+    r2.results?.forEach((db, i) => {
+      console.log(`  DB ${i+1}: "${db.title?.[0]?.plain_text}" | id: ${db.id}`);
+    });
+  } catch(e) { console.error('Search DBs Fehler:', e.message); }
+  console.groupEnd();
+
+  // 4. Gespeicherte DB-IDs
+  console.group('💾 Gespeicherte DB-IDs (localStorage)');
+  const savedIds = loadLocal('fb_db_ids', {});
+  Object.entries(savedIds).forEach(([k, v]) => console.log(`  ${k}: ${v || '(leer)'}`));
+  console.groupEnd();
+
+  // 5. Worker-Proxy Health
+  console.group('⚙️ Worker-Proxy');
+  try {
+    const health = await fetch(Auth.FB_WORKER_PROXY.replace('/v1','') + '/health');
+    const hj = await health.json();
+    console.log('Health:', JSON.stringify(hj));
+  } catch(e) { console.error('Worker Health Fehler:', e.message); }
+  console.groupEnd();
+
+  console.groupEnd();
+  console.log('✅ Debug abgeschlossen — bitte alles oben kopieren und teilen');
+};
 
 </script>
 

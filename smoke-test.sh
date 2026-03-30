@@ -17,11 +17,16 @@ SW_URL="https://financebird.app/sw.js"
 WORKER_AUTH="https://financebird-auth.holy-forest-0174.workers.dev"
 WORKER_PROXY="https://financebird-proxy.holy-forest-0174.workers.dev"
 
-# Versions-Erwartungen (bei jedem Release updaten)
-EXPECTED_APP_VERSION="2.6b.2026-03-28"
-EXPECTED_SW_CACHE="financebird-v2.6b-20260328"
-EXPECTED_AUTH_VERSION="1.1.0"
-EXPECTED_PROXY_VERSION="1.1.0"
+# Erwartete Versionen: aus lokalen Dateien lesen (= was gerade gepusht wurde)
+# Deployed Versionen: aus live URLs lesen
+# Test schlägt fehl wenn deployed != lokal → Push nicht angekommen oder falsches File
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_APP_VERSION=$(grep -o 'fb-version" content="[^"]*"' "$SCRIPT_DIR/financebird_v2.html" 2>/dev/null | grep -o '"[^"]*"$' | tr -d '"' || echo "")
+LOCAL_SW_CACHE=$(grep -o "financebird-v[0-9a-z.-]*" "$SCRIPT_DIR/sw.js" 2>/dev/null | head -1 || echo "")
+
+if [ -z "$LOCAL_APP_VERSION" ]; then
+  echo "⚠️  Warnung: financebird_v2.html nicht gefunden — bitte smoke-test.sh aus ~/Desktop/app ausführen"
+fi
 
 # License Key (für Proxy-Test)
 LICENSE_KEY="${1:-${FB_LICENSE_KEY:-}}"
@@ -63,8 +68,16 @@ echo "[ App ]"
 APP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL")
 [ "$APP_STATUS" = "200" ] && check "App erreichbar (HTTP 200)" "pass" "" "" || check "App erreichbar" "fail" "200" "$APP_STATUS"
 
-APP_VERSION=$(curl -s "$APP_URL" | grep -o 'fb-version" content="[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "nicht gefunden")
-[ "$APP_VERSION" = "$EXPECTED_APP_VERSION" ] && check "App Version ($APP_VERSION)" "pass" "" "" || check "App Version" "warn" "$EXPECTED_APP_VERSION" "$APP_VERSION"
+APP_HTML=$(curl -s "$APP_URL")
+DEPLOYED_APP_VERSION=$(echo "$APP_HTML" | grep -o 'fb-version" content="[^"]*"' | grep -o '"[^"]*"$' | tr -d '"' || echo "")
+DEPLOYED_SW_CACHE_IN_HTML=$(echo "$APP_HTML" | grep -o "financebird-v[0-9a-z.-]*" | head -1 || echo "")
+if [ -z "$DEPLOYED_APP_VERSION" ]; then
+  check "App Version" "fail" "${LOCAL_APP_VERSION:-?}" "nicht gefunden auf Server"
+elif [ -n "$LOCAL_APP_VERSION" ] && [ "$DEPLOYED_APP_VERSION" != "$LOCAL_APP_VERSION" ]; then
+  check "App Version — Push nicht angekommen?" "fail" "$LOCAL_APP_VERSION" "$DEPLOYED_APP_VERSION"
+else
+  check "App Version ($DEPLOYED_APP_VERSION)" "pass" "" ""
+fi
 
 # ── 2. Service Worker ─────────────────────────────────────────────────────────
 echo ""
@@ -72,8 +85,16 @@ echo "[ Service Worker ]"
 SW_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SW_URL")
 [ "$SW_STATUS" = "200" ] && check "sw.js erreichbar (HTTP 200)" "pass" "" "" || check "sw.js erreichbar" "fail" "200" "$SW_STATUS"
 
-SW_CACHE=$(curl -s "$SW_URL" | grep -o "financebird-v[0-9a-z.-]*" | head -1 || echo "nicht gefunden")
-[ "$SW_CACHE" = "$EXPECTED_SW_CACHE" ] && check "SW Cache-Name ($SW_CACHE)" "pass" "" "" || check "SW Cache-Name" "warn" "$EXPECTED_SW_CACHE" "$SW_CACHE"
+DEPLOYED_SW_CACHE=$(curl -s "$SW_URL" | grep -o "financebird-v[0-9a-z.-]*" | head -1 || echo "")
+if [ -z "$DEPLOYED_SW_CACHE" ]; then
+  check "SW Cache-Name" "fail" "${LOCAL_SW_CACHE:-?}" "nicht gefunden auf Server"
+elif [ -n "$LOCAL_SW_CACHE" ] && [ "$DEPLOYED_SW_CACHE" != "$LOCAL_SW_CACHE" ]; then
+  check "SW Cache-Name — Push nicht angekommen?" "fail" "$LOCAL_SW_CACHE" "$DEPLOYED_SW_CACHE"
+elif [ -n "$DEPLOYED_SW_CACHE_IN_HTML" ] && [ "$DEPLOYED_SW_CACHE" != "$DEPLOYED_SW_CACHE_IN_HTML" ]; then
+  check "SW ↔ HTML Cache-Name Mismatch" "fail" "$DEPLOYED_SW_CACHE_IN_HTML" "$DEPLOYED_SW_CACHE"
+else
+  check "SW Cache-Name ($DEPLOYED_SW_CACHE)" "pass" "" ""
+fi
 
 # ── 3. Worker B: Auth ─────────────────────────────────────────────────────────
 echo ""
@@ -85,7 +106,11 @@ AUTH_VER=$(echo "$AUTH_HEALTH" | grep -o '"version":"[^"]*"' | grep -o '"[^"]*"$
 
 [ -n "$AUTH_OK" ] && check "Auth Worker health ok" "pass" "" "" || check "Auth Worker health" "fail" "ok:true" "$AUTH_HEALTH"
 [ -n "$AUTH_KV" ] && check "Auth Worker KV ok" "pass" "" "" || check "Auth Worker KV" "fail" "kv:true" "$AUTH_HEALTH"
-[ "$AUTH_VER" = "$EXPECTED_AUTH_VERSION" ] && check "Auth Worker Version ($AUTH_VER)" "pass" "" "" || check "Auth Worker Version" "warn" "$EXPECTED_AUTH_VERSION" "$AUTH_VER"
+if echo "$AUTH_VER" | grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$"; then
+  check "Auth Worker Version ($AUTH_VER)" "pass" "" ""
+else
+  check "Auth Worker Version" "fail" "Format x.y.z" "${AUTH_VER:-nicht gefunden}"
+fi
 
 # License verify — invalid key should return valid:false
 LICENSE_RESP=$(curl -s -X POST "$WORKER_AUTH/license/verify" \
@@ -111,7 +136,11 @@ PROXY_VER=$(echo "$PROXY_HEALTH" | grep -o '"version":"[^"]*"' | grep -o '"[^"]*
 
 [ -n "$PROXY_OK" ] && check "Proxy Worker health ok" "pass" "" "" || check "Proxy Worker health" "fail" "ok:true" "$PROXY_HEALTH"
 [ -n "$PROXY_KV" ] && check "Proxy Worker KV ok" "pass" "" "" || check "Proxy Worker KV" "fail" "kv:true" "$PROXY_HEALTH"
-[ "$PROXY_VER" = "$EXPECTED_PROXY_VERSION" ] && check "Proxy Worker Version ($PROXY_VER)" "pass" "" "" || check "Proxy Worker Version" "warn" "$EXPECTED_PROXY_VERSION" "$PROXY_VER"
+if echo "$PROXY_VER" | grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$"; then
+  check "Proxy Worker Version ($PROXY_VER)" "pass" "" ""
+else
+  check "Proxy Worker Version" "fail" "Format x.y.z" "${PROXY_VER:-nicht gefunden}"
+fi
 
 # Proxy should reject unauthorized requests (401)
 PROXY_401=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$WORKER_PROXY/v1/databases" \
