@@ -7,7 +7,7 @@
  *   NOTION_CLIENT_ID
  *   NOTION_CLIENT_SECRET
  *   OAUTH_REDIRECT_URI   = https://financebird-auth.[subdomain].workers.dev/oauth/callback
- *   APP_URL              = https://siio-kunto.github.io/budget-app/financebird_v2.html
+ *   APP_URL              = https://financebird.app/financebird_v2.html
  *   FB_SHARED_SECRET     = [32-char random string]
  *   FB_ADMIN_SECRET      = [separate string for admin console]
  *   FEEDBACK_DB_ID       = Notion DB ID für Feedback

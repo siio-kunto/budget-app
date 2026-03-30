@@ -9,12 +9,33 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.6a.2026-03-28">
+<meta name="fb-version" content="2.6b.2026-03-28">
   <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FinanceBird">
 <meta name="theme-color" content="#2c1f0e">
 <script>
+// BUG-017: Ensure manifest has correct start_url for PWA install
+(function() {
+  const manifestData = {
+    name: 'FinanceBird',
+    short_name: 'FinanceBird',
+    start_url: '/financebird_v2.html',
+    display: 'standalone',
+    background_color: '#faf8f4',
+    theme_color: '#c4441a',
+    icons: [
+      { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  let link = document.querySelector('link[rel="manifest"]');
+  if (!link) { link = document.createElement('link'); link.rel = 'manifest'; document.head.appendChild(link); }
+  link.href = url;
+})();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
@@ -1075,6 +1096,8 @@ body.dark .inbox-card.overdue { background: rgba(200,146,42,.07); }
 .onboard-summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 .onboard-summary-row:last-child { border-bottom: none; }
 .onboard-summary-label { color: var(--muted); }
+@keyframes obPollProgress { from { width: 0% } to { width: 95% } }
+@keyframes spin { to { transform: rotate(360deg) } }
 .field-help-btn { display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--border);color:var(--muted);font-size:9px;font-weight:700;cursor:pointer;border:none;margin-left:5px;vertical-align:middle;line-height:1;flex-shrink:0;font-family:sans-serif }
 .field-help-btn:hover { background:var(--accent);color:white }
 .field-help-popup { position:fixed;z-index:9999;background:var(--ink);color:var(--bg);border-radius:10px;padding:12px 14px;max-width:260px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 20px rgba(0,0,0,.25);pointer-events:none;opacity:0;transition:opacity .15s }
@@ -1340,10 +1363,13 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="onboardNext('welcome','license')">
         Neu einrichten →
       </button>
-      <div style="margin-top:14px;text-align:center">
+      <div style="text-align:center;font-size:11.5px;color:var(--muted);margin-top:8px;margin-bottom:4px">
+        ca. 10–15 Min · einmalig · jederzeit anpassbar
+      </div>
+      <div style="margin-top:10px;text-align:center">
         <button class="btn btn-outline" style="font-size:13px;padding:10px 20px"
           onclick="document.getElementById('welcomePairingWrap').style.display=document.getElementById('welcomePairingWrap').style.display==='none'?'':'none'">
-          Neues Gerät koppeln
+          Weiteres Gerät einrichten
         </button>
         <div id="welcomePairingWrap" style="display:none;margin-top:12px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">6-stelligen Kopplungscode eingeben:</div>
@@ -1555,12 +1581,12 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         <div class="onboard-tile" id="obTileClock" onclick="obConnectClockify()">
           <div class="tile-icon">⏱</div>
           <div class="tile-label">Zeit & Projekte</div>
-          <div class="tile-sub">Clockify</div>
+          <div class="tile-sub">Clockify verbinden</div>
         </div>
         <div class="onboard-tile" id="obTileKi" onclick="obConnectKi()">
           <div class="tile-icon">🤖</div>
-          <div class="tile-label">KI</div>
-          <div class="tile-sub">Beleg-Scan</div>
+          <div class="tile-label">KI-Beleganalyse</div>
+          <div class="tile-sub">Claude API Key</div>
         </div>
       </div>
       <!-- Inline input areas (hidden by default) -->
@@ -1572,12 +1598,21 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       📁 Expenses / ${new Date().getFullYear()}</div>
         <div style="color:var(--muted);font-size:12px">FinanceBird erstellt einen Ordner in deinem Google Drive. Du kannst ihn danach frei verschieben oder umbenennen — die App findet ihn über die Folder-ID trotzdem.</div>
       </div>
-      <div id="obIntClockifyWrap" style="display:none;margin-top:12px">
+      <div id="obIntClockifyWrap" style="display:none;margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px">
+        <div style="font-size:12.5px;color:var(--ink2);margin-bottom:10px;line-height:1.5">
+          <strong>Wozu?</strong> Clockify trackt deine Zeit — FinanceBird macht daraus Stundensätze, Projektvergleiche und zeigt dir wie viel deiner Zeit wirklich bezahlt ist.<br>
+          <span style="color:var(--muted);font-size:11.5px">Key findest du unter: clockify.me → Profil → Profile Settings → API</span>
+        </div>
         <label class="form-label" style="font-size:12px">Clockify API Key</label>
         <input type="password" id="obClockifyKey" class="form-input" placeholder="API Key aus Profile Settings" style="margin-bottom:6px">
         <button class="btn btn-primary btn-sm" onclick="obSaveClockify()" style="width:100%">Speichern</button>
       </div>
-      <div id="obIntKiWrap" style="display:none;margin-top:12px">
+      <div id="obIntKiWrap" style="display:none;margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:10px">
+        <div style="font-size:12.5px;color:var(--ink2);margin-bottom:10px;line-height:1.5">
+          <strong>Wozu?</strong> Die KI liest deine Belege automatisch aus — Betrag, Datum, Händler, Kategorie. Spart Zeit beim Erfassen.<br>
+          <strong>Wie?</strong> Du bringst deinen eigenen Anthropic API Key mit. Kosten: ~0.01 CHF pro Beleg. Deine Daten gehen nie durch unsere Server.<br>
+          <span style="color:var(--muted);font-size:11.5px">Key unter: console.anthropic.com → API Keys → Create Key</span>
+        </div>
         <label class="form-label" style="font-size:12px">Claude API Key</label>
         <input type="password" id="obKiKey" class="form-input" placeholder="sk-ant-…" style="margin-bottom:6px">
         <button class="btn btn-primary btn-sm" onclick="obSaveKi()" style="width:100%">Speichern</button>
@@ -1586,8 +1621,17 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         Notion verbinden
       </button>
       <!-- Polling status (shown after OAuth) -->
-      <div id="obIntPolling" style="display:none;margin-top:14px;text-align:center;font-size:12px;color:var(--muted)">
-        <span id="obIntPollingStatus">Warte auf Notion-Verbindung…</span>
+      <div id="obIntPolling" style="display:none;margin-top:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:16px;height:16px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></div>
+          <span id="obIntPollingStatus" style="font-size:12.5px;color:var(--ink2)">Warte auf Notion-Verbindung…</span>
+        </div>
+        <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div id="obIntPollingBar" style="height:100%;width:0%;background:var(--accent);transition:width 1s ease;animation:obPollProgress 30s linear forwards"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">
+          Notion öffnet sich in einem neuen Tab oder Fenster. Schliesse es nach der Verbindung nicht — kehre hier zurück.
+        </div>
       </div>
       <div class="onboard-dots"><div class="onboard-dot done"></div><div class="onboard-dot done"></div><div class="onboard-dot active"></div><div class="onboard-dot"></div></div>
     </div>
@@ -2929,9 +2973,17 @@ const Auth = {
           const parentPageId = await findSharedParentPage();
           console.log(`[DB Setup] Parent page: ${parentPageId}`);
           if (parentPageId) {
-            showLoading(`Erstelle ${missing.length} Datenbanken…`);
-            const created = await createMissingDatabases(parentPageId, missing);
-            console.log(`[DB Setup] Created: ${created} DBs`);
+            // BUG-019: Wait briefly then re-discover — Notion search index may lag
+            await new Promise(r => setTimeout(r, 1500));
+            const recheck = await discoverDatabases();
+            const stillMissing = recheck.missing;
+            if (stillMissing.length > 0) {
+              showLoading(`Erstelle ${stillMissing.length} Datenbanken…`);
+              const created = await createMissingDatabases(parentPageId, stillMissing);
+              console.log(`[DB Setup] Created: ${created} DBs`);
+            } else {
+              console.log('[DB Setup] All DBs found after recheck — skipping creation');
+            }
           } else {
             console.warn('No shared parent page found — DB creation skipped');
             showToast('warning', '⚠️', 'Notion-Datenbanken', 'Bitte teile eine Seite mit der FinanceBird-Integration in Notion.');
@@ -4427,7 +4479,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.6a.2026-03-28';
+const APP_VERSION = '2.6b.2026-03-28';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -10552,8 +10604,8 @@ async function settingsGeneratePairing() {
   if (block) block.style.display = 'block';
   if (codeEl) codeEl.textContent = result.code.toUpperCase();
 
-  // URL + QR-Code (Audit-Fix K3)
-  const pairingUrl = window.location.origin + window.location.pathname;
+  // URL + QR-Code (Audit-Fix K3) — BUG-015: add ?pair=1 so recipient lands on pairing screen
+  const pairingUrl = window.location.origin + window.location.pathname + '?pair=1';
   const urlInput = document.getElementById('settingsPairingUrl');
   if (urlInput) urlInput.value = pairingUrl;
   if (qrEl) renderQrCodeSvg(pairingUrl, qrEl);
@@ -10592,8 +10644,10 @@ async function onboardFinish() {
   showLoading('Lade deine Daten…');
   try {
     // If DBs not yet configured, try discovery/creation one more time
+    // BUG-019: always re-discover immediately before creating — avoids duplicates if _applyToken already ran
     if (!dbsConfigured()) {
-      showLoading('Datenbanken einrichten…');
+      showLoading('Datenbanken prüfen…');
+      await new Promise(r => setTimeout(r, 800)); // brief wait for Notion index
       const { found, missing } = await discoverDatabases();
       if (missing.length > 0) {
         const parentPageId = await findSharedParentPage();
@@ -10602,6 +10656,8 @@ async function onboardFinish() {
           await createMissingDatabases(parentPageId, missing);
         }
       }
+    } else {
+      console.log('[onboardFinish] DBs already configured — skipping creation');
     }
     if (dbsConfigured()) {
       // Session 3: Create accounts from onboarding
@@ -10653,9 +10709,9 @@ const OB = {
   currency: 'CHF',
   accounts: loadLocal('fb_ob_accounts', []), // PATCH B10: restore after OAuth redirect
   notionConnected: false,
-  driveConnected: false,
-  clockifyConnected: false,
-  kiConnected: false,
+  driveConnected: !!sessionStorage.getItem('fb_gdrive_token'), // BUG-018: restore from session
+  clockifyConnected: !!loadLocal('fb_clockify_key', ''),       // BUG-018: restore from localStorage
+  kiConnected: !!loadLocal('fb_claude_key', ''),               // BUG-018: restore from localStorage
 };
 
 const OB_ACCOUNT_PRESETS = ['Bankkonto', 'PostFinance', 'Revolut', 'Bargeld', 'Kreditkarte'];
@@ -10875,9 +10931,13 @@ function obNotionConnected() {
 
 /* ── claimPairingCode (Welcome screen) ── */
 async function claimPairingCode() {
-  const code = (document.getElementById('welcomePairingInput')?.value || '').trim().toUpperCase();
+  // BUG-016: Worker returns {licenseKey, plan} — no token.
+  // Flow: claim code → save licenseKey → do own OAuth → normal app start
+  const code = (document.getElementById('welcomePairingInput')?.value || '').trim().toLowerCase();
   const errEl = document.getElementById('welcomePairingError');
   if (code.length !== 6) { if (errEl) errEl.textContent = 'Bitte 6-stelligen Code eingeben'; return; }
+  const btn = document.querySelector('#onboardMobilePairing .btn-primary');
+  if (btn) { btn.textContent = 'Prüfe Code…'; btn.disabled = true; }
   try {
     const resp = await fetch(Auth.FB_WORKER_AUTH + '/device/claim', {
       method: 'POST',
@@ -10885,32 +10945,27 @@ async function claimPairingCode() {
       body: JSON.stringify({ code })
     });
     const data = await resp.json();
-    if (data.success && data.token) {
-      AppState.notionToken = data.token;
-      AppState.authMode = 'oauth';
-      if (data.licenseKey) saveLocal('fb_license_key', data.licenseKey);
-      saveAppState();
-      saveLocal('fb_onboard_complete', true);
-      localStorage.removeItem('fb_onboard_step'); // PATCH B2: cleanup
-      showApp();
-      showLoading('Synchronisiere…');
-      if (!dbsConfigured()) {
-        const { found, missing } = await discoverDatabases();
-        if (missing.length > 0) {
-          const pid = await findSharedParentPage();
-          if (pid) await createMissingDatabases(pid, missing);
-        }
-      }
-      await fullSync();
-      hideLoading();
-      renderAll();
-      nav('cockpit');
-      showToast('success', '📱', 'Gerät gekoppelt', 'Willkommen!');
+    if (data.licenseKey) {
+      // Step 1: Save license key
+      saveLocal('fb_license_key', data.licenseKey);
+      // Step 2: Show "now connect Notion" screen
+      if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = '✅ Code korrekt! Verbinde jetzt Notion.'; }
+      if (btn) btn.textContent = '✅ Weiter';
+      // Short delay then start OAuth
+      setTimeout(() => {
+        showToast('success', '📱', 'Gerät erkannt', 'Verbinde jetzt Notion für dieses Gerät.');
+        Auth.startOAuth();
+      }, 1200);
     } else {
-      if (errEl) errEl.textContent = data.error || 'Code ungültig oder abgelaufen';
+      const msg = data.error === 'expired' ? 'Code abgelaufen — bitte neuen Code generieren'
+                : data.error === 'invalid_code' ? 'Code ungültig — bitte nochmals prüfen'
+                : data.error || 'Unbekannter Fehler';
+      if (errEl) { errEl.style.color = ''; errEl.textContent = msg; }
+      if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
     }
   } catch (e) {
     if (errEl) errEl.textContent = 'Verbindungsfehler: ' + e.message;
+    if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
   }
 }
 
@@ -11760,9 +11815,16 @@ function migrateLocalStorage() {
 
     // Reset-Flag: nach triggerReset() immer Welcome-Flow statt Pairing
     const resetPending = loadLocal('fb_reset_pending', false);
+    // BUG-015: ?pair=1 URL-Parameter → direkt auf Pairing-Screen (funktioniert in Browser + PWA)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasPairParam = urlParams.get('pair') === '1';
     if (resetPending) {
       localStorage.removeItem('fb_reset_pending');
       onboardNext(null, 'welcome');
+    } else if (hasPairParam) {
+      // Direkt-Einstieg über Pairing-Link oder QR-Code
+      saveLocal('fb_onboard_seen', true);
+      onboardNext(null, 'mobile-pairing');
     } else if (isPwa && !seen && !hasLicense) {
       // Installierte PWA ohne Setup — Kopplungscode-Screen
       saveLocal('fb_onboard_seen', true);
