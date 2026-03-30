@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.7f.2026-03-30">
+<meta name="fb-version" content="2.7g.2026-03-30">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -4540,7 +4540,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.7f.2026-03-30';
+const APP_VERSION = '2.7g.2026-03-30';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5776,6 +5776,23 @@ async function submitLicenseKey() {
     document.getElementById('licenseBanner')?.remove();
     document.getElementById('licenseKeyModal')?.remove();
     showToast('success', '✓', 'Lizenz aktiv', `Plan: ${result.plan || 'Standard'}`);
+    // DB-Setup nochmals triggern falls noch nicht konfiguriert
+    if (Auth.isAuthenticated && !dbsConfigured()) {
+      setTimeout(async () => {
+        showLoading('Datenbanken einrichten…');
+        try {
+          const { found, missing } = await discoverDatabases();
+          if (missing.length > 0) {
+            const parentPageId = await findSharedParentPage();
+            if (parentPageId) {
+              await createMissingDatabases(parentPageId, missing);
+              showToast('success', '🗄️', 'Datenbanken bereit', '');
+            }
+          }
+        } catch(e) { console.warn('DB setup after license fix:', e.message); }
+        hideLoading();
+      }, 300);
+    }
   } else {
     const msgs = {
       expired:       'Lizenz abgelaufen — bitte verlängern.',
@@ -6672,21 +6689,38 @@ async function erfSaveBuchung() {
   btn.disabled = true; btn.textContent = 'Speichert…';
   if (fbEl) fbEl.textContent = '';
 
+  // Prüfen ob Notion-DBs konfiguriert
+  if (!dbsConfigured()) {
+    if (fbEl) fbEl.textContent = 'Notion-Datenbanken nicht eingerichtet — bitte Setup abschliessen';
+    btn.disabled = false; btn.textContent = '✓ Speichern';
+    showToast('error', '⚠️', 'Nicht bereit', 'Bitte zuerst das Setup abschliessen (Notion verbinden).',
+      [], { label: 'Setup', fn: () => showSetup() }, 0);
+    return;
+  }
+
   // Upload receipt if present
   let receiptFile = null, receiptLink = null;
   if (Erf.receipt) {
-    const ext = Erf.receipt.isPDF ? 'pdf' : (Erf.receipt.filename?.split('.').pop() || 'jpg');
-    const filename = erfBuildFilename(ext, date, amt, Erf.cat, desc);
-    btn.textContent = '📤 Beleg hochladen…';
-    try {
-      const up = await erfUploadReceipt(filename);
-      receiptFile = up.filename;
-      receiptLink = up.link;
-    } catch (e) {
-      console.warn('Receipt upload failed:', e.message);
-      showToast('warning', '☁️', 'Beleg-Upload fehlgeschlagen', 'Buchung wird trotzdem gespeichert');
+    const gdriveToken = sessionStorage.getItem('fb_gdrive_token');
+    if (!gdriveToken) {
+      showToast('warning', '☁️', 'Google Drive nicht verbunden',
+        'Beleg kann nicht hochgeladen werden — Buchung wird ohne Beleg gespeichert.',
+        [], { label: 'Drive verbinden', fn: () => nav('einstellungen') });
+      Erf.receipt = null; // Beleg überspringen, Buchung trotzdem speichern
+    } else {
+      const ext = Erf.receipt.isPDF ? 'pdf' : (Erf.receipt.filename?.split('.').pop() || 'jpg');
+      const filename = erfBuildFilename(ext, date, amt, Erf.cat, desc);
+      btn.textContent = '📤 Beleg hochladen…';
+      try {
+        const up = await erfUploadReceipt(filename);
+        receiptFile = up.filename;
+        receiptLink = up.link;
+      } catch (e) {
+        console.warn('Receipt upload failed:', e.message);
+        showToast('warning', '☁️', 'Beleg-Upload fehlgeschlagen', 'Buchung wird trotzdem gespeichert');
+      }
+      btn.textContent = 'Speichert…';
     }
-    btn.textContent = 'Speichert…';
   }
 
   const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
@@ -7088,6 +7122,7 @@ function erfShowReceiptUI(thumb, filename, isPDF, context) {
   if (zoneId) document.getElementById(zoneId).style.display = 'none';
   const preview = document.getElementById(previewId);
   if (!preview) return;
+  preview.style.display = ''; // Preview sichtbar machen
   preview.innerHTML = `
     <div class="erf-receipt-preview">
       ${thumb ? `<img class="erf-receipt-thumb" src="${thumb}" alt="Beleg">` :
@@ -10427,6 +10462,20 @@ function showQuizAfterAuth() {
     if (!AppState.country) { AppState.country = 'CH'; AppState.currency = 'CHF'; }
     saveAppState();
     saveLocal('fb_onboard_complete', true);
+    localStorage.removeItem('fb_onboard_step'); // Alten Step aus vorherigem Setup clearen
+    showApp();
+    restoreTab();
+    return;
+  }
+  // Pairing auch wenn savedStep noch gesetzt ist aber pair-param in URL war
+  const urlParamsCheck = new URLSearchParams(window.location.search);
+  const wasPairing = urlParamsCheck.get('pair') && urlParamsCheck.get('pair') !== '1';
+  if (wasPairing && hasLicense) {
+    if (!AppState.lang)    { AppState.lang = 'de'; }
+    if (!AppState.country) { AppState.country = 'CH'; AppState.currency = 'CHF'; }
+    saveAppState();
+    saveLocal('fb_onboard_complete', true);
+    localStorage.removeItem('fb_onboard_step');
     showApp();
     restoreTab();
     return;
