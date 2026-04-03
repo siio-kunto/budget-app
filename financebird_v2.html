@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.13a.2026-04-03">
+<meta name="fb-version" content="2.14a.2026-04-03">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -4436,7 +4436,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.13a.2026-04-03';
+const APP_VERSION = '2.14a.2026-04-03';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -6559,9 +6559,9 @@ async function erfSaveBuchung() {
       receiptLink = up.link;
     } catch (e) {
       console.warn('Receipt upload failed:', e.message);
-      showToast('warning', '☁️', 'Beleg-Upload fehlgeschlagen',
-        e.message || 'Buchung wird trotzdem gespeichert.',
-        [], { label: 'Drive verbinden', fn: () => nav('einstellungen') });
+      showToast('warning', '☁\uFE0F', 'Beleg-Upload fehlgeschlagen',
+        'Beleg konnte nicht hochgeladen werden. Buchung wurde ohne Beleg gespeichert.',
+        [], { label: 'Drive verbinden', fn: () => nav('einstellungen') }, 6000);
     }
     btn.textContent = 'Speichert…';
   }
@@ -8307,7 +8307,7 @@ function renderBuchungenHTML() {
           <col style="width:88px"><col style="width:22%"><col style="width:14%">
           <col style="width:70px"><col style="width:12%"><col style="width:12%">
           <col style="width:88px"><col style="width:80px"><col style="width:52px">
-          <col style="width:44px"><col style="width:68px">
+          <col style="width:44px"><col style="width:120px">
         </colgroup>
         <thead><tr>
           <th>Datum</th><th>Beschreibung</th><th>Gegenpartei</th>
@@ -8389,7 +8389,7 @@ function buchungRowHTML(b) {
         : b.receiptLink
           ? `<a href="${b.receiptLink}" target="_blank" style="font-size:14px">📄</a>`
           : b.receiptFile ? `<span style="font-size:14px" title="${b.receiptFile}">📎</span>` : '—'}</td>
-      <td style="white-space:nowrap">
+      <td style="white-space:nowrap;overflow:visible">
         ${b.categoryStatus === 'vorgeschlagen' ? `<button class="btn btn-outline btn-sm" onclick="confirmBuchungCategory('${b._id}')" title="Kategorie bestätigen" style="color:var(--green)">✓</button>` : ''}
         <button class="btn btn-outline btn-sm" onclick="toggleBuchungDetail('${b._id}')" title="Details">…</button>
         <button class="btn btn-outline btn-sm" onclick="openErfassenEdit('${b._id}')" title="Bearbeiten">✏️</button>
@@ -9945,60 +9945,84 @@ function compressForAI(dataURL, cb) {
   img.src = dataURL;
 }
 
-/**
- * Analyse Beleg with Claude Vision API.
- * Called from Erfassen overlay when file is attached.
- * Fills form fields automatically, shows confidence indicators.
- */
-async function analyseBeleg(imageDataUrl, isPDF = false) {
+/* ══════════════════════════════════════════════════════
+   VISION INTERFACE + CLAUDE ADAPTER (S14 — Abstraktionsschicht)
+   VisionInterface: backend-agnostisch
+   ClaudeAdapter: Anthropic-spezifisch
+   ══════════════════════════════════════════════════════ */
+
+const VisionInterface = {
+  /** Analysiere Beleg-Bild/-PDF → strukturierte Daten */
+  async analyseReceipt(imageData, options) {
+    // imageData: { type: 'image'|'pdf', base64: '...', mediaType: 'image/jpeg'|'application/pdf' }
+    // options: { categories: [...], today: 'YYYY-MM-DD', language: 'de' }
+    // Returns: { betrag, datum, gegenpartei, beschreibung, kategorie, bereich, typ,
+    //            originalWaehrung, originalBetrag, konfidenz: {...} }
+    throw new Error('Not implemented');
+  },
+  /** Text-Completion (z.B. CSV-Mapping) → parsed JSON */
+  async complete(prompt, options) {
+    // prompt: string, options: { maxTokens: 600 }
+    // Returns: parsed JSON or raw text
+    throw new Error('Not implemented');
+  },
+  /** Ist ein API-Key konfiguriert? */
+  isConfigured() { return false; },
+  /** API-Key validieren (lightweight check) */
+  async validateKey() { return false; },
+  /** Provider-Name für UI */
+  getProviderName() { return 'Unknown'; },
+};
+
+const ClaudeAdapter = Object.create(VisionInterface);
+
+ClaudeAdapter.isConfigured = function() {
+  return !!loadLocal('fb_claude_key', '');
+};
+
+ClaudeAdapter.getProviderName = function() {
+  return 'Claude (Anthropic)';
+};
+
+ClaudeAdapter.validateKey = async function() {
   const apiKey = loadLocal('fb_claude_key', '');
-  if (!apiKey) return; // silently skip — no key
+  if (!apiKey) return false;
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+      signal: AbortSignal.timeout(5000),
+    });
+    return resp.ok || resp.status === 400;
+  } catch { return false; }
+};
 
-  const statusEl = document.getElementById('erfAiStatus');
-  if (statusEl) statusEl.textContent = '⚡ KI liest Beleg…';
-  showAiAnalysis();
+ClaudeAdapter.analyseReceipt = async function(imageData, options) {
+  const apiKey = loadLocal('fb_claude_key', '');
+  if (!apiKey) throw new Error('Kein API-Key konfiguriert');
 
-  const allCats = [...CATEGORIES_20, ...CATS_PRIVATE];
-  const today   = toDay();
   const msgContent = [];
 
+  if (imageData.type === 'pdf') {
+    if (imageData.base64.length * 0.75 / 1024 > 4500) {
+      throw new Error('PDF zu gross f\u00fcr KI (>4.5MB)');
+    }
+    msgContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: imageData.base64 } });
+  } else {
+    msgContent.push({ type: 'image', source: { type: 'base64', media_type: imageData.mediaType || 'image/jpeg', data: imageData.base64 } });
+  }
+
+  msgContent.push({ type: 'text', text: buildReceiptPrompt(options) });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    if (isPDF && Erf.receipt?.original) {
-      const pdfB64 = Erf.receipt.original.split(',')[1];
-      if (pdfB64.length * 0.75 / 1024 > 4500) {
-        hideAiAnalysis();
-        if (statusEl) statusEl.textContent = '⚠️ PDF zu gross für KI (>4.5MB)';
-        return;
-      }
-      msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:pdfB64 } });
-    } else if (imageDataUrl) {
-      await new Promise(resolve => {
-        compressForAI(Erf.receipt?.original || imageDataUrl, compressed => {
-          msgContent.push({ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:compressed.split(',')[1] } });
-          resolve();
-        });
-      });
-    } else { hideAiAnalysis(); return; }
-
-    msgContent.push({ type:'text', text:`Du bist ein Finanzassistent für Schweizer Selbständige.
-Analysiere diesen Beleg. Antworte NUR mit einem JSON-Objekt.
-
-Felder:
-- betrag: Zahl (CHF Endbetrag)
-- datum: "YYYY-MM-DD" (heute: ${today})
-- gegenpartei: String (Lieferant/Firmenname)
-- beschreibung: String (was gekauft, max 50 Zeichen)
-- kategorie: exakt aus: ${JSON.stringify(allCats)}
-- bereich: "Geschäftlich" oder "Privat"
-- typ: "Ausgabe" oder "Einnahme"
-- originalWaehrung: ISO-Code wenn nicht CHF, sonst null
-- originalBetrag: Zahl in Originalwährung wenn nicht CHF, sonst null
-- konfidenz: { betrag, datum, gegenpartei, kategorie } je "high"/"mid"/"low"
-
-Antworte nur mit dem JSON.` });
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       signal: controller.signal,
@@ -10009,17 +10033,116 @@ Antworte nur mit dem JSON.` });
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', // V14: haiku statt opus (günstiger, schneller)
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 600,
         messages: [{ role: 'user', content: msgContent }],
       }),
     });
     clearTimeout(timeout);
 
-    if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error?.message || resp.statusText); }
-    const data   = await resp.json();
-    const raw    = data.content?.[0]?.text || '';
-    const parsed = JSON.parse(raw.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim());
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || resp.statusText);
+    }
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '';
+    return JSON.parse(raw.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim());
+  } catch (e) {
+    clearTimeout(timeout);
+    throw e;
+  }
+};
+
+ClaudeAdapter.complete = async function(prompt, options = {}) {
+  const apiKey = loadLocal('fb_claude_key', '');
+  if (!apiKey) throw new Error('Kein API-Key konfiguriert');
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: options.model || 'claude-haiku-4-5-20251001',
+      max_tokens: options.maxTokens || 600,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(options.timeout || 15000),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || resp.statusText);
+  }
+  const data = await resp.json();
+  const raw = data.content?.[0]?.text || '';
+
+  if (options.json !== false) {
+    return JSON.parse(raw.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim());
+  }
+  return raw;
+};
+
+/** Build the receipt analysis prompt (shared across vision adapters) */
+function buildReceiptPrompt(options) {
+  const cats = options.categories || [];
+  const today = options.today || toDay();
+  return `Du bist ein Finanzassistent f\u00fcr Schweizer Selbst\u00e4ndige.
+Analysiere diesen Beleg. Antworte NUR mit einem JSON-Objekt.
+
+Felder:
+- betrag: Zahl (CHF Endbetrag)
+- datum: "YYYY-MM-DD" (heute: ${today})
+- gegenpartei: String (Lieferant/Firmenname)
+- beschreibung: String (was gekauft, max 50 Zeichen)
+- kategorie: exakt aus: ${JSON.stringify(cats)}
+- bereich: "Gesch\u00e4ftlich" oder "Privat"
+- typ: "Ausgabe" oder "Einnahme"
+- originalWaehrung: ISO-Code wenn nicht CHF, sonst null
+- originalBetrag: Zahl in Originalw\u00e4hrung wenn nicht CHF, sonst null
+- konfidenz: { betrag, datum, gegenpartei, kategorie } je "high"/"mid"/"low"
+
+Antworte nur mit dem JSON.`;
+}
+
+/** Return the active vision adapter (Phase 0.5: always Claude) */
+function getActiveVisionAdapter() {
+  // Phase 1: if (loadLocal('fb_vision_provider') === 'openai') return OpenAIAdapter;
+  return ClaudeAdapter;
+}
+
+/**
+ * Analyse Beleg via VisionInterface adapter.
+ * Called from Erfassen overlay when file is attached.
+ * Fills form fields automatically, shows confidence indicators.
+ */
+async function analyseBeleg(imageDataUrl, isPDF = false) {
+  const vision = getActiveVisionAdapter();
+  if (!vision || !vision.isConfigured()) return; // silently skip — no key
+
+  const statusEl = document.getElementById('erfAiStatus');
+  if (statusEl) statusEl.textContent = '⚡ KI liest Beleg…';
+  showAiAnalysis();
+
+  try {
+    let imageData;
+    if (isPDF && Erf.receipt?.original) {
+      imageData = { type: 'pdf', base64: Erf.receipt.original.split(',')[1] };
+    } else if (imageDataUrl) {
+      const compressed = await new Promise(resolve => {
+        compressForAI(Erf.receipt?.original || imageDataUrl, resolve);
+      });
+      imageData = { type: 'image', base64: compressed.split(',')[1], mediaType: 'image/jpeg' };
+    } else { hideAiAnalysis(); return; }
+
+    const parsed = await vision.analyseReceipt(imageData, {
+      categories: [...CATEGORIES_20, ...CATS_PRIVATE],
+      today: toDay(),
+      language: AppState.lang || 'de',
+    });
 
     hideAiAnalysis();
     if (statusEl) statusEl.textContent = '✅ KI hat Beleg gelesen';
@@ -10202,7 +10325,7 @@ async function healthCheck(level = 'instant') {
   result.notion.token_present = !!AppState.notionToken;
   result.gdrive.token_present = !!loadLocal('fb_gdrive_parent', null); // S12 BUG-035: localStorage-basiert
   result.clockify.key_present = !!loadLocal('fb_clockify_key', '');
-  result.claude.key_present   = !!loadLocal('fb_claude_key', '');
+  result.claude.key_present   = ClaudeAdapter.isConfigured();
   result.infra.online         = navigator.onLine;
 
   if (level === 'instant') return result;
@@ -10248,12 +10371,9 @@ async function healthCheck(level = 'instant') {
     }).then(r => { result.clockify.key_valid = r.ok; }).catch(() => { result.clockify.key_valid = false; }));
   }
   if (result.claude.key_present) {
-    dp.push(fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': loadLocal('fb_claude_key', ''), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
-      signal: AbortSignal.timeout(5000)
-    }).then(r => { result.claude.key_valid = r.ok || r.status === 400; }).catch(() => { result.claude.key_valid = false; }));
+    dp.push(ClaudeAdapter.validateKey().then(valid => {
+      result.claude.key_valid = valid;
+    }).catch(() => { result.claude.key_valid = false; }));
   }
   await Promise.allSettled(dp);
   return result;
@@ -12368,10 +12488,10 @@ function csvAutoMap() {
   CSV.mapping = map;
 }
 
-/* ── AI Mapping ── */
+/* ── AI Mapping (via ClaudeAdapter) ── */
 async function csvRunAIMapping() {
-  const apiKey = loadLocal('fb_claude_key', '');
-  if (!apiKey) {
+  const vision = getActiveVisionAdapter();
+  if (!vision || !vision.isConfigured()) {
     document.getElementById('csvAiStatus').innerHTML =
       '<span style="color:var(--amber)">⚠️ Kein Claude API Key — manuelle Zuordnung nutzen</span>';
     csvRenderMappingEditor();
@@ -12409,19 +12529,7 @@ Ordne die Spalten diesen FinanceBird-Feldern zu. Antworte NUR mit JSON, kein Tex
 Regeln: Nur exakte Spaltennamen verwenden. Leerer String wenn keine passende Spalte.`;
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-api-key': apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
-        messages: [{ role:'user', content: prompt }],
-      }),
-    });
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || '';
-    const json = text.replace(/```json|```/g,'').trim();
-    const mapping = JSON.parse(json);
+    const mapping = await vision.complete(prompt, { maxTokens: 400 });
     // Validate: only known headers
     Object.keys(mapping).forEach(k => {
       if (mapping[k] && !CSV.headers.includes(mapping[k])) mapping[k] = '';
