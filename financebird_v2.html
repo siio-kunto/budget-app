@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.14d.2026-04-03">
+<meta name="fb-version" content="2.15a.2026-04-03">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,8 +29,8 @@
     background_color: '#faf8f4',
     theme_color: '#c4441a',
     icons: [
-      { src: _base + 'icon-192.png', sizes: '192x192', type: 'image/png' },
-      { src: _base + 'icon-512.png', sizes: '512x512', type: 'image/png' }
+      { src: _base + 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: _base + 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
     ]
   };
   const blob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
@@ -4696,7 +4696,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.14d.2026-04-03';
+const APP_VERSION = '2.15a.2026-04-03';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
