@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.14a.2026-04-03">
+<meta name="fb-version" content="2.14d.2026-04-03">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3027,6 +3027,21 @@ const DataLayerInterface = {
   async createZiel(data)               { throw new Error('Not implemented'); },
   async updateZiel(id, data)           { throw new Error('Not implemented'); },
   async deleteZiel(id)                 { throw new Error('Not implemented'); },
+
+  /* Restore (un-archive) */
+  async restoreBooking(id)             { throw new Error('Not implemented'); },
+  async restoreInvoice(id)             { throw new Error('Not implemented'); },
+  async restoreTransfer(id)            { throw new Error('Not implemented'); },
+
+  /* Setup & Infrastructure */
+  async setup(config)                  { throw new Error('Not implemented'); },
+  async validateConnection()           { throw new Error('Not implemented'); },
+  async ensureSchema()                 { throw new Error('Not implemented'); },
+
+  /* Settings (device-level + key-value) */
+  async saveDeviceSettings(settings)   { throw new Error('Not implemented'); },
+  async loadDeviceSettings()           { throw new Error('Not implemented'); },
+  async saveSetting(key, value)        { throw new Error('Not implemented'); },
 };
 
 /**
@@ -3046,6 +3061,104 @@ const TimeAdapterInterface = {
     throw new Error('Not implemented');
   }
 };
+
+/* ══════════════════════════════════════════════════════
+   STORAGE INTERFACE + GDRIVE ADAPTER (S14 — Abstraktionsschicht)
+   StorageInterface: backend-agnostisch (Beleg-Ablage)
+   GDriveAdapter: Google Drive-spezifisch
+   ══════════════════════════════════════════════════════ */
+
+const StorageInterface = {
+  /** Beleg hochladen → {link, id, filename} */
+  async uploadReceipt(blob, filename, options) {
+    // options: { year: '2026', bereich: 'business'|'private', type: 'income'|'expense' }
+    throw new Error('Not implemented');
+  },
+  /** Ordnerstruktur sicherstellen */
+  async ensureFolders(config) { throw new Error('Not implemented'); },
+  /** Ist Storage verbunden? */
+  isConnected() { return false; },
+  /** Storage-Verbindung validieren (API-Call) */
+  async validateConnection() { return false; },
+  /** Provider-Name */
+  getProviderName() { return 'Unknown'; },
+};
+
+const GDriveAdapter = Object.create(StorageInterface);
+
+GDriveAdapter.isConnected = function() {
+  return !!loadLocal('fb_gdrive_parent', null);
+};
+
+GDriveAdapter.getProviderName = function() {
+  return 'Google Drive';
+};
+
+GDriveAdapter.validateConnection = async function() {
+  const token = sessionStorage.getItem('fb_gdrive_token');
+  if (!token) return false;
+  try {
+    const resp = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: AbortSignal.timeout(3000),
+    });
+    return resp.ok;
+  } catch { return false; }
+};
+
+GDriveAdapter.uploadReceipt = async function(blob, filename, options = {}) {
+  const token  = await getGDriveToken();
+  const year   = options.year || new Date().getFullYear().toString();
+  const cfg    = getGDriveConfig();
+  const isPrivate = options.bereich === 'private';
+  const isIncome  = options.type === 'income';
+  const fKey   = (isPrivate ? 'private' : 'business') + '_' + (isIncome ? 'in' : 'out');
+
+  // Build folder hierarchy — Folder Targets: use cached IDs where available
+  const rootId    = await getGDriveParent();
+  const tierName  = isPrivate ? 'Private' : 'Business';
+  const tierKey   = isPrivate ? 'private_tier' : 'business_tier';
+  let tierId = loadLocal('fb_gdrive_tier_' + tierKey, null);
+  if (!tierId) {
+    tierId = await getOrCreateFolderInParent(token, tierName, rootId);
+    saveLocal('fb_gdrive_tier_' + tierKey, tierId);
+  }
+  const folderName = cfg.folders[fKey]?.name || (isIncome ? 'Income' : 'Expenses');
+  const dirId      = await getOrCreateFolderInParent(token, folderName, tierId);
+  const yearId     = await getOrCreateFolderInParent(token, year, dirId);
+
+  // Upload
+  const meta = { name: filename, parents: [yearId] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', blob, filename);
+  const upload = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form }
+  );
+  const file = await upload.json();
+  if (file.error) throw new Error(file.error.message);
+
+  // Make publicly readable
+  await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/permissions`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+  });
+
+  return { filename: file.name, link: file.webViewLink, id: file.id };
+};
+
+GDriveAdapter.ensureFolders = async function(config) {
+  // Trigger root folder creation (validates connection + creates base structure)
+  await getGDriveParent();
+};
+
+/** Return the active storage adapter (Phase 0.5: always GDrive) */
+function getActiveStorageAdapter() {
+  // Phase 2: basierend auf loadLocal('fb_storage_provider')
+  return GDriveAdapter;
+}
 
 
 /* ════════════════════════════════════════════════════════════
@@ -3247,10 +3360,14 @@ async function uploadToGDrive(dataURL, filename, isPDF) {
   const dirId      = await getOrCreateFolderInParent(token, folderName, tierId);
   // Year tier
   const yearId     = await getOrCreateFolderInParent(token, year, dirId);
-  // Upload file
-  const res  = await fetch(dataURL); const blob = await res.blob();
+  // Upload file — BUG-045 fix: direct base64→Blob (CSP blocks fetch on data: URIs)
+  const base64 = dataURL.split(',')[1];
+  const byteChars = atob(base64);
+  const byteArray = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
   const mime = isPDF ? 'application/pdf'
     : dataURL.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+  const blob = new Blob([byteArray], { type: mime });
   const meta = { name: filename, parents: [yearId] };
   const form = new FormData();
   form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
@@ -3866,36 +3983,12 @@ NotionAdapter.getBookings = async function(filter = null) {
   return pages.map(parseBuchung);
 };
 
-NotionAdapter.createBooking = async function(data) {
-  const props = bookingToProps(data);
-  return notionCreate(DB.BUCHUNGEN, props);
-};
-
-NotionAdapter.updateBooking = async function(id, data) {
-  const props = bookingToProps(data);
-  return notionUpdate(id, props);
-};
-
-NotionAdapter.deleteBooking = async function(id) {
-  return notionArchive(id);
-};
+// S14: create/update/delete/restore methods are defined below (with Queue support + partial updates)
 
 NotionAdapter.getInvoices = async function(filter = null) {
   const pages = await notionQueryAll(DB.RECHNUNGEN, filter,
     [{ property: 'Datum', direction: 'descending' }]);
   return pages.map(parseRechnung);
-};
-
-NotionAdapter.createInvoice = async function(data) {
-  return notionCreate(DB.RECHNUNGEN, invoiceToProps(data));
-};
-
-NotionAdapter.updateInvoice = async function(id, data) {
-  return notionUpdate(id, invoiceToProps(data));
-};
-
-NotionAdapter.deleteInvoice = async function(id) {
-  return notionArchive(id);
 };
 
 NotionAdapter.getTransfers = async function(filter = null) {
@@ -3904,34 +3997,10 @@ NotionAdapter.getTransfers = async function(filter = null) {
   return pages.map(parseTransfer);
 };
 
-NotionAdapter.createTransfer = async function(data) {
-  return notionCreate(DB.TRANSFERS, transferToProps(data));
-};
-
-NotionAdapter.updateTransfer = async function(id, data) {
-  return notionUpdate(id, transferToProps(data));
-};
-
-NotionAdapter.deleteTransfer = async function(id) {
-  return notionArchive(id);
-};
-
 NotionAdapter.getProjekte = async function(filter = null) {
   const pages = await notionQueryAll(DB.PROJEKTE, filter,
     [{ property: 'Name', direction: 'ascending' }]);
   return pages.map(parseProjekt).filter(p => p.aktiv);
-};
-
-NotionAdapter.createProjekt = async function(data) {
-  return notionCreate(DB.PROJEKTE, projektToProps(data));
-};
-
-NotionAdapter.updateProjekt = async function(id, data) {
-  return notionUpdate(id, projektToProps(data));
-};
-
-NotionAdapter.deleteProjekt = async function(id) {
-  return notionUpdate(id, { 'Aktiv': { checkbox: false } });
 };
 
 NotionAdapter.getKonten = async function() {
@@ -3940,34 +4009,10 @@ NotionAdapter.getKonten = async function() {
   return pages.map(parseKonto).filter(k => k.active);
 };
 
-NotionAdapter.createKonto = async function(data) {
-  return notionCreate(DB.KONTEN, kontoToProps(data));
-};
-
-NotionAdapter.updateKonto = async function(id, data) {
-  return notionUpdate(id, kontoToProps(data));
-};
-
-NotionAdapter.deleteKonto = async function(id) {
-  return notionUpdate(id, { 'Aktiv': { checkbox: false } });
-};
-
 NotionAdapter.getRecurrings = async function() {
   const pages = await notionQueryAll(DB.RECURRINGS, null,
     [{ property: 'Name', direction: 'ascending' }]);
   return pages.map(parseRecurring);
-};
-
-NotionAdapter.createRecurring = async function(data) {
-  return notionCreate(DB.RECURRINGS, recurringToProps(data));
-};
-
-NotionAdapter.updateRecurring = async function(id, data) {
-  return notionUpdate(id, recurringToProps(data));
-};
-
-NotionAdapter.deleteRecurring = async function(id) {
-  return notionArchive(id);
 };
 
 NotionAdapter.getEinstellungen = async function() {
@@ -4007,6 +4052,234 @@ NotionAdapter.getZiele = async function() { return []; };
 NotionAdapter.createZiel = async function(data) { throw new Error('Ziele DB not yet configured'); };
 NotionAdapter.updateZiel = async function(id, data) { throw new Error('Ziele DB not yet configured'); };
 NotionAdapter.deleteZiel = async function(id) { throw new Error('Ziele DB not yet configured'); };
+
+/* ── S14: CRUD methods (delegate to toProps + notionCreate/Update/Archive) ── */
+
+NotionAdapter.createBooking = async function(data) {
+  const props = bookingToProps(data);
+  return writeWithQueue(DB.BUCHUNGEN, props, { desc: data.desc || 'booking', type: 'buchung', parsedObj: data });
+};
+
+NotionAdapter.updateBooking = async function(id, data) {
+  // data can be partial — only changed fields
+  // If only simple fields (e.g. {bezahlt: true}), build props directly
+  if (data.bezahlt !== undefined && Object.keys(data).length === 1) {
+    return updateWithQueue(id, { 'Bezahlt': { checkbox: !!data.bezahlt } }, { desc: 'toggle-paid', type: 'buchung' });
+  }
+  if (data.categoryStatus !== undefined && Object.keys(data).length === 1) {
+    return updateWithQueue(id, { 'Kategorie-Status': { select: { name: data.categoryStatus } } }, { desc: 'confirm-category', type: 'buchung' });
+  }
+  const props = bookingToProps(data);
+  return notionUpdate(id, props);
+};
+
+NotionAdapter.deleteBooking = async function(id) { return notionArchive(id); };
+
+NotionAdapter.restoreBooking = async function(id) {
+  return notionFetch('/pages/' + id, 'PATCH', { archived: false });
+};
+
+NotionAdapter.createInvoice = async function(data) {
+  const props = invoiceToProps(data);
+  return writeWithQueue(DB.RECHNUNGEN, props, { desc: data.nr || 'invoice', type: 'rechnung', parsedObj: data });
+};
+
+NotionAdapter.updateInvoice = async function(id, data) {
+  // Partial update shortcuts (Inbox actions)
+  if (data._partial) {
+    return updateWithQueue(id, data._partial, { label: data._label || 'invoice-update', entity: 'rechnung' });
+  }
+  const props = invoiceToProps(data);
+  return notionUpdate(id, props);
+};
+
+NotionAdapter.deleteInvoice = async function(id) { return notionArchive(id); };
+
+NotionAdapter.restoreInvoice = async function(id) {
+  return notionFetch('/pages/' + id, 'PATCH', { archived: false });
+};
+
+NotionAdapter.createTransfer = async function(data) {
+  const props = transferToProps(data);
+  return writeWithQueue(DB.TRANSFERS, props, { desc: data.desc || 'transfer', type: 'transfer', parsedObj: data });
+};
+
+NotionAdapter.updateTransfer = async function(id, data) {
+  const props = transferToProps(data);
+  return notionUpdate(id, props);
+};
+
+NotionAdapter.deleteTransfer = async function(id) { return notionArchive(id); };
+
+NotionAdapter.restoreTransfer = async function(id) {
+  return notionFetch('/pages/' + id, 'PATCH', { archived: false });
+};
+
+NotionAdapter.createProjekt = async function(data) {
+  const props = projektToProps(data);
+  return notionCreate(DB.PROJEKTE, props);
+};
+
+NotionAdapter.updateProjekt = async function(id, data) {
+  const props = projektToProps(data);
+  return notionUpdate(id, props);
+};
+
+NotionAdapter.deleteProjekt = async function(id) { return notionArchive(id); };
+
+NotionAdapter.createKonto = async function(data) {
+  const props = kontoToProps(data);
+  return writeWithQueue(DB.KONTEN, props, { desc: data.name || 'konto', type: 'konto' });
+};
+
+NotionAdapter.updateKonto = async function(id, data) {
+  const props = kontoToProps(data);
+  return notionUpdate(id, props);
+};
+
+NotionAdapter.deleteKonto = async function(id) { return notionArchive(id); };
+
+NotionAdapter.createRecurring = async function(data) {
+  const props = recurringToProps(data);
+  return notionCreate(DB.RECURRINGS, props);
+};
+
+NotionAdapter.updateRecurring = async function(id, data) {
+  const props = recurringToProps(data);
+  if (data._queued) {
+    return updateWithQueue(id, props, { label: data._label || 'recurring-update', entity: 'recurring' });
+  }
+  return notionUpdate(id, props);
+};
+
+NotionAdapter.deleteRecurring = async function(id) { return notionArchive(id); };
+
+/* ── S14: Settings methods ── */
+
+NotionAdapter.saveDeviceSettings = async function(settings) {
+  if (!DB.EINSTELLUNGEN) return;
+  const props = {
+    'Land':     { rich_text: [{ text: { content: settings.land || '' } }] },
+    'Waehrung': { rich_text: [{ text: { content: settings.waehrung || '' } }] },
+    'Sprache':  { rich_text: [{ text: { content: settings.sprache || '' } }] },
+    'Konten':   { rich_text: [{ text: { content: settings.konten || '' } }] },
+    'Clockify': { rich_text: [{ text: { content: settings.clockify_key || '' } }] },
+    'Claude':   { rich_text: [{ text: { content: settings.claude_key || '' } }] },
+  };
+  const existing = await notionFetch('/databases/' + DB.EINSTELLUNGEN + '/query', 'POST', { page_size: 1 });
+  if (existing.results && existing.results.length > 0) {
+    await notionFetch('/pages/' + existing.results[0].id, 'PATCH', { properties: props });
+  } else {
+    props['Name'] = { title: [{ text: { content: 'Device Settings' } }] };
+    await notionFetch('/pages', 'POST', { parent: { database_id: DB.EINSTELLUNGEN }, properties: props });
+  }
+};
+
+NotionAdapter.loadDeviceSettings = async function() {
+  if (!DB.EINSTELLUNGEN) return null;
+  const resp = await notionFetch('/databases/' + DB.EINSTELLUNGEN + '/query', 'POST', { page_size: 1 });
+  if (!resp.results || !resp.results.length) return null;
+  const props = resp.results[0].properties;
+  const gt = (p) => p?.rich_text?.[0]?.plain_text || '';
+  return {
+    land: gt(props['Land']),
+    waehrung: gt(props['Waehrung']),
+    sprache: gt(props['Sprache']),
+    konten: gt(props['Konten']),
+    clockify: gt(props['Clockify']),
+    claude: gt(props['Claude']),
+  };
+};
+
+NotionAdapter.saveSetting = async function(key, value) {
+  if (!DB.EINSTELLUNGEN) return;
+  const searchResp = await notionFetch('/databases/' + DB.EINSTELLUNGEN + '/query', 'POST', {
+    filter: { property: 'Key', title: { equals: key } }, page_size: 1
+  });
+  const existing = searchResp?.results?.[0];
+  const valProps = { 'Value': { rich_text: [{ text: { content: String(value) } }] } };
+  if (existing) {
+    await updateWithQueue(existing.id, valProps, { desc: key, type: 'einstellungen' });
+  } else {
+    await writeWithQueue(DB.EINSTELLUNGEN, {
+      'Key': { title: [{ text: { content: key } }] },
+      ...valProps,
+    }, { desc: key, type: 'einstellungen' });
+  }
+};
+
+NotionAdapter.ensureSchema = async function() {
+  if (!DB.EINSTELLUNGEN) return;
+  const db = await notionFetch('/databases/' + DB.EINSTELLUNGEN, 'GET');
+  const existing = Object.keys(db.properties || {});
+  const missing = ['Land', 'Waehrung', 'Sprache', 'Konten', 'Clockify', 'Claude'].filter(p => !existing.includes(p));
+  if (missing.length > 0) {
+    const update = {};
+    for (const p of missing) update[p] = { rich_text: {} };
+    await notionFetch('/databases/' + DB.EINSTELLUNGEN, 'PATCH', { properties: update });
+  }
+};
+
+NotionAdapter.validateConnection = async function() {
+  try {
+    const resp = await notionFetch('/users/me', 'GET');
+    return resp.object === 'user';
+  } catch { return false; }
+};
+
+/** S14-5: Queue flush — Notion-specific (raw props to API) */
+NotionAdapter.flushQueue = async function() {
+  const q = loadLocal(QUEUE_KEY, []);
+  const pending = q.filter(e => e.status === 'pending' || e.status === 'error');
+  if (!pending.length) return { sent: 0, failed: 0 };
+  let sent = 0, failed = 0;
+  for (const entry of pending) {
+    queueSetStatus(entry.id, 'sending');
+    try {
+      let result;
+      if (entry.op === 'update') {
+        result = await notionUpdate(entry.pageId, entry.props);
+      } else {
+        result = await notionCreate(entry.dbId, entry.props);
+      }
+      if (result && result.object === 'error') throw new Error(result.message);
+      queueRemove(entry.id);
+      sent++;
+    } catch (e) {
+      queueSetStatus(entry.id, 'error', e.message);
+      failed++;
+    }
+  }
+  return { sent, failed };
+};
+
+/** S14-5: Delta sync — Notion-specific (notionQueryAll + parsers) */
+NotionAdapter.syncDelta = async function(since) {
+  const deltaFilter = {
+    timestamp: 'last_edited_time',
+    last_edited_time: { on_or_after: since.toISOString() }
+  };
+  const deltaEntities = [
+    { key: 'buchungen',  dbId: DB.BUCHUNGEN,  parser: parseBuchung  },
+    { key: 'rechnungen', dbId: DB.RECHNUNGEN, parser: parseRechnung },
+    { key: 'transfers',  dbId: DB.TRANSFERS,  parser: parseTransfer },
+    { key: 'projekte',   dbId: DB.PROJEKTE,   parser: parseProjekt  },
+    { key: 'konten',     dbId: DB.KONTEN,     parser: parseKonto    },
+    { key: 'recurrings', dbId: DB.RECURRINGS, parser: parseRecurring },
+  ];
+  const updates = {};
+  let anyFailed = false;
+  for (const { key, dbId, parser } of deltaEntities) {
+    try {
+      const pages = await notionQueryAll(dbId, deltaFilter);
+      if (pages.length > 0) updates[key] = pages.map(parser);
+    } catch (e) {
+      console.warn(`Delta sync failed for ${key}:`, e.message);
+      anyFailed = true;
+    }
+  }
+  return { updates, anyFailed };
+};
 
 
 /* ── Notion property builders ── */
@@ -4132,6 +4405,12 @@ function recurringToProps(d) {
     'Notiz':           { rich_text: [{ text: { content: d.note || '' } }] },
     'Pausiert':        { checkbox: !!d.paused },
   };
+}
+
+/** Return the active data adapter (Phase 0.5: always Notion) */
+function getActiveDataAdapter() {
+  // Phase 2: basierend auf loadLocal('fb_data_provider')
+  return NotionAdapter;
 }
 
 
@@ -4381,44 +4660,25 @@ async function deltaSync() {
   // Clock-skew buffer: 2 min back to catch near-simultaneous edits
   const since = new Date(AppState.lastSyncTime);
   since.setMinutes(since.getMinutes() - 2);
-  const deltaFilter = {
-    timestamp: 'last_edited_time',
-    last_edited_time: { on_or_after: since.toISOString() }
-  };
 
-  const deltaEntities = [
-    { key: 'buchungen',  dbId: DB.BUCHUNGEN,  parser: parseBuchung  },
-    { key: 'rechnungen', dbId: DB.RECHNUNGEN, parser: parseRechnung },
-    { key: 'transfers',  dbId: DB.TRANSFERS,  parser: parseTransfer },
-    { key: 'projekte',   dbId: DB.PROJEKTE,   parser: parseProjekt  },
-    { key: 'konten',     dbId: DB.KONTEN,     parser: parseKonto    },
-    { key: 'recurrings', dbId: DB.RECURRINGS, parser: parseRecurring},
-  ];
+  // S14-5: delegate Notion-specific query to adapter
+  const db = getActiveDataAdapter();
+  const { updates, anyFailed } = await db.syncDelta(since);
 
   let anyUpdated = false;
-  let anyFailed  = false;
-  for (const { key, dbId, parser } of deltaEntities) {
-    try {
-      const pages = await notionQueryAll(dbId, deltaFilter);
-      if (pages.length === 0) continue;
-      anyUpdated = true;
-      const updated    = pages.map(parser);
-      const updatedIds = new Set(updated.map(u => u._id));
-      // Merge: replace changed items, remove stale temp entries, keep rest
-      Store[key] = [
-        ...Store[key].filter(item => !updatedIds.has(item._id) && !item._pending),
-        ...updated
-      ];
-      if (key === 'buchungen') {
-        Store[key].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-        const thumbs = loadLocal(CACHE.thumbs, {});
-        Store[key].forEach(b => { if (thumbs[b._id]) b.receipt = thumbs[b._id]; });
-      }
-      saveCache(key);
-    } catch (e) {
-      console.warn(`Delta sync failed for ${key}:`, e.message);
-      anyFailed = true;
+  for (const [key, updated] of Object.entries(updates)) {
+    anyUpdated = true;
+    const updatedIds = new Set(updated.map(u => u._id));
+    Store[key] = [
+      ...Store[key].filter(item => !updatedIds.has(item._id) && !item._pending),
+      ...updated
+    ];
+    if (key === 'buchungen') {
+      Store[key].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      const thumbs = loadLocal(CACHE.thumbs, {});
+      Store[key].forEach(b => { if (thumbs[b._id]) b.receipt = thumbs[b._id]; });
     }
+    saveCache(key);
   }
 
   // Only advance timestamp if no failures
@@ -4436,7 +4696,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.14a.2026-04-03';
+const APP_VERSION = '2.14d.2026-04-03';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -4468,25 +4728,8 @@ async function flushQueue() {
   const pending = q.filter(e => e.status === 'pending' || e.status === 'error');
   if (!pending.length) return;
   showToast('pending', '⏳', `Sende ${pending.length} Einträge…`, '');
-  let sent = 0, failed = 0;
-  for (const entry of pending) {
-    queueSetStatus(entry.id, 'sending');
-    try {
-      // V11: Queue unterstützt jetzt auch Updates (op: 'update')
-      let result;
-      if (entry.op === 'update') {
-        result = await notionUpdate(entry.pageId, entry.props);
-      } else {
-        result = await notionCreate(entry.dbId, entry.props);
-      }
-      if (result && result.object === 'error') throw new Error(result.message);
-      queueRemove(entry.id);
-      sent++;
-    } catch (e) {
-      queueSetStatus(entry.id, 'error', e.message);
-      failed++;
-    }
-  }
+  const db = getActiveDataAdapter();
+  const { sent, failed } = await db.flushQueue();
   if (failed === 0) {
     showToast('success', '✅', `${sent} Einträge gesendet`, 'Notion ist synchronisiert');
     await fullSync();
@@ -6183,26 +6426,13 @@ async function updateMerchantRule(description, category) {
   await saveMerchantRules();
 }
 
-/** Persist merchant rules to Notion Einstellungen */
+/** Persist merchant rules to Notion Einstellungen (via adapter) */
 async function saveMerchantRules() {
   try {
     const value = JSON.stringify(merchantRules);
-    // S12 BUG-038: Upsert merchant_rules via Notion
     if (DB.EINSTELLUNGEN) {
-      const searchResp = await notionFetch('/databases/' + DB.EINSTELLUNGEN + '/query', 'POST', {
-        filter: { property: 'Key', title: { equals: 'merchant_rules' } }, page_size: 1
-      });
-      const existing = searchResp?.results?.[0];
-      if (existing) {
-        await updateWithQueue(existing.id, {
-          'Value': { rich_text: [{ text: { content: value } }] }
-        }, { desc: 'merchant_rules', type: 'einstellungen' });
-      } else {
-        await writeWithQueue(DB.EINSTELLUNGEN, {
-          'Key': { title: [{ text: { content: 'merchant_rules' } }] },
-          'Value': { rich_text: [{ text: { content: value } }] },
-        }, { desc: 'merchant_rules', type: 'einstellungen' });
-      }
+      const db = getActiveDataAdapter();
+      await db.saveSetting('merchant_rules', value);
     }
   } catch (e) {
     console.warn('saveMerchantRules failed:', e.message);
@@ -6580,16 +6810,12 @@ async function erfSaveBuchung() {
     const transferTo   = document.getElementById('erfTransferTo')?.value || '';
     if (!transferFrom || !transferTo) { if (fbEl) fbEl.textContent = 'Bitte beide Konten wählen'; btn.disabled = false; btn.textContent = '✓ Speichern'; return; }
     if (transferFrom === transferTo) { if (fbEl) fbEl.textContent = 'Konten müssen unterschiedlich sein'; btn.disabled = false; btn.textContent = '✓ Speichern'; return; }
-    // Save as transfer
-    const { success, error } = await writeWithQueue(DB.TRANSFERS, {
-      'Beschreibung': { title: [{ text: { content: desc || 'Transfer' } }] },
-      'Datum': { date: { start: date } },
-      'Typ': { select: { name: 'Interner Transfer' } },
-      'Von Konto': { select: { name: transferFrom } },
-      'Nach Konto': { select: { name: transferTo } },
-      'Betrag': { number: amt },
-      'Status': { select: { name: 'Ausgeführt' } },
-    }, { desc: desc || 'Transfer', amt: fmt(amt), type: 'transfer' });
+    // Save as transfer (S14: via adapter)
+    const db = getActiveDataAdapter();
+    const { success, error } = await db.createTransfer({
+      desc: desc || 'Transfer', date, typ: 'Interner Transfer',
+      fromAccount: transferFrom, toAccount: transferTo, amount: amt, status: 'Ausgeführt',
+    });
     if (success) {
       showToast('success', '↔️', 'Transfer gespeichert', fmt(amt) + ' ' + (AppState.currency || 'CHF'));
       closeErfassen();
@@ -6628,7 +6854,8 @@ async function erfSaveBuchung() {
   // Edit-Mode: Update statt Create (Audit-Fix R1)
   if (Erf.editId) {
     try {
-      const result = await notionUpdate(Erf.editId, bookingToProps(data));
+      const db = getActiveDataAdapter();
+      const result = await db.updateBooking(Erf.editId, data);
       if (result.object === 'error') throw new Error(result.message);
       // Update Store
       const idx = Store.buchungen.findIndex(b => b._id === Erf.editId);
@@ -6648,9 +6875,8 @@ async function erfSaveBuchung() {
     return;
   }
 
-  const { success, result, error } = await writeWithQueue(DB.BUCHUNGEN, bookingToProps(data), {
-    desc: data.desc, amt: fmt(amt), type: 'buchung'
-  });
+  const db2 = getActiveDataAdapter();
+  const { success, result, error } = await db2.createBooking(data);
 
   if (success) {
     // Save thumbnail to localStorage
@@ -6712,9 +6938,8 @@ async function erfSaveTransfer() {
     appRef:      uid(),
   };
 
-  const { success, result, error } = await writeWithQueue(DB.TRANSFERS, transferToProps(data), {
-    desc: data.desc, amt: fmt(amt), type: 'transfer'
-  });
+  const db = getActiveDataAdapter();
+  const { success, result, error } = await db.createTransfer(data);
 
   if (success) {
     // Update Projekt reserviert if linked
@@ -6722,7 +6947,8 @@ async function erfSaveTransfer() {
       const proj = Store.projekte.find(p => p._id === projId);
       if (proj) {
         const newRes = (proj.reserviert || 0) + amt;
-        notionUpdate(projId, projektToProps({ ...proj, reserviert: newRes }))
+        const _db = getActiveDataAdapter();
+        _db.updateProjekt(projId, { ...proj, reserviert: newRes })
           .catch(e => console.warn('Projekt reserviert update failed:', e));
       }
     }
@@ -6767,9 +6993,8 @@ async function erfSaveRechnung() {
     projekt:  '',
   };
 
-  const { success, result, error } = await writeWithQueue(DB.RECHNUNGEN, invoiceToProps(data), {
-    desc: nr + ' · ' + client, amt: fmt(amt), type: 'rechnung'
-  });
+  const db = getActiveDataAdapter();
+  const { success, result, error } = await db.createInvoice(data);
 
   if (success) {
     const links = result?.url ? [{ label: 'In Notion', url: result.url }] : [];
@@ -7002,10 +7227,29 @@ function erfRemoveReceipt(context) {
   }
 }
 
-/* ── Receipt upload to Google Drive ── */
+/* ── Receipt upload via StorageInterface adapter (S14) ── */
 async function erfUploadReceipt(filename) {
   if (!Erf.receipt) throw new Error('No receipt');
-  return uploadToGDrive(Erf.receipt.original, filename, Erf.receipt.isPDF);
+  const storage = getActiveStorageAdapter();
+  if (!storage || !storage.isConnected()) throw new Error('Keine Beleg-Ablage verbunden');
+
+  // Build Blob from receipt data (BUG-045: no fetch on data: URI)
+  const dataURL = Erf.receipt.original;
+  const isPDF   = Erf.receipt.isPDF;
+  const base64  = dataURL.split(',')[1];
+  const byteChars = atob(base64);
+  const byteArray = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+  const mime = isPDF ? 'application/pdf'
+    : dataURL.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+  const blob = new Blob([byteArray], { type: mime });
+
+  const year = (document.getElementById('erfDate')?.value || toDay()).slice(0, 4);
+  return storage.uploadReceipt(blob, filename, {
+    year,
+    bereich: Erf.bereich,
+    type: Erf.type,
+  });
 }
 
 /* ── Public helpers for external callers ── */
@@ -7232,7 +7476,8 @@ function getCatDisplay(cat, bereich) {
 }
 async function confirmBuchung(id) {
   try {
-    await notionUpdate(id, { 'Bezahlt': { checkbox: true } });
+    const db = getActiveDataAdapter();
+    await db.updateBooking(id, { bezahlt: true });
     const b = Store.buchungen.find(x => x._id === id);
     if (b) { b.paid = true; saveCache('buchungen'); }
     inboxDoneByCardId('inboxStale_' + id);
@@ -7283,11 +7528,12 @@ async function inboxInvPaid(invId) {
   inboxDoneByCardId('inboxInv_' + invId);
   showToast('success', '💰', 'Zahlungseingang bestätigt',
     inv ? `${esc(inv.nr)} · CHF ${fmt(inv.amount)}` : '');
-  // V11: Queue-backed update
-  updateWithQueue(invId, {
+  // S14: via adapter (partial update)
+  const db = getActiveDataAdapter();
+  db.updateInvoice(invId, { _partial: {
     'Status':     { select: { name: 'Bezahlt' } },
     'Bezahlt am': { date:   { start: toDay() } },
-  }, { label: 'Rechnung bezahlt', entity: 'rechnung' }).catch(e => {
+  }, _label: 'Rechnung bezahlt' }).catch(e => {
     console.warn('inboxInvPaid queue failed:', e.message);
   });
 }
@@ -7308,9 +7554,11 @@ async function inboxInvConfirmShift(invId) {
   InboxEngine.updateBadge();
   showToast('success', '📅', 'Fälligkeit verschoben', fmtDate(inp.value));
   inboxDoneByCardId('inboxInv_' + invId);
-  // V11: Queue-backed update
-  updateWithQueue(invId, { 'Fällig am': { date: { start: inp.value } } },
-    { label: 'Fälligkeit verschoben', entity: 'rechnung' }).catch(e => {
+  // S14: via adapter (partial update)
+  const db = getActiveDataAdapter();
+  db.updateInvoice(invId, { _partial: {
+    'Fällig am': { date: { start: inp.value } }
+  }, _label: 'Fälligkeit verschoben' }).catch(e => {
     console.warn('inboxInvConfirmShift queue failed:', e.message);
   });
 }
@@ -7331,8 +7579,9 @@ async function inboxRecurBook(recurId) {
     const isTransfer = r.account && mainAccounts.length > 0 && !mainAccounts.includes(r.account);
 
     if (isTransfer) {
-      // Internal transfer → Transfers DB
-      await notionCreate(DB.TRANSFERS, transferToProps({
+      // Internal transfer → via adapter
+      const db = getActiveDataAdapter();
+      await db.createTransfer({
         desc:        r.name,
         date:        toDay(),
         typ:         'Pocket-Einzahlung',
@@ -7340,24 +7589,25 @@ async function inboxRecurBook(recurId) {
         toAccount:   r.account,
         amount:      r.amt,
         status:      'Ausgeführt',
-        note:        `Wiederkehrend: ${r.freq}${r.note ? ' — ' + r.note : ''}`,
+        note:        `Wiederkehrend: ${r.freq}${r.note ? ' \u2014 ' + r.note : ''}`,
         appRef:      uid(),
-      }));
+      });
     } else {
-      // External payment → Buchungen DB
+      // External payment → via adapter
       const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
-      await notionCreate(DB.BUCHUNGEN, bookingToProps({
-        desc:    r.name + (r.note ? ' — ' + r.note : ''),
+      const db = getActiveDataAdapter();
+      await db.createBooking({
+        desc:    r.name + (r.note ? ' \u2014 ' + r.note : ''),
         date:    toDay(),
         type:    'Ausgabe',
         bereich: r.bereich || 'Privat',
         amount:  r.amt,
         paid:    true,
         cat:     r.cat || '',
-        taxCat:  r.bereich === 'Geschäftlich' && r.cat ? (tm[r.cat] || '') : '',
+        taxCat:  r.bereich === 'Gesch\u00e4ftlich' && r.cat ? (tm[r.cat] || '') : '',
         account: r.account || '',
         note:    `Wiederkehrend: ${r.freq}`,
-      }));
+      });
     }
 
     // Advance nextDate — optimistic + V11 queue-backed
@@ -7369,8 +7619,8 @@ async function inboxRecurBook(recurId) {
       isTransfer ? 'Transfer gebucht' : 'Buchung gespeichert',
       `${esc(r.name)} · CHF ${fmt(r.amt)}`);
     inboxDoneByCardId('inboxRecur_' + recurId);
-    updateWithQueue(recurId, recurringToProps({ ...r, nextDate: newNextDate }),
-      { label: 'Recurring nextDate', entity: 'recurring' }).catch(e => {
+    const db = getActiveDataAdapter();
+    db.updateRecurring(recurId, { ...r, nextDate: newNextDate, _queued: true, _label: 'Recurring nextDate' }).catch(e => {
       console.warn('inboxRecurBook nextDate queue failed:', e.message);
     });
   } catch (e) {
@@ -7384,9 +7634,9 @@ function inboxRecurSkip(recurId) {
   if (!r) return;
   // Advance nextDate without booking
   const newNextDate = nextOccurrence(r.nextDate || toDay(), r.freq);
-  // V11: Queue-backed
-  updateWithQueue(recurId, recurringToProps({ ...r, nextDate: newNextDate }),
-    { label: 'Recurring skip', entity: 'recurring' }).catch(e => {
+  // S14: via adapter
+  const db = getActiveDataAdapter();
+  db.updateRecurring(recurId, { ...r, nextDate: newNextDate, _queued: true, _label: 'Recurring skip' }).catch(e => {
     console.warn('Recurring skip queue failed:', e.message);
   });
   r.nextDate = newNextDate;
@@ -8434,9 +8684,8 @@ function activateReviewQueue() {
 /** Session 3: Confirm a booking's category (quick action) */
 async function confirmBuchungCategory(id) {
   try {
-    await updateWithQueue(id, {
-      'Kategorie-Status': { select: { name: 'bestätigt' } }
-    }, { desc: 'confirm-category', type: 'buchung' });
+    const db = getActiveDataAdapter();
+    await db.updateBooking(id, { categoryStatus: 'bestätigt' });
     const b = Store.buchungen.find(x => x._id === id);
     if (b) { b.categoryStatus = 'bestätigt'; saveCache('buchungen'); }
     renderBuchSubtab();
@@ -8532,7 +8781,8 @@ async function cycleInvStatus(id) {
   const props  = { 'Status': { select: { name: next } } };
   if (next === 'Bezahlt') props['Bezahlt am'] = { date: { start: toDay() } };
   try {
-    await notionUpdate(id, props);
+    const db = getActiveDataAdapter();
+    await db.updateInvoice(id, { ...r, status: next, paidDate: next === 'Bezahlt' ? toDay() : r.paidDate });
     r.status = next;
     if (next === 'Bezahlt') r.paidDate = toDay();
     saveCache('rechnungen');
@@ -8547,7 +8797,8 @@ async function deleteRechnung(id) {
   const r = Store.rechnungen.find(x => x._id === id);
   if (!confirm(`Rechnung "${r?.nr||''}" löschen?`)) return;
   try {
-    await notionArchive(id);
+    const db = getActiveDataAdapter();
+    await db.deleteInvoice(id);
     Store.rechnungen = Store.rechnungen.filter(x => x._id !== id);
     saveCache('rechnungen');
     renderBuchSubtab();
@@ -8669,10 +8920,13 @@ async function saveKontoForm() {
 
   const data = { name, typ, group, icon, stand: isNaN(stand) ? null : stand, saldoDatum: datum || toDay(), active: true };
   try {
-    const res = await notionCreate(DB.KONTEN, kontoToProps(data));
-    if (res.object === 'error') throw new Error(res.message);
-    const parsed = parseKonto(res);
-    Store.konten.push(parsed);
+    const db = getActiveDataAdapter();
+    const { success, result: res, error } = await db.createKonto(data);
+    if (!success) throw new Error(error || 'Konto konnte nicht erstellt werden');
+    if (res) {
+      const parsed = parseKonto(res);
+      Store.konten.push(parsed);
+    }
     saveCache('konten');
     document.getElementById('kontoFormOverlay')?.remove();
     renderBuchSubtab();
@@ -8764,13 +9018,15 @@ async function saveRecurringForm(editId = '') {
   if (!data.name || isNaN(data.amt)) { showToast('warning','⚠️','Name und Betrag erforderlich',''); return; }
   try {
     if (editId) {
-      await notionUpdate(editId, recurringToProps(data));
+      const db = getActiveDataAdapter();
+      await db.updateRecurring(editId, data);
       const idx = Store.recurrings.findIndex(r => r._id === editId);
       if (idx >= 0) Store.recurrings[idx] = { ...Store.recurrings[idx], ...data };
     } else {
-      const res = await notionCreate(DB.RECURRINGS, recurringToProps(data));
-      if (res.object === 'error') throw new Error(res.message);
-      Store.recurrings.push(parseRecurring(res));
+      const db = getActiveDataAdapter();
+      const res = await db.createRecurring(data);
+      if (res?.object === 'error') throw new Error(res.message);
+      if (res) Store.recurrings.push(parseRecurring(res));
     }
     saveCache('recurrings');
     document.getElementById('recurringFormOverlay')?.remove();
@@ -9867,8 +10123,9 @@ async function restoreBuchung(id) {
   const entry   = trash.find(b => b._id === id);
   if (!entry) return;
   try {
-    // Un-archive in Notion
-    await notionFetch(`/pages/${id}`, 'PATCH', { archived: false });
+    // Un-archive via adapter
+    const db = getActiveDataAdapter();
+    await db.restoreBooking(id);
     saveLocal(TRASH_KEY, trash.filter(b => b._id !== id));
     showToast('success', '♻️', 'Buchung wiederhergestellt', entry.desc || '');
     await deltaSync();
@@ -9911,7 +10168,8 @@ async function deleteBuchung(id) {
   const b = Store.buchungen.find(x => x._id === id);
   if (!confirm(`Buchung "${b?.desc || fmt(b?.amount)+' CHF'}" löschen?\n\nSie wird 30 Tage im Papierkorb behalten.`)) return;
   try {
-    await notionArchive(id);
+    const db = getActiveDataAdapter();
+    await db.deleteBooking(id);
     if (b?.receiptLink) archiveDriveReceipt(b.receiptLink); // non-blocking
     if (b) trashBuchung(b);
     Store.buchungen = Store.buchungen.filter(x => x._id !== id);
@@ -10323,7 +10581,7 @@ async function healthCheck(level = 'instant') {
   // Instant checks (localStorage only, <50ms)
   result.license.key_present  = !!loadLocal('fb_license_key', null);
   result.notion.token_present = !!AppState.notionToken;
-  result.gdrive.token_present = !!loadLocal('fb_gdrive_parent', null); // S12 BUG-035: localStorage-basiert
+  result.gdrive.token_present = GDriveAdapter.isConnected(); // S14: via adapter
   result.clockify.key_present = !!loadLocal('fb_clockify_key', '');
   result.claude.key_present   = ClaudeAdapter.isConfigured();
   result.infra.online         = navigator.onLine;
@@ -10338,8 +10596,8 @@ async function healthCheck(level = 'instant') {
     }).catch(() => { result.license.key_valid = false; }));
   }
   if (result.notion.token_present) {
-    qp.push(notionFetch('/users/me', 'GET').then(r => {
-      result.notion.token_valid = r.object === 'user';
+    qp.push(NotionAdapter.validateConnection().then(valid => {
+      result.notion.token_valid = valid;
     }).catch(() => { result.notion.token_valid = false; }));
   }
   qp.push(fetch(Auth.FB_WORKER_AUTH + '/health', { signal: AbortSignal.timeout(3000) })
@@ -10361,9 +10619,9 @@ async function healthCheck(level = 'instant') {
     }
   }
   if (result.gdrive.token_present) {
-    dp.push(fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
-      headers: { Authorization: 'Bearer ' + sessionStorage.getItem('fb_gdrive_token') }
-    }).then(r => { result.gdrive.token_valid = r.ok; }).catch(() => { result.gdrive.token_valid = false; }));
+    dp.push(GDriveAdapter.validateConnection().then(valid => {
+      result.gdrive.token_valid = valid;
+    }).catch(() => { result.gdrive.token_valid = false; }));
   }
   if (result.clockify.key_present) {
     dp.push(fetch('https://api.clockify.me/api/v1/user', {
@@ -10399,21 +10657,8 @@ async function saveSettingsToNotion() {
     clockify_key: loadLocal('fb_clockify_key', ''), claude_key: loadLocal('fb_claude_key', ''),
   };
   try {
-    const existing = await notionFetch('/databases/' + DB.EINSTELLUNGEN + '/query', 'POST', { page_size: 1 });
-    const props = {
-      'Land':     { rich_text: [{ text: { content: settings.land } }] },
-      'Waehrung': { rich_text: [{ text: { content: settings.waehrung } }] },
-      'Sprache':  { rich_text: [{ text: { content: settings.sprache } }] },
-      'Konten':   { rich_text: [{ text: { content: settings.konten } }] },
-      'Clockify': { rich_text: [{ text: { content: settings.clockify_key } }] },
-      'Claude':   { rich_text: [{ text: { content: settings.claude_key } }] },
-    };
-    if (existing.results && existing.results.length > 0) {
-      await notionFetch('/pages/' + existing.results[0].id, 'PATCH', { properties: props });
-    } else {
-      props['Name'] = { title: [{ text: { content: 'Device Settings' } }] };
-      await notionFetch('/pages', 'POST', { parent: { database_id: DB.EINSTELLUNGEN }, properties: props });
-    }
+    const db = getActiveDataAdapter();
+    await db.saveDeviceSettings(settings);
     console.log('[Settings] Saved to Notion');
   } catch (e) { console.warn('[Settings] Save failed:', e.message); }
 }
@@ -10424,34 +10669,24 @@ async function loadSettingsFromNotion() {
   }
   if (!DB.EINSTELLUNGEN) return;
   try {
-    const resp = await notionFetch('/databases/' + DB.EINSTELLUNGEN + '/query', 'POST', { page_size: 1 });
-    if (!resp.results || !resp.results.length) return;
-    const props = resp.results[0].properties;
-    const gt = (p) => p?.rich_text?.[0]?.plain_text || '';
-    const land = gt(props['Land']), waehrung = gt(props['Waehrung']), sprache = gt(props['Sprache']);
-    const kontenStr = gt(props['Konten']), clockify = gt(props['Clockify']), claude = gt(props['Claude']);
-    if (land) AppState.country = land;
-    if (waehrung) AppState.currency = waehrung;
-    if (sprache) AppState.lang = sprache;
+    const db = getActiveDataAdapter();
+    const s = await db.loadDeviceSettings();
+    if (!s) return;
+    if (s.land) AppState.country = s.land;
+    if (s.waehrung) AppState.currency = s.waehrung;
+    if (s.sprache) AppState.lang = s.sprache;
     saveAppState();
-    if (kontenStr) { try { const k = JSON.parse(kontenStr); if (Array.isArray(k)) { OB.accounts = k; saveLocal('fb_ob_accounts', k); } } catch {} }
-    if (clockify) { saveLocal('fb_clockify_key', clockify); OB.clockifyConnected = true; }
-    if (claude) { saveLocal('fb_claude_key', claude); OB.kiConnected = true; }
-    console.log('[Settings] Loaded from Notion:', { land, waehrung, sprache });
+    if (s.konten) { try { const k = JSON.parse(s.konten); if (Array.isArray(k)) { OB.accounts = k; saveLocal('fb_ob_accounts', k); } } catch {} }
+    if (s.clockify) { saveLocal('fb_clockify_key', s.clockify); OB.clockifyConnected = true; }
+    if (s.claude) { saveLocal('fb_claude_key', s.claude); OB.kiConnected = true; }
+    console.log('[Settings] Loaded from Notion:', { land: s.land, waehrung: s.waehrung, sprache: s.sprache });
   } catch (e) { console.warn('[Settings] Load failed:', e.message); }
 }
 
 async function ensureSettingsSchema() {
-  if (!DB.EINSTELLUNGEN) return;
   try {
-    const db = await notionFetch('/databases/' + DB.EINSTELLUNGEN, 'GET');
-    const existing = Object.keys(db.properties || {});
-    const missing = ['Land', 'Waehrung', 'Sprache', 'Konten', 'Clockify', 'Claude'].filter(p => !existing.includes(p));
-    if (missing.length > 0) {
-      const update = {};
-      for (const p of missing) update[p] = { rich_text: {} };
-      await notionFetch('/databases/' + DB.EINSTELLUNGEN, 'PATCH', { properties: update });
-    }
+    const db = getActiveDataAdapter();
+    await db.ensureSchema();
   } catch (e) { console.warn('[Settings] Schema check failed:', e.message); }
 }
 
@@ -10645,7 +10880,16 @@ async function v3SubmitPairingCode() {
     if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = '✅ Code korrekt — verbinde Notion…'; }
     // BUG-036 Fix: Button bleibt disabled + onclick entfernt — verhindert zweiten Submit
     if (btn) { btn.textContent = '✅ Weiter'; btn.disabled = true; btn.onclick = null; }
-    setTimeout(() => { showToast('success', '📱', 'Gerät erkannt', 'Notion kurz verbinden — dann bist du drin.'); Auth.startOAuth(); }, 900);
+    // S14-6: On mobile, check if PWA is installed before starting OAuth
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile && !isPWAInstalled()) {
+      setTimeout(() => {
+        showToast('success', '📱', 'Gerät erkannt', 'Fast geschafft — noch ein Schritt.');
+        showPWAInstallScreen();
+      }, 900);
+    } else {
+      setTimeout(() => { showToast('success', '📱', 'Gerät erkannt', 'Notion kurz verbinden — dann bist du drin.'); Auth.startOAuth(); }, 900);
+    }
   } else if (result.error === 'expired') {
     if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
     errEl.style.color = ''; errEl.textContent = 'Code abgelaufen. Generiere einen neuen am anderen Gerät.';
@@ -10763,6 +11007,14 @@ window.addEventListener('beforeinstallprompt', e => {
   if (block) block.style.display = '';
 });
 
+/** S14-6: PWA detection helpers */
+function isPWAInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+function isIOS() { return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream; }
+function isAndroid() { return /Android/.test(navigator.userAgent); }
+
 function triggerPwaInstall() {
   if (_deferredPwaPrompt) {
     _deferredPwaPrompt.prompt();
@@ -10770,8 +11022,77 @@ function triggerPwaInstall() {
       _deferredPwaPrompt = null;
       const block = document.getElementById('donePwaBlock');
       if (block) block.style.display = 'none';
+      // S14-6: If installed from pairing flow, continue to OAuth
+      if (choice.outcome === 'accepted') {
+        const pwaScreen = document.getElementById('pwaInstallScreen');
+        if (pwaScreen && pwaScreen.style.display !== 'none') {
+          pwaScreen.style.display = 'none';
+          Auth.startOAuth();
+        }
+      }
     });
   }
+}
+
+/** S14-6: Show PWA install screen after successful pairing claim */
+function showPWAInstallScreen() {
+  let content = '';
+  if (isAndroid() && _deferredPwaPrompt) {
+    content = `
+      <div style="font-size:48px;margin-bottom:16px">📲</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px">App installieren</h2>
+      <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:20px">
+        F\u00fcr die beste Erfahrung installiere FinanceBird als App auf deinem Ger\u00e4t.
+      </p>
+      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;margin-bottom:10px" onclick="triggerPwaInstall()">
+        Installieren
+      </button>
+      <button class="btn btn-outline" style="width:100%;padding:12px;font-size:13px" onclick="skipPWAInstall()">
+        Ohne Installation weiter \u2192
+      </button>`;
+  } else if (isIOS()) {
+    content = `
+      <div style="font-size:48px;margin-bottom:16px">📲</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px">App installieren</h2>
+      <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:16px">
+        F\u00fcr die beste Erfahrung f\u00fcge FinanceBird zum Home-Bildschirm hinzu:
+      </p>
+      <div style="background:var(--bg2);border-radius:12px;padding:16px;margin-bottom:20px;font-size:14px;line-height:2">
+        <div>1. Tippe auf <span style="font-size:18px">\u2B06\uFE0F</span> (Teilen-Symbol unten)</div>
+        <div>2. Scrolle nach unten</div>
+        <div>3. <strong>Zum Home-Bildschirm</strong> tippen</div>
+      </div>
+      <button class="btn btn-outline" style="width:100%;padding:12px;font-size:13px" onclick="skipPWAInstall()">
+        Ohne Installation weiter \u2192
+      </button>`;
+  } else {
+    // Desktop or unknown — skip directly
+    Auth.startOAuth();
+    return;
+  }
+
+  // Show as overlay in setup screen
+  let screen = document.getElementById('pwaInstallScreen');
+  if (!screen) {
+    screen = document.createElement('div');
+    screen.id = 'pwaInstallScreen';
+    screen.style.cssText = 'text-align:center;padding:32px 24px;max-width:400px;margin:0 auto';
+    const setup = document.getElementById('setupScreen');
+    if (setup) setup.appendChild(screen);
+  }
+  screen.innerHTML = content;
+  screen.style.display = '';
+  // Hide other onboarding screens
+  ['onboardWelcome','onboardLicense','onboardCountry','onboardAccounts','onboardIntegrations','onboardOverview','onboardPairing','onboardRepair'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+
+function skipPWAInstall() {
+  const screen = document.getElementById('pwaInstallScreen');
+  if (screen) screen.style.display = 'none';
+  Auth.startOAuth();
 }
 
 /* ── Mobile Pairing (Screen M2) ── */
@@ -11000,11 +11321,12 @@ async function onboardFinish() {
         showLoading('Konten anlegen…');
         for (const name of OB.accounts) {
           try {
-            await writeWithQueue(DB.KONTEN, {
-              'Name': { title: [{ text: { content: name } }] },
-              'Aktiv': { checkbox: true },
-              'Typ': { select: { name: name === 'Bargeld' ? 'Bargeld' : name === 'Kreditkarte' ? 'Kreditkarte' : 'Girokonto' } },
-            }, { desc: name, type: 'konto' });
+            const db = getActiveDataAdapter();
+            await db.createKonto({
+              name,
+              active: true,
+              typ: name === 'Bargeld' ? 'Bargeld' : name === 'Kreditkarte' ? 'Kreditkarte' : 'Girokonto',
+            });
           } catch (e) { console.warn('Account creation failed:', name, e.message); }
         }
       }
@@ -11846,23 +12168,21 @@ async function saveSaldoModal() {
 
   // Persist to Notion
   try {
+    const db = getActiveDataAdapter();
     if (k._id) {
-      await notionUpdate(k._id, {
-        'Aktueller Stand': { number: amt },
-        'Saldo-Datum':     { date: { start: date } },
-      });
+      await db.updateKonto(k._id, { ...k, stand: amt, saldoDatum: date });
     }
     // Log saldo change as Transfer (audit trail)
-    await notionCreate(DB.TRANSFERS, transferToProps({
+    await db.createTransfer({
       desc:       'Startsaldo: ' + k.name,
       date,
       typ:        'Kontostand-Korrektur',
       toAccount:  k.name,
       amount:     amt,
-      status:     'Ausgeführt',
+      status:     'Ausgef\u00fchrt',
       note:       `Startsaldo per ${date}`,
       appRef:     'saldo_' + kontoId + '_' + Date.now(),
-    }));
+    });
   } catch (e) {
     console.warn('Saldo Notion update failed:', e.message);
   }
