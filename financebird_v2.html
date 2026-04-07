@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.15c.2026-04-03">
+<meta name="fb-version" content="2.18a.2026-04-07">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1246,6 +1246,7 @@ body.dark .inbox-card.overdue { background: rgba(200,146,42,.07); }
 .inv-status.bezahlt     { background: var(--accent-light); color: var(--accent); }
 .inv-status.ueberfaellig{ background: #fef2f2; color: var(--red); }
 .inv-status.entwurf     { background: #f3f4f6; color: #6b7280; }
+.inv-status.teilzahlung { background: #fef3c7; color: #b45309; }
 
 /* Unconfirmed booking rows */
 tr.unconfirmed td { opacity: .55; font-style: italic; }
@@ -1258,6 +1259,135 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ── BL-075: Required field indicator ── */
+.form-label.required::after { content: ' *'; color: var(--red); font-weight: 400; }
+
+/* ── BL-085: Widget Grid & Cockpit Styles ── */
+.widget-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (min-width: 769px) {
+  .widget-grid { grid-template-columns: repeat(4, 1fr); }
+  .widget.size-medium { grid-column: span 2; }
+}
+.widget {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.widget:active { transform: scale(0.97); }
+.widget.size-small  { grid-column: span 1; }
+.widget.size-medium { grid-column: 1 / -1; }
+.widget.size-large  { grid-column: 1 / -1; }
+.widget-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.widget-icon { font-size: 16px; }
+.widget-name { font-size: 12px; color: var(--muted); font-weight: 600; }
+.widget-body { min-height: 28px; }
+.w-val { font-family: 'Libre Baskerville', serif; font-size: 20px; font-weight: 700; line-height: 1.2; }
+.w-val.pos { color: var(--green); }
+.w-val.neg { color: var(--red); }
+.w-val.warn { color: var(--amber); }
+.w-val.muted { color: var(--muted); font-size: 16px; }
+.w-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Edit mode */
+.cockpit-edit-mode .widget {
+  animation: wobble 0.3s ease-in-out infinite alternate;
+}
+.cockpit-edit-mode .widget:nth-child(even) { animation-delay: 0.15s; }
+@keyframes wobble {
+  0% { transform: rotate(-0.5deg); }
+  100% { transform: rotate(0.5deg); }
+}
+.widget-edit-controls {
+  position: absolute; top: 4px; left: 4px; right: 4px;
+  display: none; justify-content: space-between; z-index: 2;
+}
+.widget-remove-btn {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--red); color: white;
+  border: none; font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.widget-drag-handle {
+  cursor: grab; font-size: 14px; color: var(--muted); padding: 2px 6px;
+  background: var(--bg2); border-radius: 6px; user-select: none;
+}
+.widget-ghost { opacity: 0.4; }
+
+/* Overlay sheets (Detail + Library) */
+.overlay-sheet {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(22,20,18,.55); backdrop-filter: blur(3px);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+@media (min-width: 769px) {
+  .overlay-sheet { align-items: center; }
+  .overlay-sheet-content { max-height: 80vh; border-radius: 20px; max-width: 520px; }
+}
+.overlay-sheet-content {
+  background: var(--paper); border-radius: 20px 20px 0 0;
+  padding: 20px; width: 100%; max-height: 80vh; overflow-y: auto;
+  animation: sheetUp 0.25s ease-out;
+}
+@keyframes sheetUp { from { transform: translateY(30%); opacity: 0; } to { transform: none; opacity: 1; } }
+.overlay-sheet-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.overlay-close-btn {
+  margin-left: auto; background: var(--bg2); border: none; border-radius: 50%;
+  width: 30px; height: 30px; font-size: 16px; cursor: pointer; color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Detail overlay */
+.detail-hero { font-family: 'Libre Baskerville', serif; font-size: 28px; font-weight: 700; margin-bottom: 16px; }
+.detail-hero.pos { color: var(--green); }
+.detail-hero.neg { color: var(--red); }
+.detail-hero.warn { color: var(--amber); }
+.detail-section { margin-bottom: 14px; }
+.detail-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.detail-text { font-size: 14px; line-height: 1.5; }
+.detail-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.detail-table td { padding: 6px 0; border-bottom: 1px solid var(--border); }
+
+/* Library */
+.library-tabs {
+  display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto;
+}
+.library-tab {
+  padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: none; font-size: 13px; font-weight: 600; cursor: pointer;
+  white-space: nowrap; display: flex; align-items: center; gap: 6px;
+  color: var(--ink); transition: background 0.15s;
+}
+.library-tab.active { background: color-mix(in srgb, var(--tab-color) 15%, transparent); border-color: var(--tab-color); }
+.tab-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.library-card {
+  display: flex; align-items: center; gap: 12px; padding: 14px;
+  border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px;
+}
+.library-card.added { opacity: 0.6; }
+.library-card.coming-soon { opacity: 0.5; }
+.data-badge {
+  display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 10px; margin-top: 4px;
+}
+.badge-green { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+.badge-amber { background: color-mix(in srgb, var(--amber) 15%, transparent); color: var(--amber); }
+.badge-gray { background: var(--bg2); color: var(--muted); }
 
 </style>
 </head>
@@ -2042,7 +2172,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <!-- Amount + Date -->
       <div class="grid-2">
         <div class="form-group">
-          <label class="form-label" id="erfAmtLabel">Betrag</label>
+          <label class="form-label required" id="erfAmtLabel">Betrag</label>
           <input type="number" id="erfAmt" class="form-input" placeholder="0.00" step="0.05"
             style="font-size:22px;font-family:'Libre Baskerville',serif;font-weight:500"
             oninput="erfCheckDuplicate();erfCalcMwstPreview()">
@@ -2174,7 +2304,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
     <!-- SCREEN 3: Transfer form -->
     <div id="erfScreen3" style="display:none;padding:12px 20px 28px">
       <div class="form-group">
-        <label class="form-label">Betrag (CHF)</label>
+        <label class="form-label required">Betrag (CHF)</label>
         <input type="number" id="erfTransAmt" class="form-input" placeholder="0.00" step="0.05"
           style="font-size:22px;font-family:'Libre Baskerville',serif;font-weight:500">
       </div>
@@ -2239,6 +2369,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
           <select id="erfInvStatus" class="form-input">
             <option value="Offen">Offen</option>
             <option value="Entwurf">Entwurf</option>
+            <option value="Teilzahlung">Teilzahlung</option>
             <option value="Bezahlt">Bezahlt</option>
           </select>
         </div>
@@ -2324,6 +2455,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
 const fmt  = v => new Intl.NumberFormat('de-CH', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(v);
 /** Format with currency prefix: CHF 1'234.50 (currency from settings) */
 const fmtS = v => `${AppState.currency || 'CHF'}\u00a0${fmt(v)}`;
+/** Format with specific currency prefix: fmtK(1234, 'EUR') → "EUR 1'234.00" */
+const fmtK = (v, cur) => `${cur || AppState.currency || 'CHF'}\u00a0${fmt(v)}`;
 /** Today as YYYY-MM-DD */
 const toDay = () => new Date().toISOString().slice(0, 10);
 /** YYYY from date string */
@@ -2332,6 +2465,55 @@ const getYear  = d => d?.slice(0, 4);
 const getMonth = d => d ? parseInt(d.slice(5,7)) - 1 : -1;
 /** Format date string to DD.MM.YY */
 const fmtDate  = d => d ? new Date(d + 'T12:00').toLocaleDateString('de-CH', {day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
+
+/* ── BL-083: FX Rates (Frankfurter API, 1×/Tag cached) ── */
+
+/** Get FX rate from one currency to another. Returns number (synchronous, uses cache). */
+function getFxRate(from, to) {
+  if (from === to) return 1;
+  const cache = loadLocal('fb_fx_rates', {});
+  // Direct rate
+  if (cache[from + '_' + to]) return cache[from + '_' + to];
+  // Inverse
+  if (cache[to + '_' + from]) return 1 / cache[to + '_' + from];
+  // Via base currency CHF
+  const fromCHF = (from === 'CHF') ? 1 : cache[from + '_CHF'];
+  const toCHF   = (to === 'CHF')   ? 1 : cache[to + '_CHF'];
+  if (fromCHF && toCHF) return fromCHF / toCHF;
+  console.warn(`FX rate ${from}→${to} not cached, using 1.0`);
+  return 1;
+}
+
+/** Refresh FX rates from Frankfurter API. Called once per day during sync. */
+async function refreshFxRates() {
+  const cache = loadLocal('fb_fx_rates', {});
+  if (cache._date === toDay()) return; // already fresh today
+  const currencies = ['EUR', 'USD', 'GBP'];
+  try {
+    const resp = await fetch('https://api.frankfurter.app/latest?from=CHF&to=' + currencies.join(','));
+    if (!resp.ok) throw new Error('FX API ' + resp.status);
+    const data = await resp.json();
+    const rates = { _date: toDay() };
+    // Store as FROM_TO pairs (from CHF perspective)
+    for (const [cur, rate] of Object.entries(data.rates || {})) {
+      rates['CHF_' + cur] = rate;           // CHF → EUR = 0.94
+      rates[cur + '_CHF'] = 1 / rate;       // EUR → CHF = 1.06
+    }
+    saveLocal('fb_fx_rates', rates);
+    console.log('FX rates refreshed:', rates);
+  } catch (e) {
+    console.warn('FX refresh failed (using cached):', e.message);
+    // Keep old cache — better stale than nothing
+  }
+}
+
+/** BL-076: Disable button during async operation, re-enable on completion.
+ *  Usage: const re = disableBtn('erfSaveBtn'); try { ... } finally { re(); } */
+function disableBtn(id) {
+  const btn = document.getElementById(id);
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  return () => { if (btn) { btn.disabled = false; btn.style.opacity = ''; } };
+}
 
 /** Safe localStorage read with JSON parse + default fallback */
 function loadLocal(key, def) {
@@ -3509,12 +3691,14 @@ async function createMissingDatabases(parentPageId, missingKeys) {
       'Beschreibung': { rich_text: {} },
       'Betrag': { number: { format: 'number' } },
       'MwSt': { number: { format: 'number' } },
-      'Status': { select: { options: [{ name: 'Offen', color: 'orange' }, { name: 'Bezahlt', color: 'green' }, { name: 'Überfällig', color: 'red' }, { name: 'Entwurf', color: 'gray' }] } },
+      'Status': { select: { options: [{ name: 'Offen', color: 'orange' }, { name: 'Bezahlt', color: 'green' }, { name: 'Teilzahlung', color: 'yellow' }, { name: 'Überfällig', color: 'red' }, { name: 'Entwurf', color: 'gray' }] } },
       'Konto': { select: { options: [] } },
       'Bezahlt am': { date: {} },
+      'Bereits erhalten': { number: { format: 'number' } },
       'Typ': { select: { options: [] } },
       'Projekt': { rich_text: {} },
       'Notiz': { rich_text: {} },
+      'Buchungs-ID': { rich_text: {} },
     },
     TRANSFERS: {
       'Beschreibung': { title: {} },
@@ -3553,10 +3737,12 @@ async function createMissingDatabases(parentPageId, missingKeys) {
       'Sortierung': { number: { format: 'number' } },
       'Aktueller Stand': { number: { format: 'number' } },
       'Saldo-Datum': { date: {} },
+      'Währung': { select: { options: [{ name: 'CHF', color: 'green' }, { name: 'EUR', color: 'blue' }, { name: 'USD', color: 'yellow' }, { name: 'GBP', color: 'purple' }] } },
     },
     RECURRINGS: {
       'Name': { title: {} },
       'Betrag': { number: { format: 'number' } },
+      'Typ': { select: { options: [{ name: 'Ausgabe', color: 'red' }, { name: 'Einnahme', color: 'green' }] } },
       'Frequenz': { select: { options: [{ name: 'weekly', color: 'green' }, { name: 'monthly', color: 'blue' }, { name: 'yearly', color: 'orange' }] } },
       'Kategorie': { select: { options: [] } },
       'Konto': { select: { options: [] } },
@@ -3886,9 +4072,10 @@ function parseRechnung(page) {
     desc:     N.txt(p['Beschreibung']),
     amount:   N.num(p['Betrag']),
     mwst:     N.num(p['MwSt']),
-    status:   N.sel(p['Status']),         // 'Offen' | 'Bezahlt' | 'Überfällig' | 'Entwurf'
+    status:   N.sel(p['Status']),         // 'Offen' | 'Bezahlt' | 'Teilzahlung' | 'Überfällig' | 'Entwurf'
     account:  N.sel(p['Konto']),
     paidDate: N.dat(p['Bezahlt am']),
+    paidAmount: N.num(p['Bereits erhalten']) || 0,
     note:     N.txt(p['Notiz']),
     type:     N.sel(p['Typ']),
     projekt:  N.txt(p['Projekt']),
@@ -3949,6 +4136,7 @@ function parseKonto(page) {
     active:    N.chk(p['Aktiv']),
     stand:     N.num(p['Aktueller Stand']),
     saldoDatum:N.dat(p['Saldo-Datum']),
+    currency:  N.sel(p['Währung']) || 'CHF',
   };
 }
 
@@ -3960,6 +4148,7 @@ function parseRecurring(page) {
     _edited:  page.last_edited_time,
     name:     N.txt(p['Name']),
     amt:      N.num(p['Betrag']),
+    typ:      N.sel(p['Typ']) || 'Ausgabe',   // BL-068: Einnahme | Ausgabe (default Ausgabe)
     freq:     N.sel(p['Frequenz']),       // 'weekly' | 'monthly' | 'yearly'
     cat:      N.sel(p['Kategorie']),
     account:  N.sel(p['Konto']),
@@ -4342,6 +4531,7 @@ function invoiceToProps(d) {
     'Status':       { select: { name: d.status || 'Offen' } },
     'Notiz':        { rich_text: [{ text: { content: d.note || '' } }] },
     'Bezahlt am':   d.paidDate ? { date: { start: d.paidDate } } : { date: null },
+    'Bereits erhalten': { number: d.paidAmount || 0 },
   };
   if (d.account) props['Konto']   = { select: { name: d.account } };
   if (d.type)    props['Typ']     = { select: { name: d.type } };
@@ -4393,6 +4583,7 @@ function kontoToProps(d) {
     'Aktiv':      { checkbox: d.active !== false },
     'Sortierung': { number: d.sort || 99 },
     'App-ID':     { rich_text: [{ text: { content: d.appId || uid() } }] },
+    'Währung':    { select: { name: d.currency || 'CHF' } },
   };
   if (d.stand != null) props['Aktueller Stand'] = { number: d.stand };
   if (d.saldoDatum)    props['Saldo-Datum']      = { date: { start: d.saldoDatum } };
@@ -4404,6 +4595,7 @@ function recurringToProps(d) {
   return {
     'Name':            { title: [{ text: { content: d.name || '' } }] },
     'Betrag':          { number: d.amt || 0 },
+    'Typ':             { select: { name: d.typ || 'Ausgabe' } },
     'Frequenz':        { select: { name: d.freq || 'monthly' } },
     'Kategorie':       { select: { name: d.cat || '' } },
     'Konto':           { select: { name: d.account || '' } },
@@ -4596,6 +4788,9 @@ async function fullSync() {
   setAppStatus('idle', t('app.connected'));
   hideLoading();
 
+  // BL-083: Refresh FX rates (1×/Tag, non-blocking)
+  refreshFxRates().catch(e => console.warn('FX refresh error:', e.message));
+
   // One-time migration: v1 localStorage recurrings → Notion
   migrateV1Recurrings().catch(e => console.warn('Recurrings migration error:', e.message));
 }
@@ -4703,7 +4898,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.15c.2026-04-03';
+const APP_VERSION = '2.18a.2026-04-07';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -4887,12 +5082,12 @@ const Computed = {
 
   /** Open invoices */
   openInvoices() {
-    return Store.rechnungen.filter(r => r.status === 'Offen' || r.status === 'Überfällig');
+    return Store.rechnungen.filter(r => r.status === 'Offen' || r.status === 'Überfällig' || r.status === 'Teilzahlung');
   },
 
   /** Total open invoice amount */
   openInvoiceAmount() {
-    return this.openInvoices().reduce((s, r) => s + r.amount, 0);
+    return this.openInvoices().reduce((s, r) => s + r.amount - (r.paidAmount || 0), 0);
   },
 
   /** Overdue invoices */
@@ -4940,14 +5135,19 @@ const Computed = {
   /**
    * Total estimated wealth across all active accounts.
    * Respects vermoegenConfig (which accounts to include).
+   * BL-083: Converts each account to app main currency (CHF) via FX rates.
    */
   totalWealth() {
     const cfg = loadLocal('fb_vermoegen_config', {});
+    const mainCur = AppState.currency || 'CHF';
     let total = 0;
     Store.konten.forEach(k => {
       if (cfg[k._id] === false) return;
       const est = this.estimatedBalance(k.name, k.stand, k.saldoDatum);
-      if (est !== null) total += est;
+      if (est !== null) {
+        const rate = getFxRate(k.currency || 'CHF', mainCur);
+        total += est * rate;
+      }
     });
     return Math.round(total * 100) / 100;
   },
@@ -5393,23 +5593,26 @@ const InboxEngine = {
       }))
       .sort((a, b) => b._daysOverdue - a._daysOverdue);
 
-    // Due recurrings — sorted by days overdue desc
-    const dueRecur = Store.recurrings
-      .filter(r => !r.paused && r.nextDate && r.nextDate <= today)
-      .map(r => ({
-        ...r,
-        _daysOverdue: Math.round((new Date(today) - new Date(r.nextDate)) / 86400000),
-      }))
-      .sort((a, b) => b._daysOverdue - a._daysOverdue);
-
-    // Stacking: group recurring series by name prefix for cleaner display
-    // (same recurring appearing multiple times = show oldest, indicate count)
-    const recurStacked = dueRecur.reduce((acc, r) => {
-      const existing = acc.find(x => x._id === r._id);
-      if (existing) { existing._stackCount = (existing._stackCount || 1) + 1; }
-      else           { acc.push({ ...r, _stackCount: 1 }); }
-      return acc;
-    }, []);
+    // Due recurrings — BL-069: Multi-Periode
+    // Each overdue period becomes its own card (e.g. 3 months overdue = 3 cards)
+    const dueRecurRaw = Store.recurrings.filter(r => !r.paused && r.nextDate && r.nextDate <= today);
+    const dueRecur = [];
+    for (const r of dueRecurRaw) {
+      let periodDate = r.nextDate;
+      let count = 0;
+      const maxPeriods = 12; // safety limit
+      while (periodDate <= today && count < maxPeriods) {
+        dueRecur.push({
+          ...r,
+          _periodDate: periodDate,
+          _periodLabel: fmtDate(periodDate),
+          _daysOverdue: Math.round((new Date(today) - new Date(periodDate)) / 86400000),
+        });
+        periodDate = nextOccurrence(periodDate, r.freq);
+        count++;
+      }
+    }
+    dueRecur.sort((a, b) => b._daysOverdue - a._daysOverdue);
 
     // Additional triggers (A6 extension points):
     // - Unconfirmed bookings older than 7 days
@@ -5424,16 +5627,16 @@ const InboxEngine = {
     ).length;
     const showReviewReminder = unreviewedCount >= 5; // Only nag if 5+
 
-    const total = overdueInv.length + recurStacked.length + staleUnconfirmed.length + (showReviewReminder ? 1 : 0);
+    const total = overdueInv.length + dueRecur.length + staleUnconfirmed.length + (showReviewReminder ? 1 : 0);
 
     return {
       invoices:         overdueInv,
-      recurrings:       recurStacked,
+      recurrings:       dueRecur,
       staleUnconfirmed,
       unreviewedCount,
       showReviewReminder,
       total,
-      badgeCount: overdueInv.length + recurStacked.length,
+      badgeCount: overdueInv.length + dueRecur.length,
     };
   },
 
@@ -6487,6 +6690,8 @@ function closeErfassen() {
   document.getElementById('erfassenOverlay').style.display = 'none';
   document.body.style.overflow = '';
   Erf.receipt = null;
+  Erf.editId = '';
+  window._editInvoiceId = ''; // BL-070: clear invoice edit state
 }
 
 // Close on overlay backdrop click
@@ -6797,8 +7002,8 @@ async function erfSaveBuchung() {
     } catch (e) {
       console.warn('Receipt upload failed:', e.message);
       showToast('warning', '☁\uFE0F', 'Beleg-Upload fehlgeschlagen',
-        'Beleg konnte nicht hochgeladen werden. Buchung wurde ohne Beleg gespeichert.',
-        [], { label: 'Drive verbinden', fn: () => nav('einstellungen') }, 6000);
+        'Buchung gespeichert, aber Beleg konnte nicht hochgeladen werden. Beleg später nachträglich anhängen.',
+        [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 10000);
     }
     btn.textContent = 'Speichert…';
   }
@@ -7001,17 +7206,37 @@ async function erfSaveRechnung() {
   };
 
   const db = getActiveDataAdapter();
-  const { success, result, error } = await db.createInvoice(data);
+  const editId = window._editInvoiceId || '';
 
-  if (success) {
-    const links = result?.url ? [{ label: 'In Notion', url: result.url }] : [];
-    showToast('success', '🧾', 'Rechnung gespeichert',
-      nr + ' · ' + client + ' · CHF ' + fmt(amt), links);
-    closeErfassen();
-    deltaSync().then(() => { renderAll(); InboxEngine.updateBadge(); });
+  if (editId) {
+    // BL-070: Edit mode
+    try {
+      await db.updateInvoice(editId, data);
+      const idx = Store.rechnungen.findIndex(r => r._id === editId);
+      if (idx >= 0) Object.assign(Store.rechnungen[idx], data, { _id: editId });
+      saveCache('rechnungen');
+      showToast('success', '🧾', 'Rechnung aktualisiert', nr + ' · ' + client);
+      window._editInvoiceId = '';
+      closeErfassen();
+      renderBuchSubtab();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = '✓ Aktualisieren';
+      if (fbEl) fbEl.textContent = '❌ ' + e.message;
+    }
   } else {
-    btn.disabled = false; btn.textContent = '🧾 Rechnung speichern';
-    if (fbEl) fbEl.textContent = '❌ ' + (error || 'Fehler');
+    // Create mode
+    const { success, result, error } = await db.createInvoice(data);
+
+    if (success) {
+      const links = result?.url ? [{ label: 'In Notion', url: result.url }] : [];
+      showToast('success', '🧾', 'Rechnung gespeichert',
+        nr + ' · ' + client + ' · CHF ' + fmt(amt), links);
+      closeErfassen();
+      deltaSync().then(() => { renderAll(); InboxEngine.updateBadge(); });
+    } else {
+      btn.disabled = false; btn.textContent = '🧾 Rechnung speichern';
+      if (fbEl) fbEl.textContent = '❌ ' + (error || 'Fehler');
+    }
   }
 }
 
@@ -7238,7 +7463,13 @@ function erfRemoveReceipt(context) {
 async function erfUploadReceipt(filename) {
   if (!Erf.receipt) throw new Error('No receipt');
   const storage = getActiveStorageAdapter();
-  if (!storage || !storage.isConnected()) throw new Error('Keine Beleg-Ablage verbunden');
+  if (!storage || !storage.isConnected()) {
+    // BUG-054: Proactive hint for users on second device
+    showToast('warning', '📂', 'Google Drive nicht verbunden',
+      'Beleg wird ohne Upload gespeichert. Verbinde GDrive in den Einstellungen.',
+      [], { label: 'Einstellungen →', fn: () => { closeErfassen(); nav('einstellungen'); } }, 8000);
+    throw new Error('GDrive nicht verbunden — Beleg-Upload übersprungen');
+  }
 
   // Build Blob from receipt data (BUG-045: no fetch on data: URI)
   const dataURL = Erf.receipt.original;
@@ -7433,23 +7664,24 @@ function inboxInvCard(inv) {
 
 function inboxRecurCard(r) {
   const today    = toDay();
-  const daysDue  = Math.round((new Date(today) - new Date(r.nextDate)) / 86400000);
+  const periodDate = r._periodDate || r.nextDate;
+  const daysDue  = r._daysOverdue || Math.round((new Date(today) - new Date(periodDate)) / 86400000);
   const dueLabel = daysDue === 0 ? 'Heute fällig'
                  : daysDue === 1 ? 'Gestern fällig'
-                 : `${daysDue} Tage überfällig (seit ${fmtDate(r.nextDate)})`;
+                 : `${daysDue} Tage überfällig (${fmtDate(periodDate)})`;
   const freqLabel = { weekly:'Wöchentlich', monthly:'Monatlich', yearly:'Jährlich' }[r.freq] || r.freq;
-  const stackBadge = r._stackCount > 1
-    ? `<span style="background:var(--amber);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px">${r._stackCount}×</span>`
-    : '';
+  const isIncome = r.typ === 'Einnahme';
+  // BL-069: unique card ID per period
+  const cardId = 'inboxRecur_' + r._id + (r._periodDate ? '_' + r._periodDate : '');
   return `
-    <div class="inbox-card" id="inboxRecur_${r._id}">
+    <div class="inbox-card" id="${cardId}">
       <div class="inbox-card-header">
         <div>
-          <div class="inbox-card-name">${esc(r.name)}${stackBadge}</div>
+          <div class="inbox-card-name">${esc(r.name)}</div>
           <div class="inbox-card-meta">${freqLabel}${r.cat ? ' · ' + r.cat : ''}${r.account ? ' · ' + r.account : ''}</div>
           <div class="inbox-card-due">${dueLabel}</div>
         </div>
-        <div class="inbox-card-amt neg">−CHF ${fmt(r.amt)}</div>
+        <div class="inbox-card-amt ${isIncome ? 'pos' : 'neg'}">${isIncome ? '+' : '−'}${fmtS(r.amt)}</div>
       </div>
       <div class="inbox-actions">
         <button class="inbox-btn-confirm" onclick="inboxRecurBook('${r._id}')">✓ Bezahlt / ausgeführt</button>
@@ -7524,6 +7756,47 @@ function inboxDone(cardId) {
 }
 
 /* ── Invoice actions ── */
+
+/** BL-066: Create booking automatically when invoice is marked as paid */
+async function createBookingFromInvoice(inv) {
+  if (!inv) return;
+  try {
+    const db = getActiveDataAdapter();
+    const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+    const { success, result } = await db.createBooking({
+      desc:       'Rechnung ' + (inv.nr || '') + (inv.client ? ' · ' + inv.client : ''),
+      date:       toDay(),
+      type:       'Einnahme',
+      bereich:    'Geschäftlich',
+      amount:     inv.amount || 0,
+      paid:       true,
+      cat:        '',
+      account:    inv.account || '',
+      note:       'Auto-erstellt aus Rechnung ' + (inv.nr || ''),
+      invRef:     inv.nr || '',
+      source:     inv.type || '',
+    });
+    if (success && result) {
+      Store.buchungen.push(parseBuchung(result));
+      saveCache('buchungen');
+      // BL-081: Bidirectional reference — store booking ID in invoice
+      if (result.id && inv._id) {
+        db.updateInvoice(inv._id, { _partial: {
+          'Buchungs-ID': { rich_text: [{ text: { content: result.id } }] },
+        }, _label: 'Buchungs-Referenz' }).catch(e => {
+          console.warn('BL-081 back-reference failed:', e.message);
+        });
+      }
+    }
+    showToast('success', '📝', 'Buchung erstellt', `Einnahme ${fmtS(inv.amount)} aus Rechnung ${inv.nr}`);
+  } catch (e) {
+    console.warn('Auto-Buchung aus Rechnung fehlgeschlagen:', e.message);
+    showToast('warning', '⚠️', 'Buchung nicht erstellt',
+      'Rechnung als bezahlt markiert, aber Buchung konnte nicht erstellt werden. Bitte manuell erfassen.',
+      [], null, 8000);
+  }
+}
+
 async function inboxInvPaid(invId) {
   const card = document.getElementById('inboxInv_' + invId);
   if (card) { card.style.opacity = '.4'; card.style.pointerEvents = 'none'; }
@@ -7535,6 +7808,8 @@ async function inboxInvPaid(invId) {
   inboxDoneByCardId('inboxInv_' + invId);
   showToast('success', '💰', 'Zahlungseingang bestätigt',
     inv ? `${esc(inv.nr)} · CHF ${fmt(inv.amount)}` : '');
+  // BL-066: Auto-create booking
+  if (inv) createBookingFromInvoice(inv);
   // S14: via adapter (partial update)
   const db = getActiveDataAdapter();
   db.updateInvoice(invId, { _partial: {
@@ -7574,6 +7849,9 @@ async function inboxInvConfirmShift(invId) {
 async function inboxRecurBook(recurId) {
   const r = Store.recurrings.find(x => x._id === recurId);
   if (!r) return;
+  // BUG-056: Guard against double-click
+  if (r._booking) return;
+  r._booking = true;
   const card = document.getElementById('inboxRecur_' + recurId);
   if (card) { card.style.opacity = '.4'; card.style.pointerEvents = 'none'; }
 
@@ -7606,7 +7884,7 @@ async function inboxRecurBook(recurId) {
       await db.createBooking({
         desc:    r.name + (r.note ? ' \u2014 ' + r.note : ''),
         date:    toDay(),
-        type:    'Ausgabe',
+        type:    r.typ || 'Ausgabe',
         bereich: r.bereich || 'Privat',
         amount:  r.amt,
         paid:    true,
@@ -7620,17 +7898,24 @@ async function inboxRecurBook(recurId) {
     // Advance nextDate — optimistic + V11 queue-backed
     const newNextDate = nextOccurrence(r.nextDate || toDay(), r.freq);
     r.nextDate = newNextDate;
+    r._booking = false; // BL-069: reset guard before re-render
     saveCache('recurrings');
     InboxEngine.updateBadge();
     showToast('success', isTransfer ? '↔' : '💸',
       isTransfer ? 'Transfer gebucht' : 'Buchung gespeichert',
       `${esc(r.name)} · CHF ${fmt(r.amt)}`);
-    inboxDoneByCardId('inboxRecur_' + recurId);
+    // BL-069: Re-render inbox to recalculate remaining periods
+    const inboxEl = document.getElementById('inboxContent');
+    if (inboxEl) {
+      const { invoices, recurrings, staleUnconfirmed } = InboxEngine.compute();
+      inboxRender(invoices, recurrings, staleUnconfirmed);
+    }
     const db = getActiveDataAdapter();
     db.updateRecurring(recurId, { ...r, nextDate: newNextDate, _queued: true, _label: 'Recurring nextDate' }).catch(e => {
       console.warn('inboxRecurBook nextDate queue failed:', e.message);
     });
   } catch (e) {
+    r._booking = false;
     if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
     showToast('error', '❌', 'Fehler', e.message);
   }
@@ -7824,7 +8109,10 @@ function renderAll() {
 
 let _liqHorizon = 60; // active liquidity horizon in days
 
-/** Session 3: Steuerbereit-Score (0–100%) */
+/** BL-086: Steuerbereit-Score (revidiert S17)
+ *  Gewichtung: Kategorisiert 40% · Dokumentiert 30% · MWST-OK 10% · Flags-OK 20%
+ *  Dokumentiert: keine CHF-100-Schwelle, "Eigenbeleg" akzeptiert
+ *  MWST: adaptiv — nicht-pflichtige User bekommen proportionale Umverteilung */
 function calculateTaxReadiness() {
   const buchungen = Store.buchungen.filter(b => b.bereich === 'Geschäftlich');
   if (buchungen.length === 0) return { score: 100, categorized: 1, documented: 1, mwstOk: 1, flagsOk: 1, reviewCount: 0 };
@@ -7836,23 +8124,450 @@ function calculateTaxReadiness() {
   ).length;
   const categorized = categorizedCount / total;
 
+  // BL-086: Keine CHF-100-Schwelle mehr. Beleg oder Eigenbeleg = dokumentiert.
   const documentedCount = buchungen.filter(b =>
-    b.amount < 100 || b.receiptLink || b.receiptFile
+    b.receiptLink || b.receiptFile === 'Eigenbeleg' || b.receiptFile
   ).length;
   const documented = documentedCount / total;
-
-  const mwstOk = AppState.mwstPflichtig
-    ? buchungen.filter(b => b.mwstSatz != null && b.mwstSatz > 0).length / total
-    : 1;
 
   const flaggedCount = buchungen.filter(b => b.categoryStatus === 'flagged').length;
   const flagsOk = flaggedCount === 0 ? 1 : Math.max(0, 1 - flaggedCount / total);
 
-  const score = Math.round(categorized * 40 + documented * 30 + mwstOk * 20 + flagsOk * 10);
+  // BL-086: MWST adaptiv — nicht-pflichtige bekommen Gewicht umverteilt
+  const isMwstPflichtig = AppState.mwstPflichtig;
+  let mwstOk, score;
+  if (isMwstPflichtig) {
+    mwstOk = buchungen.filter(b => b.mwstSatz != null && b.mwstSatz > 0).length / total;
+    // Gewichtung: 40/30/10/20
+    score = Math.round(categorized * 40 + documented * 30 + mwstOk * 10 + flagsOk * 20);
+  } else {
+    mwstOk = 1; // irrelevant
+    // Proportional umverteilt: 44/33/0/22 (gerundet: 44+33+22 = ~99, +1 rounding)
+    score = Math.round(categorized * 44 + documented * 33 + flagsOk * 22);
+    score = Math.min(100, score);
+  }
   const reviewCount = buchungen.filter(b => b.categoryStatus === 'vorgeschlagen').length;
 
   return { score, categorized, documented, mwstOk, flagsOk, reviewCount };
 }
+
+/* ── BL-085: Widget-Bibliothek-System (S17/DS1) ── */
+
+const WIDGET_CATS = {
+  buchhaltung: { label: 'Buchhaltung', desc: 'Was ist passiert?', color: 'var(--green)' },
+  geschaeft:   { label: 'Geschäftsanalyse', desc: 'Wie gesund ist mein Geschäft?', color: 'var(--accent)' },
+  kompass:     { label: 'Kompass', desc: 'Bin ich auf dem richtigen Weg?', color: 'var(--amber)' },
+};
+
+const WIDGETS = [
+  // ── Buchhaltung ──
+  { id: 'einnahmen', cat: 'buchhaltung', name: 'Einnahmen', icon: '💰', size: 'small',
+    requires: ['buchungen'], desc: 'Jahreseinnahmen mit Trend',
+    render() {
+      const v = Computed.totalIncome();
+      const conf = Computed.totalIncomeConfirmed();
+      const hasUnconf = conf < v;
+      return `<div class="w-val pos">${fmtS(v)}</div>
+        ${hasUnconf ? `<div class="w-sub">✓ ${fmtS(conf)} bestätigt</div>` : ''}`;
+    },
+    detail() {
+      const v = Computed.totalIncome();
+      return { value: fmtS(v), valueClass: 'pos', formula: 'Σ Buchungen (Typ=Einnahme, laufendes Jahr)',
+        interpretation: v > 0 ? 'Deine Einnahmen im laufenden Jahr.' : 'Noch keine Einnahmen erfasst.' };
+    }
+  },
+  { id: 'ausgaben', cat: 'buchhaltung', name: 'Ausgaben', icon: '💸', size: 'small',
+    requires: ['buchungen'], desc: 'Jahresausgaben mit Trend',
+    render() {
+      const v = Computed.totalExpense();
+      return `<div class="w-val neg">${fmtS(v)}</div>`;
+    },
+    detail() {
+      const v = Computed.totalExpense();
+      return { value: fmtS(v), valueClass: 'neg', formula: 'Σ Buchungen (Typ=Ausgabe, laufendes Jahr)',
+        interpretation: 'Deine Ausgaben im laufenden Jahr.' };
+    }
+  },
+  { id: 'profit', cat: 'buchhaltung', name: 'Profit', icon: '📊', size: 'small',
+    requires: ['buchungen'], desc: 'Einnahmen minus Ausgaben',
+    render() {
+      const v = Computed.totalIncome() - Computed.totalExpense();
+      return `<div class="w-val ${v >= 0 ? 'pos' : 'neg'}">${fmtS(v)}</div>`;
+    },
+    detail() {
+      const v = Computed.totalIncome() - Computed.totalExpense();
+      return { value: fmtS(v), valueClass: v >= 0 ? 'pos' : 'neg',
+        formula: 'Einnahmen − Ausgaben (laufendes Jahr)',
+        interpretation: v >= 0 ? 'Du bist im Plus.' : 'Deine Ausgaben übersteigen die Einnahmen.' };
+    }
+  },
+  { id: 'vermoegen', cat: 'buchhaltung', name: 'Vermögen', icon: '🏦', size: 'small',
+    requires: ['konten'], desc: 'Geschätztes Gesamtvermögen',
+    render() {
+      const v = Computed.totalWealth();
+      return `<div class="w-val ${v >= 0 ? '' : 'neg'}">${fmtS(v)}</div>
+        <div class="w-sub">${Store.konten.filter(k=>k.active!==false).length} Konten</div>`;
+    },
+    detail() {
+      const v = Computed.totalWealth();
+      return { value: fmtS(v), valueClass: v >= 0 ? '' : 'neg',
+        formula: 'Σ estimatedBalance(Konto) × FX-Kurs → Hauptwährung',
+        interpretation: 'Geschätzt aus Startsaldi + Buchungsbewegungen.',
+        data: Store.konten.filter(k=>k.active!==false).map(k => {
+          const est = Computed.estimatedBalance(k.name, k.stand, k.saldoDatum);
+          return [k.icon + ' ' + k.name, est !== null ? fmtK(est, k.currency) : '—'];
+        })
+      };
+    }
+  },
+  { id: 'cashflow-chart', cat: 'buchhaltung', name: 'Cashflow', icon: '📈', size: 'large',
+    requires: ['buchungen'], desc: 'Monatlicher Ein-/Ausgang als Chart',
+    render() { return cockpitCashflowInner(); },
+    detail() {
+      return { value: '', formula: 'Einnahmen vs. Ausgaben pro Monat (Balkenchart)',
+        interpretation: 'Zeigt deinen monatlichen Geldfluss über das laufende Jahr.' };
+    }
+  },
+  { id: 'offene-rechnungen', cat: 'buchhaltung', name: 'Offene Rechnungen', icon: '📬', size: 'small',
+    requires: ['rechnungen'], desc: 'Unbezahlte Rechnungen',
+    render() {
+      const n = Computed.openInvoices();
+      const amt = Computed.openInvoiceAmount();
+      const overdue = Computed.overdueInvoices();
+      return `<div class="w-val">${n}</div>
+        <div class="w-sub">${fmtS(amt)} offen</div>
+        ${overdue > 0 ? `<div class="w-sub neg">⚠ ${overdue} überfällig</div>` : ''}`;
+    },
+    detail() {
+      const n = Computed.openInvoices();
+      return { value: String(n), formula: 'Rechnungen mit Status ≠ Bezahlt/Entwurf',
+        interpretation: n === 0 ? 'Keine offenen Rechnungen.' : `${n} Rechnungen warten auf Zahlung.` };
+    }
+  },
+  { id: 'steuer-score', cat: 'buchhaltung', name: 'Steuerbereit', icon: '📋', size: 'small',
+    requires: ['buchungen'], desc: 'Wie gut bist du für die Steuer vorbereitet?',
+    render() {
+      const tr = calculateTaxReadiness();
+      const color = tr.score < 50 ? 'neg' : tr.score < 80 ? 'warn' : 'pos';
+      return `<div class="w-val ${color}">${tr.score}%</div>
+        ${tr.reviewCount > 0 ? `<div class="w-sub">${tr.reviewCount} zu prüfen</div>` : ''}`;
+    },
+    detail() {
+      const tr = calculateTaxReadiness();
+      return { value: tr.score + '%', valueClass: tr.score < 50 ? 'neg' : tr.score < 80 ? 'warn' : 'pos',
+        formula: 'Kategorisiert 40% + Dokumentiert 30% + MWST 10% + Flags 20%',
+        interpretation: tr.score >= 80 ? 'Du bist gut vorbereitet.' : 'Es gibt noch Lücken — prüfe deine Buchungen.',
+        data: [['Kategorisiert', Math.round(tr.categorized*100)+'%'],['Dokumentiert', Math.round(tr.documented*100)+'%'],
+               ['MWST-OK', Math.round(tr.mwstOk*100)+'%'],['Flags-OK', Math.round(tr.flagsOk*100)+'%']] };
+    }
+  },
+  { id: 'liquiditaet', cat: 'buchhaltung', name: 'Liquidität', icon: '💧', size: 'medium',
+    requires: ['konten','buchungen','rechnungen'], desc: 'Liquiditätsvorschau auf 60 Tage',
+    render() { return cockpitLiquiditaetInner(); },
+    detail() {
+      return { value: '', formula: 'Aktuelles Saldo + erwartete Ein-/Ausgänge über Zeitraum',
+        interpretation: 'Zeigt ob du in den nächsten Wochen liquide bleibst.' };
+    }
+  },
+  { id: 'puffer', cat: 'buchhaltung', name: 'Puffer', icon: '🛟', size: 'small',
+    requires: ['konten','buchungen'], desc: 'Monate die dein Puffer abdeckt',
+    render() {
+      const p = Computed.puffer();
+      const color = p.months < 1 ? 'neg' : p.months < 3 ? 'warn' : 'pos';
+      return `<div class="w-val ${color}">${p.months.toFixed(1)} Mt.</div>
+        <div class="w-sub">${fmtS(p.buffer)} / ${fmtS(p.avgExpense)}/Mt.</div>`;
+    },
+    detail() {
+      const p = Computed.puffer();
+      return { value: p.months.toFixed(1) + ' Monate', formula: 'Liquide Mittel / Ø monatliche Geschäftsausgaben',
+        interpretation: p.months >= 3 ? 'Guter Puffer.' : 'Weniger als 3 Monate — Vorsicht bei Auftragsrückgang.' };
+    }
+  },
+
+  // ── Geschäftsanalyse ──
+  { id: 'stundensatz', cat: 'geschaeft', name: 'Stundensatz', icon: '⏱️', size: 'small',
+    requires: ['clockify'], desc: 'Effektiver Stundensatz aus Zeit × Geld',
+    render() {
+      const z = Computed.zeitKPIs();
+      if (!z.hasClockify) return '<div class="w-val muted">—</div><div class="w-sub">Clockify verbinden</div>';
+      return `<div class="w-val">${fmtS(z.effectiveRate)}/h</div>`;
+    },
+    detail() {
+      const z = Computed.zeitKPIs();
+      return { value: z.hasClockify ? fmtS(z.effectiveRate)+'/h' : '—',
+        formula: 'Geschäfts-Einnahmen / getrackte Stunden',
+        interpretation: z.hasClockify ? 'Dein effektiver Stundensatz basierend auf allen getrackten Stunden.' : 'Verbinde Clockify um deinen Stundensatz zu berechnen.' };
+    }
+  },
+  { id: 'auslastung', cat: 'geschaeft', name: 'Auslastung', icon: '📅', size: 'small',
+    requires: ['clockify'], desc: 'Anteil verrechenbarer Stunden',
+    render() {
+      const z = Computed.zeitKPIs();
+      if (!z.hasClockify) return '<div class="w-val muted">—</div>';
+      const pct = z.totalHours > 0 ? Math.round(z.billableHours / z.totalHours * 100) : 0;
+      return `<div class="w-val">${pct}%</div><div class="w-sub">${z.billableHours.toFixed(0)}h / ${z.totalHours.toFixed(0)}h</div>`;
+    },
+    detail() {
+      const z = Computed.zeitKPIs();
+      return { value: z.hasClockify ? Math.round((z.billableHours/z.totalHours)*100)+'%' : '—',
+        formula: 'Billable Hours / Total Tracked Hours',
+        interpretation: 'Wie viel deiner getrackten Zeit direkt verrechenbar ist.' };
+    }
+  },
+  { id: 'deckungsbeitrag', cat: 'geschaeft', name: 'Deckungsbeitrag', icon: '🎯', size: 'medium',
+    requires: ['buchungen','clockify'], desc: 'Umsatz minus variable Kosten',
+    render() {
+      const d = Computed.deckungsbeitrag();
+      return `<div class="w-val ${d.db >= 0 ? 'pos' : 'neg'}">${fmtS(d.db)}</div>
+        <div class="w-sub">DB-Marge: ${d.margin.toFixed(0)}%</div>`;
+    },
+    detail() {
+      const d = Computed.deckungsbeitrag();
+      return { value: fmtS(d.db), formula: 'Umsatz − variable Kosten (geschäftliche Ausgaben)',
+        interpretation: d.margin > 50 ? 'Gute Marge.' : 'Variable Kosten fressen viel vom Umsatz.',
+        data: [['Umsatz', fmtS(d.revenue)],['Variable Kosten', fmtS(d.variableCosts)],['DB', fmtS(d.db)],['Marge', d.margin.toFixed(0)+'%']] };
+    }
+  },
+  { id: 'runway', cat: 'geschaeft', name: 'Runway', icon: '🛫', size: 'small',
+    requires: ['konten','buchungen'], desc: 'Wie lange reicht dein Geld noch?',
+    render() {
+      const r = Computed.runway();
+      const color = r.months < 3 ? 'neg' : r.months < 6 ? 'warn' : 'pos';
+      return `<div class="w-val ${color}">${r.months < 99 ? r.months.toFixed(1) + ' Mt.' : '∞'}</div>`;
+    },
+    detail() {
+      const r = Computed.runway();
+      return { value: r.months < 99 ? r.months.toFixed(1)+' Monate' : '∞',
+        formula: 'Gesamtvermögen / Ø monatliche Gesamtausgaben',
+        interpretation: r.months >= 6 ? 'Komfortable Runway.' : 'Weniger als 6 Monate — plane voraus.' };
+    }
+  },
+  { id: 'abo-kosten', cat: 'geschaeft', name: 'Abo-Kosten', icon: '🔄', size: 'small',
+    requires: ['recurrings'], desc: 'Monatliche wiederkehrende Kosten',
+    render() {
+      const v = Computed.subscriptionMonthly();
+      return `<div class="w-val">${fmtS(v)}/Mt.</div>`;
+    },
+    detail() {
+      const v = Computed.subscriptionMonthly();
+      return { value: fmtS(v)+'/Mt.', formula: 'Σ aktive Recurrings (monatlich normiert)',
+        interpretation: 'Deine fixen monatlichen Kosten aus wiederkehrenden Zahlungen.' };
+    }
+  },
+  { id: 'kundenkonzentration', cat: 'geschaeft', name: 'Kundenkonzentration', icon: '🎲', size: 'medium',
+    requires: ['rechnungen'], desc: 'Wie abhängig bist du von einzelnen Kunden?',
+    render() {
+      const c = Computed.clientConcentration();
+      if (!c || c.clients.length === 0) return '<div class="w-val muted">—</div><div class="w-sub">Keine Rechnungen</div>';
+      const risk = c.hhi > 5000 ? 'neg' : c.hhi > 2500 ? 'warn' : 'pos';
+      return `<div class="w-val ${risk}">HHI ${c.hhi}</div>
+        <div class="w-sub">${c.topClient}: ${c.topClientPct}%</div>`;
+    },
+    detail() {
+      const c = Computed.clientConcentration();
+      return { value: c ? 'HHI '+c.hhi : '—',
+        formula: 'Herfindahl-Hirschman Index: Σ(Umsatzanteil²) × 10000',
+        interpretation: c && c.hhi > 5000 ? 'Hohe Konzentration — Klumpenrisiko.' : c && c.hhi > 2500 ? 'Moderate Konzentration.' : 'Gut diversifiziert.',
+        data: c ? c.clients.map(cl => [cl.name, cl.pct+'%']) : [] };
+    }
+  },
+  { id: 'steuerreserve', cat: 'geschaeft', name: 'Steuerreserve', icon: '🏛️', size: 'small',
+    requires: ['buchungen'], desc: 'Empfohlene Steuerrücklage',
+    render() {
+      const tr = Computed.taxReserve();
+      return `<div class="w-val">${fmtS(tr.amount)}</div>
+        <div class="w-sub">${tr.rate}% vom Profit</div>`;
+    },
+    detail() {
+      const tr = Computed.taxReserve();
+      return { value: fmtS(tr.amount), formula: `Profit × ${tr.rate}% (${AppState.country || 'CH'} Pauschale)`,
+        interpretation: 'Lege diesen Betrag für Steuern und Sozialabgaben zurück.',
+        data: Object.entries(tr.breakdown).map(([k,v]) => [k, fmtS(v)]) };
+    }
+  },
+
+  // ── Kompass ──
+  { id: 'freiheit', cat: 'kompass', name: 'Freiheits-Monate', icon: '🕊️', size: 'small',
+    requires: ['konten','buchungen'], desc: 'Wie viele Monate könntest du ohne Einkommen leben?',
+    render() {
+      const f = Computed.freedomMonths();
+      const color = f.months < 3 ? 'neg' : f.months < 6 ? 'warn' : 'pos';
+      return `<div class="w-val ${color}">${f.months.toFixed(1)} Mt.</div>`;
+    },
+    detail() {
+      const f = Computed.freedomMonths();
+      return { value: f.months.toFixed(1)+' Monate', formula: 'Gesamtvermögen / Ø monatl. Gesamtausgaben (inkl. privat)',
+        interpretation: f.months >= 6 ? 'Gute Freiheitsreserve.' : 'Weniger als 6 Monate finanzieller Spielraum.',
+        data: [['Vermögen', fmtS(f.wealth)],['Ø Ausgaben/Mt.', fmtS(f.avgMonthlyExpense)]] };
+    }
+  },
+  { id: 'lebensenergie', cat: 'kompass', name: 'Lebensenergie-Satz', icon: '⚡', size: 'medium',
+    requires: ['buchungen','clockify'], desc: 'Was verdienst du wirklich pro Lebensstunde?',
+    render() {
+      const le = Computed.lifeEnergyRate();
+      if (!le.hasData) return '<div class="w-val muted">—</div><div class="w-sub">Clockify nötig</div>';
+      return `<div class="w-val">${fmtS(le.trueRate)}/h</div>
+        <div class="w-sub">Nominal: ${fmtS(le.nominal)}/h</div>`;
+    },
+    detail() {
+      const le = Computed.lifeEnergyRate();
+      return { value: le.hasData ? fmtS(le.trueRate)+'/h' : '—',
+        formula: '(Netto-Einnahmen − Arbeitskosten) / (Stunden × 1.25)',
+        interpretation: 'Der wahre Stundensatz nach Abzug aller versteckten Kosten und Zeit.',
+        links: [{ label: 'Vicki Robin: Your Money or Your Life', url: 'https://yourmoneyoryourlife.com' }] };
+    }
+  },
+  { id: 'kosten-lebensstunde', cat: 'kompass', name: 'Kosten/Lebensstunde', icon: '⏳', size: 'small',
+    requires: ['buchungen'], desc: 'Was kostet eine Stunde deines Lebens?',
+    render() {
+      const monthExp = Computed.totalExpense() / Math.max(1, new Date().getMonth() + 1);
+      const costPerH = monthExp / 480; // ~16h wach × 30 Tage
+      return `<div class="w-val">${fmtS(costPerH)}</div>
+        <div class="w-sub">pro wache Stunde</div>`;
+    },
+    detail() {
+      return { value: '', formula: 'Monatsausgaben / 480 (≈ 16 wache Stunden × 30 Tage)',
+        interpretation: 'So viel kostet eine Stunde deines wachen Lebens an Fixkosten.' };
+    }
+  },
+  { id: 'portfolio-life', cat: 'kompass', name: 'Portfolio Life', icon: '🧩', size: 'medium',
+    requires: ['clockify'], desc: 'Wie teilt sich deine Zeit auf Projekte auf?',
+    render() {
+      const z = Computed.zeitKPIs();
+      if (!z.hasClockify) return '<div class="w-val muted">—</div><div class="w-sub">Clockify verbinden</div>';
+      const projects = z.projects || [];
+      return projects.slice(0, 4).map(p =>
+        `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+          <span>${esc(p.name)}</span><span style="font-weight:600">${p.hours.toFixed(0)}h</span></div>`
+      ).join('') + (projects.length > 4 ? `<div class="w-sub">+${projects.length - 4} weitere</div>` : '');
+    },
+    detail() {
+      const z = Computed.zeitKPIs();
+      return { value: z.hasClockify ? z.totalHours.toFixed(0)+'h total' : '—',
+        formula: 'Clockify Projekte aggregiert',
+        data: (z.projects||[]).map(p => [p.name, p.hours.toFixed(1)+'h']) };
+    }
+  },
+  { id: 'sabbatical', cat: 'kompass', name: 'Sabbatical', icon: '🏖️', size: 'small',
+    requires: ['konten','buchungen'], desc: 'Wie nah bist du an einem Sabbatical?',
+    render() {
+      const s = Computed.sabbaticalReadiness();
+      const color = s.pct >= 100 ? 'pos' : s.pct >= 50 ? 'warn' : '';
+      return `<div class="w-val ${color}">${Math.min(100, Math.round(s.pct))}%</div>
+        <div class="w-sub">${s.currentMonths.toFixed(1)} / ${s.targetMonths} Mt.</div>`;
+    },
+    detail() {
+      const s = Computed.sabbaticalReadiness();
+      return { value: Math.round(s.pct)+'%', formula: 'Freiheits-Monate / Ziel-Monate × 100',
+        interpretation: s.pct >= 100 ? 'Du könntest dir jetzt ein Sabbatical leisten!' : `Dir fehlen noch ${fmtS(s.amountNeeded)}.` };
+    }
+  },
+  { id: 'burnout-risk', cat: 'kompass', name: 'Burnout-Risiko', icon: '🔥', size: 'medium',
+    requires: ['clockify-timestamps'], desc: 'Arbeitsmuster-Analyse',
+    comingSoon: true,
+    render() { return '<div class="w-val muted">Coming Soon</div><div class="w-sub">Braucht Clockify-Upgrade</div>'; },
+    detail() { return { value: 'Coming Soon', interpretation: 'Wird nach dem Clockify Timestamps-Upgrade verfügbar.' }; }
+  },
+  { id: 'enough-point', cat: 'kompass', name: 'Enough-Punkt', icon: '🪷', size: 'small',
+    requires: ['checkin'], desc: 'Wo liegt "genug" für dich?',
+    comingSoon: true,
+    render() { return '<div class="w-val muted">Coming Soon</div><div class="w-sub">Braucht Check-in System</div>'; },
+    detail() { return { value: 'Coming Soon', interpretation: 'Wird nach dem Check-in System (DS4) verfügbar.' }; }
+  },
+  { id: 'doughnut', cat: 'kompass', name: 'Personal Doughnut', icon: '🍩', size: 'large',
+    requires: ['checkin'], desc: 'Dein persönlicher Doughnut — zwischen zu wenig und zu viel',
+    comingSoon: true,
+    render() { return '<div class="w-val muted">Coming Soon</div><div class="w-sub">Design in DS4</div>'; },
+    detail() { return { value: 'Coming Soon', interpretation: 'Wird nach der Doughnut Design-Session verfügbar.' }; }
+  },
+];
+
+/** BL-085: New Computed functions for widgets */
+
+Computed.clientConcentration = function() {
+  const yr = String(this._year());
+  const paid = Store.rechnungen.filter(r => r.status === 'Bezahlt' && getYear(r.date) === yr);
+  if (paid.length === 0) return null;
+  const byClient = {};
+  paid.forEach(r => { byClient[r.client || 'Unbekannt'] = (byClient[r.client || 'Unbekannt'] || 0) + r.amount; });
+  const total = Object.values(byClient).reduce((s, v) => s + v, 0);
+  const clients = Object.entries(byClient).map(([name, amt]) => ({
+    name, pct: Math.round(amt / total * 100)
+  })).sort((a, b) => b.pct - a.pct);
+  const hhi = Math.round(clients.reduce((s, c) => s + (c.pct / 100) ** 2, 0) * 10000);
+  return { hhi, topClient: clients[0]?.name || '', topClientPct: clients[0]?.pct || 0, clients };
+};
+
+Computed.taxReserve = function() {
+  const profit = Math.max(0, this.totalIncome() - this.totalExpense());
+  const country = AppState.country || 'CH';
+  let rate, breakdown;
+  if (country === 'DE') {
+    rate = 30; breakdown = { 'ESt+Soli': profit * 0.22, GKV: profit * 0.08 };
+  } else if (country === 'AT') {
+    rate = 30; breakdown = { ESt: profit * 0.20, SVS: profit * 0.10 };
+  } else {
+    rate = 33; breakdown = { AHV: profit * 0.10, Steuern: profit * 0.20, FAK: profit * 0.03 };
+  }
+  return { amount: Math.round(profit * rate / 100), rate, breakdown };
+};
+
+Computed.freedomMonths = function() {
+  const wealth = this.totalWealth();
+  const yr = String(this._year());
+  const monthsElapsed = Math.max(1, new Date().getMonth() + 1);
+  const totalExp = Store.buchungen.filter(b => b.type === 'Ausgabe' && getYear(b.date) === yr).reduce((s, b) => s + b.amount, 0);
+  const avgMonthlyExpense = totalExp / monthsElapsed;
+  return { months: avgMonthlyExpense > 0 ? wealth / avgMonthlyExpense : 999, wealth, avgMonthlyExpense };
+};
+
+Computed.lifeEnergyRate = function() {
+  const z = this.zeitKPIs();
+  if (!z.hasClockify || z.totalHours === 0) return { hasData: false, nominal: 0, trueRate: 0, workCosts: 0, hiddenHours: 0 };
+  const cfg = loadLocal('fb_life_energy_config', { workCostsPct: 15, hiddenHoursPct: 25 });
+  const monthsElapsed = Math.max(1, new Date().getMonth() + 1);
+  const yearlyIncome = this.totalIncome();
+  const yearlyExpense = this.totalExpense();
+  const workCosts = yearlyExpense * (cfg.workCostsPct / 100);
+  const hiddenHoursMultiplier = 1 + cfg.hiddenHoursPct / 100;
+  const totalLifeHours = z.totalHours * hiddenHoursMultiplier;
+  const trueRate = totalLifeHours > 0 ? (yearlyIncome - workCosts) / totalLifeHours : 0;
+  return { hasData: true, nominal: z.effectiveRate, trueRate: Math.round(trueRate * 100) / 100,
+    workCosts, hiddenHours: z.totalHours * (cfg.hiddenHoursPct / 100),
+    costPerLifeHour: yearlyExpense / monthsElapsed / 480 };
+};
+
+Computed.sabbaticalReadiness = function(targetMonths) {
+  targetMonths = targetMonths || loadLocal('fb_sabbatical_target', 10);
+  const fm = this.freedomMonths();
+  const pct = fm.months / targetMonths * 100;
+  const amountNeeded = Math.max(0, (targetMonths - fm.months) * fm.avgMonthlyExpense);
+  return { pct, currentMonths: fm.months, targetMonths, amountNeeded };
+};
+
+/* ── Widget Cockpit Layout Persistence ── */
+
+const COCKPIT_DEFAULT_WIDGETS = ['einnahmen', 'ausgaben', 'profit', 'cashflow-chart'];
+
+function getCockpitLayout() {
+  return loadLocal('fb_cockpit_layout', { order: COCKPIT_DEFAULT_WIDGETS, overrides: {}, version: 1 });
+}
+
+function saveCockpitLayout(layout) {
+  saveLocal('fb_cockpit_layout', layout);
+  // Phase 1: also persist to Notion settings (async, non-blocking)
+  const db = getActiveDataAdapter();
+  if (db.saveDeviceSettings) {
+    db.saveDeviceSettings({ cockpit_layout: JSON.stringify(layout) }).catch(() => {});
+  }
+}
+
+function getActiveWidgets() {
+  const layout = getCockpitLayout();
+  return layout.order.filter(id => WIDGETS.find(w => w.id === id));
+}
+
+/* ── Widget Cockpit Rendering ── */
 
 function renderCockpit() {
   const el = document.getElementById('cockpitContent');
@@ -7861,7 +8576,7 @@ function renderCockpit() {
   document.getElementById('cockpitSubtitle').textContent =
     new Date().toLocaleDateString('de-CH', { month: 'long', year: 'numeric' });
 
-  // Empty state
+  // Empty state — no data at all
   if (Store.buchungen.length === 0 && Store.konten.length === 0) {
     el.innerHTML = `
       <div class="landing-page">
@@ -7876,424 +8591,262 @@ function renderCockpit() {
     return;
   }
 
-  // One call — all KPIs
-  const C = Computed.cockpitSummary();
+  const active = getActiveWidgets();
+  const layout = getCockpitLayout();
+  const hasVisitedLibrary = loadLocal('fb_library_visited', false);
 
-  el.innerHTML =
-    cockpitTaxReadinessHTML() +
-    cockpitHeroHTML(C) +
-    cockpitKPIsHTML(C) +
-    cockpitCashflowHTML(C) +
-    cockpitIncomeSourcesHTML(C) +
-    cockpitLiquiditaetHTML(C) +
-    cockpitNextMovementsHTML(C) +
-    cockpitZeitKPIsHTML(C) +
-    cockpitRecentHTML();
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="openWidgetLibrary()">+ Widget</button>
+        <button class="btn btn-outline btn-sm" id="cockpitEditBtn" onclick="toggleCockpitEditMode()">✏️</button>
+      </div>
+    </div>
+    <div class="widget-grid" id="widgetGrid">
+      ${active.map(id => {
+        const w = WIDGETS.find(wi => wi.id === id);
+        if (!w) return '';
+        return widgetCardHTML(w, layout.overrides[id]);
+      }).join('')}
+    </div>
+    ${!hasVisitedLibrary && active.length <= 4 ? `
+      <div id="cockpitLibraryHint" class="card" style="margin-top:16px;text-align:center;padding:24px;cursor:pointer;border:2px dashed var(--border)"
+        onclick="openWidgetLibrary()">
+        <div style="font-size:28px;margin-bottom:8px">🧩</div>
+        <div style="font-weight:600;margin-bottom:4px">Dein Cockpit gestalten</div>
+        <div style="font-size:13px;color:var(--muted)">Wähle aus 22 Widgets was du sehen möchtest</div>
+      </div>` : ''}`;
 }
 
-/** Session 3: Steuerbereit-Score Progress-Ring */
-function cockpitTaxReadinessHTML() {
-  const tr = calculateTaxReadiness();
-  if (Store.buchungen.filter(b => b.bereich === 'Geschäftlich').length === 0) return '';
-
-  const score = tr.score;
-  const color = score < 50 ? 'var(--red)' : score < 80 ? 'var(--amber)' : 'var(--green)';
-  const r = 42, circ = 2 * Math.PI * r;
-  const offset = circ * (1 - score / 100);
-
+function widgetCardHTML(w, overrides) {
+  const sizeClass = 'size-' + (w.size || 'small');
+  let content;
+  try { content = w.render(overrides || {}); }
+  catch (e) { content = `<div class="w-val muted">Fehler</div>`; console.warn('Widget render error:', w.id, e); }
   return `
-    <div class="card" style="margin-bottom:16px;cursor:pointer" onclick="nav('buchhaltung');setTimeout(()=>activateReviewQueue(),100)">
-      <div style="display:flex;align-items:center;gap:16px">
-        <svg width="96" height="96" viewBox="0 0 96 96" style="flex-shrink:0">
-          <circle cx="48" cy="48" r="${r}" fill="none" stroke="var(--border)" stroke-width="6"/>
-          <circle cx="48" cy="48" r="${r}" fill="none" stroke="${color}" stroke-width="6"
-            stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
-            stroke-linecap="round" transform="rotate(-90 48 48)"
-            style="transition:stroke-dashoffset .8s ease"/>
-          <text x="48" y="48" text-anchor="middle" dominant-baseline="central"
-            style="font-family:'Libre Baskerville',serif;font-size:22px;font-weight:700;fill:var(--ink)">
-            ${score}
-          </text>
-          <text x="48" y="65" text-anchor="middle"
-            style="font-size:9px;fill:var(--muted);font-family:'Courier Prime',monospace;letter-spacing:.05em">
-            %
-          </text>
-        </svg>
-        <div>
-          <div style="font-family:'Courier Prime',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">
-            STEUERBEREIT
-          </div>
-          <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px">
-            ${score >= 80 ? 'Sehr gut' : score >= 50 ? 'In Ordnung' : 'Handlungsbedarf'}
-          </div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.5">
-            ${tr.reviewCount > 0 ? `${tr.reviewCount} Buchung${tr.reviewCount > 1 ? 'en' : ''} zu prüfen` : 'Alles bestätigt'}
-            ${Math.round(tr.categorized * 100) < 100 ? ` · ${Math.round(tr.categorized * 100)}% kategorisiert` : ''}
-            ${Math.round(tr.documented * 100) < 100 ? ` · ${Math.round(tr.documented * 100)}% belegt` : ''}
-          </div>
-        </div>
+    <div class="widget ${sizeClass}" data-widget-id="${w.id}" onclick="openWidgetDetail('${w.id}')">
+      <div class="widget-edit-controls" style="display:none">
+        <button class="widget-remove-btn" onclick="event.stopPropagation();removeWidget('${w.id}')">−</button>
+        <span class="widget-drag-handle">⋮⋮</span>
       </div>
+      <div class="widget-header">
+        <span class="widget-icon">${w.icon}</span>
+        <span class="widget-name">${w.name}</span>
+      </div>
+      <div class="widget-body">${content}</div>
     </div>`;
 }
 
-/* ── Hero: Vermögen + Puffer ── */
-function cockpitHeroHTML(C) {
-  const wealth     = C.totalWealth;
-  const wealthCol  = wealth >= 0 ? 'var(--nav-active)' : '#f87171';
-  const puffer     = C.puffer;
-  const yr         = C.year;
+/* ── Cockpit inner renderers (extracted from old cockpit*HTML functions) ── */
 
-  // Vermögen dropdown config
-  const cfg  = loadLocal('fb_vermoegen_config', {});
-  const included = Store.konten.filter(k => cfg[k._id] !== false).length;
-
-  return `
-    <div class="cockpit-hero">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
-        <div class="vermoegen-wrap" id="vermoegenWrap">
-          <div class="hero-label">Vermögen · ${yr}</div>
-          <div style="display:flex;align-items:baseline;gap:8px;cursor:pointer" onclick="toggleVermoegenDrop()">
-            <div class="hero-val" id="heroWealth" style="color:${wealthCol}">${fmtS(wealth)}</div>
-            <span id="vermChevron" style="color:rgba(255,255,255,.5);font-size:14px;transition:transform .2s">▾</span>
-          </div>
-          <div class="hero-sub">${included} Konten eingeschlossen</div>
-          <div class="vermoegen-dropdown hidden" id="vermDropdown" onclick="event.stopPropagation()">
-            <div style="font-size:9px;color:rgba(255,255,255,.4);margin-bottom:10px;letter-spacing:.08em;text-transform:uppercase">Konten einschliessen</div>
-            <div id="vermKontoList"></div>
-            <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between">
-              <span style="font-size:11px;color:rgba(255,255,255,.4)">Total</span>
-              <span id="vermTotal" style="font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:var(--nav-active)">${fmtS(wealth)}</span>
-            </div>
-          </div>
+function cockpitCashflowInner() {
+  const data = Computed.cashflowByMonth();
+  if (!data || data.length === 0) return '<div class="w-val muted">Keine Daten</div>';
+  const months = data.map(d => d.label);
+  const maxVal = Math.max(...data.map(d => Math.max(d.income, d.expense)), 1);
+  return `<div style="display:flex;gap:2px;align-items:flex-end;height:120px;margin-top:8px">
+    ${data.map(d => {
+      const incH = Math.round(d.income / maxVal * 100);
+      const expH = Math.round(d.expense / maxVal * 100);
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">
+        <div style="display:flex;flex-direction:column;gap:1px;width:100%;align-items:center;flex:1;justify-content:flex-end">
+          <div style="width:70%;background:var(--green);border-radius:3px 3px 0 0;height:${incH}%;min-height:${d.income>0?2:0}px"></div>
+          <div style="width:70%;background:var(--red);border-radius:0 0 3px 3px;height:${expH}%;min-height:${d.expense>0?2:0}px;opacity:0.7"></div>
         </div>
-        ${puffer ? `
-        <div style="text-align:right">
-          <div class="hero-label">Puffer</div>
-          <div style="font-family:'Libre Baskerville',serif;font-size:22px;font-weight:700;color:var(--gold)">${fmtS(puffer.balance)}</div>
-          <div style="font-size:10px;opacity:.5">Ziel: ${fmtS(puffer.goal)}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">${d.label}</div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="display:flex;gap:12px;justify-content:center;margin-top:8px;font-size:11px">
+    <span><span style="display:inline-block;width:8px;height:8px;background:var(--green);border-radius:2px"></span> Einnahmen</span>
+    <span><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:2px;opacity:0.7"></span> Ausgaben</span>
+  </div>`;
+}
+
+function cockpitLiquiditaetInner() {
+  const proj = Computed.liquidityProjection(_liqHorizon);
+  const mainK = Store.konten.find(k => k.active !== false && k.stand != null);
+  const baseEst = mainK ? Computed.estimatedBalance(mainK.name, mainK.stand, mainK.saldoDatum) : null;
+  if (baseEst === null) return '<div class="w-val muted">—</div><div class="w-sub">Konto mit Saldo nötig</div>';
+  const projected = baseEst + proj.expectedIn - proj.expectedOut;
+  const color = projected < 0 ? 'neg' : '';
+  return `<div class="w-val ${color}">${fmtS(projected)}</div>
+    <div class="w-sub">in ${_liqHorizon} Tagen</div>
+    <div style="display:flex;gap:8px;margin-top:8px;font-size:12px">
+      <span style="color:var(--green)">+${fmtS(proj.expectedIn)}</span>
+      <span style="color:var(--red)">−${fmtS(proj.expectedOut)}</span>
+    </div>`;
+}
+
+/* ── Widget Detail Overlay ── */
+
+function openWidgetDetail(widgetId) {
+  if (document.body.classList.contains('cockpit-edit-mode')) return; // no detail in edit mode
+  const w = WIDGETS.find(wi => wi.id === widgetId);
+  if (!w || !w.detail) return;
+  let d;
+  try { d = w.detail(); } catch (e) { console.warn('Widget detail error:', widgetId, e); return; }
+  const cat = WIDGET_CATS[w.cat];
+
+  const html = `
+    <div id="widgetDetailOverlay" class="overlay-sheet" onclick="if(event.target===this)this.remove()">
+      <div class="overlay-sheet-content">
+        <div class="overlay-sheet-header">
+          <span style="font-size:24px">${w.icon}</span>
+          <div>
+            <div style="font-weight:700;font-size:17px">${w.name}</div>
+            <div style="font-size:12px;color:${cat?.color || 'var(--muted)'}">${cat?.label || ''}</div>
+          </div>
+          <button class="overlay-close-btn" onclick="document.getElementById('widgetDetailOverlay').remove()">✕</button>
+        </div>
+        ${d.value ? `<div class="detail-hero ${d.valueClass || ''}">${d.value}</div>` : ''}
+        ${d.formula ? `<div class="detail-section"><div class="detail-label">Berechnung</div><div class="detail-text">${d.formula}</div></div>` : ''}
+        ${d.interpretation ? `<div class="detail-section"><div class="detail-label">Interpretation</div><div class="detail-text">${d.interpretation}</div></div>` : ''}
+        ${d.data && d.data.length ? `<div class="detail-section"><div class="detail-label">Daten</div>
+          <table class="detail-table">${d.data.map(row => `<tr><td>${row[0]}</td><td style="text-align:right;font-weight:600">${row[1]}</td></tr>`).join('')}</table>
+        </div>` : ''}
+        ${d.links && d.links.length ? `<div class="detail-section"><div class="detail-label">Zum Nachlesen</div>
+          ${d.links.map(l => `<a href="${l.url}" target="_blank" style="display:block;color:var(--accent);font-size:13px;margin-bottom:4px">${l.label} ↗</a>`).join('')}
         </div>` : ''}
       </div>
-      ${puffer ? `
-      <div style="margin-top:14px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;opacity:.6;margin-bottom:4px">
-          <span>Puffer-Fortschritt</span><span>${puffer.pct}%</span>
-        </div>
-        <div class="prog-bar" style="height:4px;background:rgba(255,255,255,.15)">
-          <div class="prog-fill" style="background:var(--gold);width:${puffer.pct}%"></div>
-        </div>
-      </div>` : ''}
     </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
-/* ── 4 KPI tiles ── */
-function cockpitKPIsHTML(C) {
-  const yr       = C.year;
-  const hasUnconf= C.hasUnconfirmed;
-  const runway   = C.runway;
+/* ── Widget Library (Bibliothek) ── */
 
-  return `
-    <div class="grid-4" style="margin-bottom:16px">
-      <div class="kpi">
-        <div class="kpi-label">Einnahmen ${yr}</div>
-        <div class="kpi-val green">${fmtS(C.totalIncome)}</div>
-        ${hasUnconf ? `<div class="kpi-confirmed">✓ ${fmtS(C.totalIncomeConf)} bestätigt</div>` : ''}
-        <div class="kpi-forecast">${hasUnconf ? 'inkl. unbestätigt' : String(yr)}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Cashflow ${new Date().toLocaleString('de-CH',{month:'short'})}</div>
-        <div class="kpi-val ${C.cashflowMonth.net >= 0 ? 'green' : 'red'}">${fmtS(C.cashflowMonth.net)}</div>
-        <div class="kpi-forecast">+${fmtS(C.cashflowMonth.income)} / −${fmtS(C.cashflowMonth.expense)}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Offene Rechnungen</div>
-        <div class="kpi-val blue">${fmtS(C.openInvoiceAmt)}</div>
-        <div class="kpi-forecast">${C.openInvoices.length} offen${C.overdueInvoices.length ? ` · ${C.overdueInvoices.length} überfällig` : ''}</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Runway</div>
-        ${runway
-          ? `<div class="kpi-val ${runway.months >= 3 ? 'green' : runway.months >= 1 ? '' : 'red'}">${runway.months}M</div>
-             <div class="kpi-forecast">Ø CHF ${fmt(runway.avgMonthlyExp)}/Mt</div>`
-          : `<div class="kpi-val" style="color:var(--muted)">—</div>
-             <div class="kpi-forecast">Startsaldo hinterlegen</div>`}
+function openWidgetLibrary() {
+  saveLocal('fb_library_visited', true);
+  document.getElementById('cockpitLibraryHint')?.remove();
+  const active = getActiveWidgets();
+  const cats = Object.entries(WIDGET_CATS);
+
+  const html = `
+    <div id="widgetLibraryOverlay" class="overlay-sheet" onclick="if(event.target===this)this.remove()">
+      <div class="overlay-sheet-content" style="max-height:85vh">
+        <div class="overlay-sheet-header">
+          <div style="font-weight:700;font-size:17px">Widget-Bibliothek</div>
+          <button class="overlay-close-btn" onclick="document.getElementById('widgetLibraryOverlay').remove()">✕</button>
+        </div>
+        <div class="library-tabs" id="libraryTabs">
+          ${cats.map(([key, c], i) => `
+            <button class="library-tab ${i === 0 ? 'active' : ''}" data-cat="${key}"
+              onclick="switchLibraryTab('${key}')"
+              style="--tab-color:${c.color}">
+              <span class="tab-dot" style="background:${c.color}"></span> ${c.label}
+            </button>`).join('')}
+        </div>
+        <div id="libraryContent">${renderLibraryTab(cats[0][0], active)}</div>
       </div>
     </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
-/* ── Cashflow bar chart ── */
-function cockpitCashflowHTML(C) {
-  const yr     = C.year;
-  const months = C.cashflowByMonth;
-  const MONTHS = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-  const curM   = new Date().getMonth();
+function switchLibraryTab(cat) {
+  document.querySelectorAll('.library-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+  const active = getActiveWidgets();
+  document.getElementById('libraryContent').innerHTML = renderLibraryTab(cat, active);
+}
 
-  const maxVal = Math.max(...months.flatMap(m => [m.income, m.expense, m.incomeConfirmed, m.expenseConfirmed]), 1);
-
-  const bars = months.map((m, i) => {
-    const iHConf  = m.incomeConfirmed  > 0 ? Math.max(3, Math.round(m.incomeConfirmed  / maxVal * 82)) : 0;
-    const eHConf  = m.expenseConfirmed > 0 ? Math.max(3, Math.round(m.expenseConfirmed / maxVal * 82)) : 0;
-    const iHExtra = m.income  > m.incomeConfirmed  ? Math.round((m.income  - m.incomeConfirmed)  / maxVal * 82) : 0;
-    const eHExtra = m.expense > m.expenseConfirmed ? Math.round((m.expense - m.expenseConfirmed) / maxVal * 82) : 0;
-    const isTip = m.income || m.expense
-      ? `title="Einnahmen: CHF ${fmt(m.income)} (✓${fmt(m.incomeConfirmed)}) / Ausgaben: CHF ${fmt(m.expense)} (✓${fmt(m.expenseConfirmed)})"`
-      : '';
+function renderLibraryTab(cat, active) {
+  const widgets = WIDGETS.filter(w => w.cat === cat);
+  return widgets.map(w => {
+    const isActive = active.includes(w.id);
+    const isComingSoon = w.comingSoon;
+    const dataStatus = widgetDataStatus(w);
     return `
-      <div class="cf-bar-group" ${isTip}>
-        <div style="display:flex;gap:2px;align-items:flex-end;height:82px;width:100%">
-          <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:82px">
-            ${iHExtra ? `<div class="cf-bar inc unconf" style="height:${iHExtra}px"></div>` : ''}
-            <div class="cf-bar inc" style="height:${iHConf}px;opacity:${i===curM?1:.7}"></div>
-          </div>
-          <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:82px">
-            ${eHExtra ? `<div class="cf-bar exp unconf" style="height:${eHExtra}px"></div>` : ''}
-            <div class="cf-bar exp" style="height:${eHConf}px;opacity:${i===curM?1:.7}"></div>
+      <div class="library-card ${isActive ? 'added' : ''} ${isComingSoon ? 'coming-soon' : ''}">
+        <div style="display:flex;align-items:center;gap:10px;flex:1">
+          <span style="font-size:22px">${w.icon}</span>
+          <div>
+            <div style="font-weight:600;font-size:14px">${w.name}</div>
+            <div style="font-size:12px;color:var(--muted)">${w.desc}</div>
+            <span class="data-badge ${dataStatus.cls}">${dataStatus.label}</span>
           </div>
         </div>
-        <div class="cf-month-label ${i===curM?'current':''}">${MONTHS[i]}</div>
+        <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'} btn-sm"
+          ${isComingSoon ? 'disabled' : ''}
+          onclick="event.stopPropagation();${isActive ? `removeWidget('${w.id}')` : `addWidget('${w.id}')`};switchLibraryTab('${cat}')">
+          ${isComingSoon ? '⏳' : isActive ? '✓' : '+'}
+        </button>
       </div>`;
-  }).join('');
-
-  const legend = `
-    <div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">
-      <span style="display:flex;align-items:center;gap:4px">
-        <span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block"></span>Einnahmen
-      </span>
-      <span style="display:flex;align-items:center;gap:4px">
-        <span style="width:10px;height:10px;background:var(--red);border-radius:2px;display:inline-block"></span>Ausgaben
-      </span>
-      <span style="display:flex;align-items:center;gap:4px;opacity:.55">
-        <span style="width:10px;height:10px;background:var(--muted);border-radius:2px;opacity:.4;display:inline-block"></span>unbestätigt
-      </span>
-    </div>`;
-
-  return `
-    <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="card-title" style="margin-bottom:0">Cashflow ${yr}</div>
-        ${legend}
-      </div>
-      <div class="cf-chart">${bars}</div>
-    </div>`;
-}
-
-/* ── Einnahmen nach Quelle ── */
-function cockpitIncomeSourcesHTML(C) {
-  const sources = C.incomeBySource;
-  if (!sources.length) return '';
-  const total = sources.reduce((s, [, v]) => s + v, 0) || 1;
-  const rows  = sources.map(([src, val]) => `
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
-        <span>${src}</span>
-        <span style="font-family:'Libre Baskerville',serif">${fmtS(val)}</span>
-      </div>
-      <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(100, val/total*100)}%"></div></div>
-    </div>`).join('');
-  return `
-    <div class="grid-2" style="margin-bottom:16px">
-      <div class="card">
-        <div class="card-title">Einnahmen nach Quelle</div>
-        ${rows}
-      </div>
-      ${cockpitExpCatHTML(C)}
-    </div>`;
-}
-
-function cockpitExpCatHTML(C) {
-  const cats  = C.expenseByCat.slice(0, 5);
-  if (!cats.length) return '<div class="card"><div class="card-title">Top Ausgaben</div><div style="color:var(--muted);font-size:13px">Keine Geschäftsausgaben</div></div>';
-  const total = cats.reduce((s, [, v]) => s + v, 0) || 1;
-  const rows  = cats.map(([cat, val]) => `
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
-        <span>${cat}</span>
-        <span style="font-family:'Libre Baskerville',serif;color:var(--red)">${fmtS(val)}</span>
-      </div>
-      <div class="prog-bar"><div class="prog-fill red" style="width:${Math.min(100, val/total*100)}%"></div></div>
-    </div>`).join('');
-  return `
-    <div class="card">
-      <div class="card-title">Top Ausgaben (Geschäftl.)</div>
-      ${rows}
-    </div>`;
-}
-
-/* ── Liquiditätsvorschau ── */
-function cockpitLiquiditaetHTML(C) {
-  const proj   = Computed.liquidityProjection(_liqHorizon);
-  const mainK  = Store.konten.find(k => k.typ === 'Girokonto' && k.active !== false);
-  const baseEst= mainK ? Computed.estimatedBalance(mainK.name, mainK.stand, mainK.saldoDatum) : null;
-
-  if (baseEst === null) {
-    return `
-      <div class="card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div class="card-title" style="margin-bottom:0">Liquiditätsvorschau</div>
+  }).join('') + `
+    <div class="library-card" style="border-style:dashed;cursor:pointer" onclick="showFeedbackForm()">
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <span style="font-size:22px">💡</span>
+        <div>
+          <div style="font-weight:600;font-size:14px">Dir fehlt ein Widget?</div>
+          <div style="font-size:12px;color:var(--muted)">Sende uns deine Idee</div>
         </div>
-        <div style="color:var(--muted);font-size:13px">
-          Startsaldo für <strong>${mainK?.name || 'Hauptkonto'}</strong> hinterlegen →
-          <button class="btn btn-sm btn-outline" style="margin-left:8px" onclick="nav('einstellungen')">Jetzt eingeben</button>
-        </div>
-      </div>`;
+      </div>
+      <span style="color:var(--accent)">→</span>
+    </div>`;
+}
+
+function widgetDataStatus(w) {
+  if (w.comingSoon) return { label: 'Coming Soon', cls: 'badge-gray' };
+  if (w.requires.includes('clockify-timestamps')) return { label: 'Braucht Clockify-Upgrade', cls: 'badge-amber' };
+  if (w.requires.includes('checkin')) return { label: 'Braucht Check-in', cls: 'badge-amber' };
+  if (w.requires.includes('clockify')) {
+    const z = Computed.zeitKPIs();
+    return z.hasClockify ? { label: 'Daten vorhanden', cls: 'badge-green' } : { label: 'Benötigt Clockify', cls: 'badge-amber' };
   }
-
-  const projected = baseEst + proj.totalInflow - proj.totalOutflow;
-  const projCol   = projected >= 0 ? 'var(--accent)' : 'var(--red)';
-  const baseCol   = baseEst   >= 0 ? 'var(--accent)' : 'var(--red)';
-  const hDate     = new Date(); hDate.setDate(hDate.getDate() + _liqHorizon);
-
-  const horizonBtns = [7,14,30,60,90].map(d => `
-    <button class="liq-horizon-btn ${d===_liqHorizon?'active':''}"
-      onclick="setLiqHorizon(${d})">${d}T</button>`).join('');
-
-  return `
-    <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div class="card-title" style="margin-bottom:0">Liquiditätsvorschau</div>
-        <div class="liq-horizon-btns">${horizonBtns}</div>
-      </div>
-      <div class="liq-grid">
-        <div>
-          <div class="liq-cell-label">Heute (Schätzung)</div>
-          <div class="liq-cell-val" style="color:${baseCol}">${fmtS(baseEst)}</div>
-          <div style="font-size:10px;color:var(--muted);text-align:center">${mainK.name}</div>
-        </div>
-        <div>
-          <div class="liq-cell-label">+Einnahmen ${_liqHorizon}T</div>
-          <div class="liq-cell-val" style="color:var(--green)">+${fmtS(proj.totalInflow)}</div>
-          <div style="font-size:10px;color:var(--muted);text-align:center">${proj.dueInvoices.length} Rechnungen</div>
-        </div>
-        <div>
-          <div class="liq-cell-label">−Ausgaben ${_liqHorizon}T</div>
-          <div class="liq-cell-val" style="color:var(--red)">−${fmtS(proj.totalOutflow)}</div>
-          <div style="font-size:10px;color:var(--muted);text-align:center">${proj.recurringExpenses.length} Recurrings</div>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;color:var(--muted)">
-          Prognose per ${hDate.toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit'})}
-        </div>
-        <div style="font-family:'Libre Baskerville',serif;font-size:22px;font-weight:500;color:${projCol}">
-          ${fmtS(projected)}
-        </div>
-      </div>
-      ${projected < 0 ? `
-        <div style="margin-top:8px;padding:8px 12px;background:var(--red-light);border-radius:8px;font-size:12px;color:var(--red)">
-          ⚠️ Prognostizierter Saldo negativ — Liquidität prüfen.
-        </div>` : ''}
-    </div>`;
+  return { label: 'Daten vorhanden', cls: 'badge-green' };
 }
 
-function setLiqHorizon(days) {
-  _liqHorizon = days;
+function addWidget(widgetId) {
+  const layout = getCockpitLayout();
+  if (!layout.order.includes(widgetId)) layout.order.push(widgetId);
+  saveCockpitLayout(layout);
   renderCockpit();
 }
 
-/* ── Nächste Bewegungen ── */
-function cockpitNextMovementsHTML(C) {
-  const items = C.nextMovements.slice(0, 10);
-  if (!items.length) return '';
-
-  const SOURCE_LABEL = { rechnung:'Rechnung', recurring:'Recurring', buchung:'Geplant' };
-  const rows = items.map(item => `
-    <div class="movement-item">
-      <div class="movement-dot ${item.type}"></div>
-      <div style="flex:1;min-width:0">
-        <div class="movement-label">${item.label}</div>
-        <div class="movement-date">${fmtDate(item.date)}</div>
-      </div>
-      <span class="movement-source-badge">${SOURCE_LABEL[item.source] || item.source}</span>
-      <div class="movement-amt ${item.type}">${item.type==='inflow'?'+':'−'}${fmt(item.amount)}</div>
-    </div>`).join('');
-
-  const showAll = C.nextMovements.length > 10;
-  return `
-    <div class="section-head">
-      <h3>Nächste Bewegungen</h3>
-      ${showAll ? `<span style="font-size:12px;color:var(--muted)">${C.nextMovements.length} total</span>` : ''}
-    </div>
-    <div class="card" style="margin-bottom:16px">${rows}</div>`;
+function removeWidget(widgetId) {
+  const layout = getCockpitLayout();
+  layout.order = layout.order.filter(id => id !== widgetId);
+  delete layout.overrides[widgetId];
+  saveCockpitLayout(layout);
+  renderCockpit();
 }
 
-/* ── Zeiterfassungs-KPIs (wenn Clockify verbunden) ── */
-function cockpitZeitKPIsHTML(C) {
-  const z = C.zeitKPIs;
-  if (!z) return '';
+/* ── Cockpit Edit Mode ── */
 
-  const db = C.deckungsbeitrag;
-  const splitBar = `
-    <div style="margin-top:10px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;opacity:.7;margin-bottom:4px">
-        <span>💼 ${z.billableH}h (${z.billablePct}%)</span>
-        <span>❤️ ${z.heartH}h (${z.heartPct}%)</span>
-        <span>⚙️ ${z.overheadH}h (${z.overheadPct}%)</span>
-      </div>
-      <div class="prog-bar" style="height:6px;display:flex;overflow:hidden;border-radius:3px">
-        <div style="width:${z.billablePct}%;background:var(--green);transition:width .4s"></div>
-        <div style="width:${z.heartPct}%;background:#f472b6;transition:width .4s"></div>
-        <div style="width:${z.overheadPct}%;background:var(--amber);transition:width .4s"></div>
-      </div>
-    </div>`;
+let _cockpitEditMode = false;
 
-  return `
-    <div class="section-head"><h3>Zeiterfassung</h3></div>
-    <div class="grid-2" style="margin-bottom:16px">
-      <div class="card">
-        <div class="card-title">Stundensatz ${C.year}</div>
-        <div style="display:flex;gap:20px;align-items:flex-end;margin-bottom:8px">
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Effektiv</div>
-            <div style="font-family:'Libre Baskerville',serif;font-size:26px;font-weight:700;color:var(--accent)">
-              ${z.effectiveRate ? 'CHF '+z.effectiveRate+'/h' : '—'}
-            </div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Verrechenbar</div>
-            <div style="font-family:'Libre Baskerville',serif;font-size:18px;font-weight:500;color:var(--green)">
-              ${z.billableRate ? 'CHF '+z.billableRate+'/h' : '—'}
-            </div>
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--muted)">${z.totalH}h total · ${z.billableH}h verrechenbar</div>
-        ${splitBar}
-      </div>
-      <div class="card">
-        <div class="card-title">Deckungsbeitrag</div>
-        ${db && db.minBillableHours !== null ? `
-          <div style="font-family:'Libre Baskerville',serif;font-size:26px;font-weight:700;color:var(--ink)">
-            ${db.minBillableHours}h
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5">
-            Min. Lohnarbeit um Fixkosten zu decken<br>
-            Fixkosten: CHF ${fmt(db.fixCosts)}/Mt
-          </div>
-          ${db.surplusHours !== null ? `
-            <div style="margin-top:10px;padding:8px 10px;background:${db.surplusHours >= 0 ? 'var(--green-light)' : 'var(--red-light)'};border-radius:8px;font-size:12px;color:${db.surplusHours >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600">
-              ${db.surplusHours >= 0
-                ? `+${db.surplusHours}h Spielraum für andere Arbeit`
-                : `${Math.abs(db.surplusHours)}h unter Mindest-Schwelle`}
-            </div>` : ''}
-        ` : `
-          <div style="color:var(--muted);font-size:13px">
-            Clockify sync + Recurrings konfigurieren für Berechnung.
-          </div>`}
-      </div>
-    </div>`;
+function toggleCockpitEditMode() {
+  _cockpitEditMode = !_cockpitEditMode;
+  document.body.classList.toggle('cockpit-edit-mode', _cockpitEditMode);
+  const btn = document.getElementById('cockpitEditBtn');
+  if (btn) btn.textContent = _cockpitEditMode ? '✓ Fertig' : '✏️';
+
+  // Show/hide edit controls
+  document.querySelectorAll('.widget-edit-controls').forEach(el => {
+    el.style.display = _cockpitEditMode ? 'flex' : 'none';
+  });
+
+  // Init SortableJS if available and in edit mode
+  if (_cockpitEditMode && typeof Sortable !== 'undefined') {
+    const grid = document.getElementById('widgetGrid');
+    if (grid && !grid._sortable) {
+      grid._sortable = new Sortable(grid, {
+        animation: 150,
+        handle: '.widget-drag-handle',
+        ghostClass: 'widget-ghost',
+        onEnd() {
+          const newOrder = [...grid.querySelectorAll('.widget')].map(el => el.dataset.widgetId).filter(Boolean);
+          const layout = getCockpitLayout();
+          layout.order = newOrder;
+          saveCockpitLayout(layout);
+        }
+      });
+    }
+  }
 }
 
-/* ── Letzte Buchungen ── */
-function cockpitRecentHTML() {
-  const recent = Store.buchungen.slice(0, 8);
-  if (!recent.length) return '';
-  return `
-    <div class="section-head">
-      <h3>Letzte Buchungen</h3>
-      <button class="btn btn-outline btn-sm" onclick="nav('buchhaltung')">Alle →</button>
-    </div>
-    <div class="card table-scroll-wrap" style="margin-bottom:16px">
-      ${renderRecentBookingsHTML()}
-    </div>`;
-}
+
+/* Old cockpit*HTML functions removed S18 (A3: no dead code) */
+/* Widget system replaces them completely. */
+
 
 /* ── Vermögen dropdown ── */
 function toggleVermoegenDrop() {
@@ -8307,6 +8860,7 @@ function toggleVermoegenDrop() {
 
 function renderVermKontoList() {
   const cfg  = loadLocal('fb_vermoegen_config', {});
+  const mainCur = AppState.currency || 'CHF';
   const list = document.getElementById('vermKontoList');
   const totEl= document.getElementById('vermTotal');
   if (!list) return;
@@ -8314,8 +8868,10 @@ function renderVermKontoList() {
   list.innerHTML = Store.konten.map(k => {
     const est     = Computed.estimatedBalance(k.name, k.stand, k.saldoDatum);
     const checked = cfg[k._id] !== false;
-    if (checked && est !== null) total += est;
-    const balStr  = est !== null ? fmtS(est) : '—';
+    if (checked && est !== null) {
+      total += est * getFxRate(k.currency || 'CHF', mainCur);
+    }
+    const balStr  = est !== null ? fmtK(est, k.currency) : '—';
     const isNeg   = est !== null && est < 0;
     return `
       <label class="verm-row">
@@ -8618,7 +9174,7 @@ function buchungenFiltered() {
           !b.cat?.toLowerCase().includes(q)) return false;
     }
     return true;
-  });
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || '')); // BL-077: newest first
 }
 
 function buchungRowHTML(b) {
@@ -8737,7 +9293,7 @@ function renderRechnungenHTML() {
     ? Store.rechnungen.filter(r => r.status === _invFilter)
     : Store.rechnungen;
 
-  const filterOpts = ['','Offen','Bezahlt','Überfällig','Entwurf'].map(f =>
+  const filterOpts = ['','Offen','Teilzahlung','Bezahlt','Überfällig','Entwurf'].map(f =>
     `<option value="${f}" ${_invFilter===f?'selected':''}>${f||'Alle'}</option>`).join('');
 
   return `
@@ -8783,19 +9339,99 @@ function renderRechnungenHTML() {
 async function cycleInvStatus(id) {
   const r      = Store.rechnungen.find(x => x._id === id);
   if (!r) return;
-  const order  = ['Entwurf','Offen','Bezahlt','Überfällig'];
+  const order  = ['Entwurf','Offen','Teilzahlung','Bezahlt','Überfällig'];
   const next   = order[(order.indexOf(r.status) + 1) % order.length];
+
+  // BL-078: Teilzahlung → open dialog for partial amount
+  if (next === 'Teilzahlung') {
+    openPartialPaymentDialog(id);
+    return;
+  }
+
   const props  = { 'Status': { select: { name: next } } };
   if (next === 'Bezahlt') props['Bezahlt am'] = { date: { start: toDay() } };
   try {
     const db = getActiveDataAdapter();
     await db.updateInvoice(id, { ...r, status: next, paidDate: next === 'Bezahlt' ? toDay() : r.paidDate });
     r.status = next;
-    if (next === 'Bezahlt') r.paidDate = toDay();
+    if (next === 'Bezahlt') {
+      r.paidDate = toDay();
+      createBookingFromInvoice(r); // BL-066
+    }
     saveCache('rechnungen');
     renderBuchSubtab();
     InboxEngine.updateBadge();
   } catch (e) {
+    showToast('error', '❌', 'Fehler', e.message);
+  }
+}
+
+/** BL-078: Partial payment dialog */
+function openPartialPaymentDialog(invId) {
+  const inv = Store.rechnungen.find(r => r._id === invId);
+  if (!inv) return;
+  const remaining = inv.amount - (inv.paidAmount || 0);
+  const html = `
+    <div id="partialPayOverlay" class="overlay-sheet" onclick="if(event.target===this)this.remove()">
+      <div class="overlay-sheet-content" style="max-width:400px">
+        <div class="overlay-sheet-header">
+          <div style="font-weight:700;font-size:17px">Teilzahlung erfassen</div>
+          <button class="overlay-close-btn" onclick="document.getElementById('partialPayOverlay').remove()">✕</button>
+        </div>
+        <div style="margin-bottom:12px;font-size:14px">
+          <strong>${esc(inv.nr)}</strong> · ${esc(inv.client)}<br>
+          Gesamtbetrag: ${fmtS(inv.amount)}<br>
+          Bereits erhalten: ${fmtS(inv.paidAmount || 0)}<br>
+          <strong>Offen: ${fmtS(remaining)}</strong>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Eingegangener Betrag</label>
+          <input id="partialPayAmt" type="number" class="form-input" placeholder="0.00" step="0.01" value="${remaining.toFixed(2)}">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('partialPayOverlay').remove()">Abbrechen</button>
+          <button class="btn btn-primary" style="flex:1" id="partialPayBtn" onclick="submitPartialPayment('${invId}')">✓ Erfassen</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function submitPartialPayment(invId) {
+  const inv = Store.rechnungen.find(r => r._id === invId);
+  if (!inv) return;
+  const amt = parseFloat(document.getElementById('partialPayAmt')?.value);
+  if (!amt || amt <= 0) { showToast('warning', '⚠️', 'Betrag eingeben', ''); return; }
+
+  const re = disableBtn('partialPayBtn');
+  try {
+    const newPaidAmount = (inv.paidAmount || 0) + amt;
+    const isFullyPaid = newPaidAmount >= inv.amount;
+    const newStatus = isFullyPaid ? 'Bezahlt' : 'Teilzahlung';
+
+    const db = getActiveDataAdapter();
+    await db.updateInvoice(invId, {
+      ...inv,
+      status: newStatus,
+      paidAmount: newPaidAmount,
+      paidDate: isFullyPaid ? toDay() : inv.paidDate,
+    });
+
+    inv.status = newStatus;
+    inv.paidAmount = newPaidAmount;
+    if (isFullyPaid) inv.paidDate = toDay();
+    saveCache('rechnungen');
+
+    // Create booking for the partial amount
+    await createBookingFromInvoice({ ...inv, amount: amt, nr: inv.nr + ' (Teilzahlung)' });
+
+    document.getElementById('partialPayOverlay')?.remove();
+    renderBuchSubtab();
+    InboxEngine.updateBadge();
+    showToast('success', '💰', isFullyPaid ? 'Vollständig bezahlt' : 'Teilzahlung erfasst',
+      `${fmtS(amt)} erhalten · ${isFullyPaid ? 'Abgeschlossen' : fmtS(inv.amount - newPaidAmount) + ' offen'}`);
+  } catch (e) {
+    re();
     showToast('error', '❌', 'Fehler', e.message);
   }
 }
@@ -8814,6 +9450,32 @@ async function deleteRechnung(id) {
   } catch (e) {
     showToast('error', '❌', 'Fehler', e.message);
   }
+}
+
+/** BL-070: Open Erfassen in Rechnung-Edit mode */
+function openRechnungEdit(id) {
+  const r = Store.rechnungen.find(x => x._id === id);
+  if (!r) return;
+  openErfassen('rechnung');
+  // Fill form fields with existing data
+  setTimeout(() => {
+    const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+    set('erfInvNr', r.nr);
+    set('erfInvDate', r.date);
+    set('erfInvDue', r.due);
+    set('erfInvClient', r.client);
+    set('erfInvDesc', r.desc);
+    set('erfInvAmt', r.amount);
+    set('erfInvMwst', r.mwst);
+    set('erfInvStatus', r.status);
+    set('erfInvKonto', r.account);
+    set('erfInvNote', r.note);
+    set('erfInvTyp', r.type);
+    // Store editId for save function
+    window._editInvoiceId = id;
+    const saveBtn = document.getElementById('erfInvSaveBtn');
+    if (saveBtn) saveBtn.textContent = '✓ Aktualisieren';
+  }, 50);
 }
 
 /* ══ KONTEN ══ */
@@ -8846,16 +9508,16 @@ function kontoCardHTML(k) {
         <span style="font-size:20px">${k.icon||'💰'}</span>
         <div>
           <div style="font-weight:600;font-size:13.5px">${esc(k.name)}</div>
-          <div style="font-size:11px;color:var(--muted)">${k.group||''} · ${k.typ||''}</div>
+          <div style="font-size:11px;color:var(--muted)">${k.group||''} · ${k.typ||''}${k.currency && k.currency !== (AppState.currency||'CHF') ? ' · '+k.currency : ''}</div>
           ${k.saldoDatum
-            ? `<div style="font-size:10px;color:var(--muted)">Basis ${fmtDate(k.saldoDatum)}: ${fmtS(k.stand||0)}</div>`
+            ? `<div style="font-size:10px;color:var(--muted)">Basis ${fmtDate(k.saldoDatum)}: ${fmtK(k.stand||0, k.currency)}</div>`
             : `<div style="font-size:10px;color:var(--amber)">⚠ Kein Startsaldo</div>`}
         </div>
       </div>
       <div style="text-align:right">
         <div style="font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;
           color:${isNeg?'var(--red)':'var(--ink)'}">
-          ${est !== null ? fmtS(est) : '—'}
+          ${est !== null ? fmtK(est, k.currency) : '—'}
         </div>
         <div style="font-size:9px;color:var(--muted)">Schätzung</div>
         <button class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px"
@@ -8873,7 +9535,7 @@ function openKontoForm() {
       <div style="background:var(--paper);border-radius:20px;padding:26px;width:92%;max-width:420px;max-height:90vh;overflow-y:auto">
         <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:16px">Neues Konto</div>
         <div class="form-group">
-          <label class="form-label">Name</label>
+          <label class="form-label required">Name</label>
           <input id="kfName" class="form-input" placeholder="z.B. Hauptkonto">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -8890,13 +9552,22 @@ function openKontoForm() {
             </select>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div class="form-group">
-            <label class="form-label">Startsaldo (CHF)</label>
+            <label class="form-label">Währung</label>
+            <select id="kfCurrency" class="form-input">
+              <option value="CHF" ${(AppState.currency||'CHF')==='CHF'?'selected':''}>CHF</option>
+              <option value="EUR" ${(AppState.currency||'CHF')==='EUR'?'selected':''}>EUR</option>
+              <option value="USD">USD</option>
+              <option value="GBP">GBP</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Startsaldo</label>
             <input id="kfStand" type="number" class="form-input" placeholder="0.00" step="0.01">
           </div>
           <div class="form-group">
-            <label class="form-label">Stand per Datum</label>
+            <label class="form-label">Stand per</label>
             <input id="kfDatum" type="date" class="form-input" value="${toDay()}">
           </div>
         </div>
@@ -8923,9 +9594,10 @@ async function saveKontoForm() {
   const stand = parseFloat(document.getElementById('kfStand')?.value);
   const datum = document.getElementById('kfDatum')?.value;
   const icon  = document.getElementById('kfIcon')?.value || '💰';
+  const currency = document.getElementById('kfCurrency')?.value || 'CHF';
   if (!name) { showToast('warning','⚠️','Name fehlt',''); return; }
 
-  const data = { name, typ, group, icon, stand: isNaN(stand) ? null : stand, saldoDatum: datum || toDay(), active: true };
+  const data = { name, typ, group, icon, currency, stand: isNaN(stand) ? null : stand, saldoDatum: datum || toDay(), active: true };
   try {
     const db = getActiveDataAdapter();
     const { success, result: res, error } = await db.createKonto(data);
@@ -8953,7 +9625,7 @@ function openRecurringForm(prefill = {}) {
       <div style="background:var(--paper);border-radius:20px 20px 0 0;padding:26px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,20px)">
         <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:16px">Wiederkehrende Zahlung</div>
         <div class="form-group">
-          <label class="form-label">Bezeichnung</label>
+          <label class="form-label required">Bezeichnung</label>
           <input id="rfName" class="form-input" placeholder="Netflix, Miete, AHV…" value="${prefill.name||''}">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -8961,6 +9633,15 @@ function openRecurringForm(prefill = {}) {
             <label class="form-label">Betrag (CHF)</label>
             <input id="rfAmt" type="number" class="form-input" placeholder="0.00" step="0.01" value="${prefill.amt||''}">
           </div>
+          <div class="form-group">
+            <label class="form-label">Typ</label>
+            <select id="rfTyp" class="form-input">
+              <option value="Ausgabe" ${(prefill.typ||'Ausgabe')==='Ausgabe'?'selected':''}>Ausgabe</option>
+              <option value="Einnahme" ${prefill.typ==='Einnahme'?'selected':''}>Einnahme</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group">
             <label class="form-label">Frequenz</label>
             <select id="rfFreq" class="form-input">
@@ -9014,6 +9695,7 @@ async function saveRecurringForm(editId = '') {
   const data = {
     name:     document.getElementById('rfName')?.value?.trim(),
     amt:      parseFloat(document.getElementById('rfAmt')?.value),
+    typ:      document.getElementById('rfTyp')?.value || 'Ausgabe',
     freq:     document.getElementById('rfFreq')?.value,
     nextDate: document.getElementById('rfNext')?.value,
     bereich:  document.getElementById('rfBereich')?.value,
@@ -9042,6 +9724,29 @@ async function saveRecurringForm(editId = '') {
     showToast('success','🔄', editId ? 'Recurring aktualisiert' : 'Recurring erstellt', data.name);
   } catch (e) {
     showToast('error','❌','Fehler', e.message);
+  }
+}
+
+/** BUG-057: Open recurring form pre-filled for editing */
+function openRecurringEdit(id) {
+  const r = Store.recurrings.find(x => x._id === id);
+  if (!r) return;
+  openRecurringForm({ ...r, _id: id });
+}
+
+/** BUG-057: Delete recurring with confirmation */
+async function deleteRecurring(id, name) {
+  if (!confirm(`"${name}" wirklich löschen?`)) return;
+  try {
+    const db = getActiveDataAdapter();
+    await db.deleteRecurring(id);
+    Store.recurrings = Store.recurrings.filter(r => r._id !== id);
+    saveCache('recurrings');
+    renderBuchSubtab();
+    InboxEngine.updateBadge();
+    showToast('success', '🗑', 'Gelöscht', name);
+  } catch (e) {
+    showToast('error', '❌', 'Löschen fehlgeschlagen', e.message);
   }
 }
 
@@ -9095,6 +9800,7 @@ function renderRecurringsHTML() {
 
   const rows = recurrings.map(r => {
     const isDue = !r.paused && r.nextDate && r.nextDate <= today;
+    const isIncome = r.typ === 'Einnahme';
     return `
       <div style="background:var(--paper);border:1px solid ${isDue?'var(--amber)':'var(--border)'};
         ${isDue?'background:#fffbeb;':''}
@@ -9105,18 +9811,21 @@ function renderRecurringsHTML() {
           ${FREQ_LABEL[r.freq]||r.freq}
         </span>
         <div style="flex:1">
-          <div style="font-size:13.5px;font-weight:500">${esc(r.name)}${r.paused?' <span style="font-size:10px;color:var(--muted)">(pausiert)</span>':''}</div>
+          <div style="font-size:13.5px;font-weight:500">${esc(r.name)}${r.paused?' <span style="font-size:10px;color:var(--muted)">(pausiert)</span>':''}
+            ${isIncome?'<span style="font-size:10px;color:var(--green)"> Einnahme</span>':''}</div>
           <div style="font-size:11px;color:var(--muted)">${r.cat||''}${r.account?' · '+r.account:''}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:var(--red)">${fmtS(r.amt)}</div>
+          <div style="font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:${isIncome?'var(--green)':'var(--red)'}">${fmtS(r.amt)}</div>
           <div style="font-size:10px;color:${isDue?'var(--amber)':'var(--muted)'}">
             ${isDue?'⏰ Fällig: ':'Nächste: '}${fmtDate(r.nextDate||today)}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
           <button class="btn btn-sm" style="background:var(--accent-light);color:var(--accent);border:none;font-size:11px"
-            onclick="openInbox()">⚡</button>
+            onclick="openRecurringEdit('${r._id}')">✏️</button>
+          <button class="btn btn-sm" style="background:var(--bg2);color:var(--red);border:none;font-size:11px"
+            onclick="deleteRecurring('${r._id}','${esc(r.name)}')">🗑</button>
         </div>
       </div>`;
   }).join('');
@@ -9195,7 +9904,7 @@ function renderAbschlussChecklist() {
   const noCat    = biz.filter(b => !b.cat).length;
   const unpaid   = biz.filter(b => b.type === 'Einnahme' && b.paid === false).length;
   const noTax    = biz.filter(b => b.type === 'Ausgabe' && b.cat && !(tm[b.cat])).length;
-  const noReceipt= biz.filter(b => b.type === 'Ausgabe' && !b.receiptUrl && b.amount > 50).length;
+  const noReceipt= biz.filter(b => b.type === 'Ausgabe' && !b.receiptLink && !b.receiptFile && b.amount > 50).length;
 
   const checks = [
     {
@@ -12291,7 +13000,7 @@ function previewRechnung(invId) {
 function rechnungRowHTML(r) {
   const today   = toDay();
   const isOdue  = r.due && r.due < today && r.status !== 'Bezahlt' && r.status !== 'Entwurf';
-  const stMap   = { Offen:'offen', Bezahlt:'bezahlt', Überfällig:'ueberfaellig', Entwurf:'entwurf' };
+  const stMap   = { Offen:'offen', Bezahlt:'bezahlt', Teilzahlung:'teilzahlung', Überfällig:'ueberfaellig', Entwurf:'entwurf' };
   return `
     <tr>
       <td><strong><a href="${r._url||'#'}" target="_blank" style="color:inherit;text-decoration:none">${r.nr}</a></strong></td>
@@ -12299,10 +13008,11 @@ function rechnungRowHTML(r) {
       <td style="font-size:12px;color:${isOdue?'var(--red)':'var(--muted)'}">${r.due?fmtDate(r.due):'—'}</td>
       <td>${r.client}</td>
       <td style="font-size:12px;color:var(--muted)">${r.desc||'—'}</td>
-      <td class="amt pos">${fmt(r.amount)}</td>
+      <td class="amt pos">${fmt(r.amount)}${r.paidAmount && r.status === 'Teilzahlung' ? `<div style="font-size:10px;color:var(--muted)">${fmtS(r.paidAmount)} erhalten</div>` : ''}</td>
       <td><div class="inv-status ${stMap[r.status]||'offen'}" onclick="cycleInvStatus('${r._id}')">${r.status} ▾</div></td>
       <td style="font-size:12px;color:var(--muted)">${r.paidDate?fmtDate(r.paidDate):'—'}</td>
       <td style="white-space:nowrap;display:flex;gap:4px">
+        <button class="btn btn-outline btn-sm" onclick="openRechnungEdit('${r._id}')" title="Bearbeiten">✏️</button>
         <button class="btn btn-outline btn-sm" onclick="previewRechnung('${r._id}')" title="Drucken">🖨️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteRechnung('${r._id}')">✕</button>
       </td>
