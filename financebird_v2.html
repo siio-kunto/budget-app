@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.18a.2026-04-07">
+<meta name="fb-version" content="2.18b.2026-04-07">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -4898,7 +4898,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.18a.2026-04-07';
+const APP_VERSION = '2.18b.2026-04-07';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5096,14 +5096,16 @@ const Computed = {
       (r.due && r.due < toDay() && r.status !== 'Bezahlt' && r.status !== 'Entwurf'));
   },
 
-  /** Cashflow by month for current year: [{month, income, expense, incomeConfirmed, expenseConfirmed}] */
+  /** Cashflow by month for current year: [{month, label, income, expense, incomeConfirmed, expenseConfirmed}] */
   cashflowByMonth() {
+    const MONTH_SHORT = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
     const yr = String(this._year());
     const ytx = Store.buchungen.filter(b => getYear(b.date) === yr);
     return Array.from({ length: 12 }, (_, i) => {
       const mo = ytx.filter(b => getMonth(b.date) === i);
       return {
         month:             i,
+        label:             MONTH_SHORT[i],
         income:            mo.filter(b => b.type === 'Einnahme').reduce((s, b) => s + b.amount, 0),
         expense:           mo.filter(b => b.type === 'Ausgabe').reduce((s, b) => s + b.amount, 0),
         incomeConfirmed:   mo.filter(b => b.type === 'Einnahme' && b.paid).reduce((s, b) => s + b.amount, 0),
@@ -8642,7 +8644,6 @@ function widgetCardHTML(w, overrides) {
 function cockpitCashflowInner() {
   const data = Computed.cashflowByMonth();
   if (!data || data.length === 0) return '<div class="w-val muted">Keine Daten</div>';
-  const months = data.map(d => d.label);
   const maxVal = Math.max(...data.map(d => Math.max(d.income, d.expense)), 1);
   return `<div style="display:flex;gap:2px;align-items:flex-end;height:120px;margin-top:8px">
     ${data.map(d => {
