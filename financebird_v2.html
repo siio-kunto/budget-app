@@ -9,11 +9,12 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.18b.2026-04-07">
+<meta name="fb-version" content="2.19a.2026-04-07">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://accounts.google.com/gsi/client" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js" defer></script>
 <meta name="apple-mobile-web-app-title" content="FinanceBird">
 <meta name="theme-color" content="#2c1f0e">
 <script>
@@ -4898,7 +4899,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.18b.2026-04-07';
+const APP_VERSION = '2.19a.2026-04-07';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5445,7 +5446,13 @@ const Computed = {
     const cfHours    = loadLocal('fb_clockify_hours',   {});
     const cfProjects = loadLocal('fb_clockify_projects', []);
     const localProjs = loadLocal('projekte',             []);
-    if (!cfProjects.length) return null;
+    if (!cfProjects.length) return {
+      totalH: 0, billableH: 0, heartH: 0, overheadH: 0,
+      totalHours: 0, billableHours: 0, hasClockify: false,
+      effectiveRate: null, billableRate: null,
+      billablePct: 0, heartPct: 0, overheadPct: 0,
+      projects: [], lastSync: null
+    };
 
     // Classify projects (same logic as v1)
     const HEART_PREFIX    = '[<3]';
@@ -5480,6 +5487,10 @@ const Computed = {
       billableH:    Math.round(billableH * 10) / 10,
       heartH:       Math.round(heartH * 10) / 10,
       overheadH:    Math.round(overheadH * 10) / 10,
+      // Aliases for widget compatibility:
+      totalHours:   Math.round(totalH * 10) / 10,
+      billableHours: Math.round(billableH * 10) / 10,
+      hasClockify:  true,
       effectiveRate,
       billableRate,
       billablePct:  totalH > 0 ? Math.round(billableH / totalH * 100) : 0,
@@ -8233,15 +8244,16 @@ const WIDGETS = [
   { id: 'offene-rechnungen', cat: 'buchhaltung', name: 'Offene Rechnungen', icon: '📬', size: 'small',
     requires: ['rechnungen'], desc: 'Unbezahlte Rechnungen',
     render() {
-      const n = Computed.openInvoices();
+      const invoices = Computed.openInvoices();
+      const n = invoices.length;
       const amt = Computed.openInvoiceAmount();
-      const overdue = Computed.overdueInvoices();
+      const overdue = Computed.overdueInvoices().length;
       return `<div class="w-val">${n}</div>
         <div class="w-sub">${fmtS(amt)} offen</div>
         ${overdue > 0 ? `<div class="w-sub neg">⚠ ${overdue} überfällig</div>` : ''}`;
     },
     detail() {
-      const n = Computed.openInvoices();
+      const n = Computed.openInvoices().length;
       return { value: String(n), formula: 'Rechnungen mit Status ≠ Bezahlt/Entwurf',
         interpretation: n === 0 ? 'Keine offenen Rechnungen.' : `${n} Rechnungen warten auf Zahlung.` };
     }
@@ -8272,17 +8284,20 @@ const WIDGETS = [
     }
   },
   { id: 'puffer', cat: 'buchhaltung', name: 'Puffer', icon: '🛟', size: 'small',
-    requires: ['konten','buchungen'], desc: 'Monate die dein Puffer abdeckt',
+    requires: ['konten','buchungen'], desc: 'Wie voll ist dein Puffer?',
     render() {
       const p = Computed.puffer();
-      const color = p.months < 1 ? 'neg' : p.months < 3 ? 'warn' : 'pos';
-      return `<div class="w-val ${color}">${p.months.toFixed(1)} Mt.</div>
-        <div class="w-sub">${fmtS(p.buffer)} / ${fmtS(p.avgExpense)}/Mt.</div>`;
+      if (!p) return '<div class="w-val muted">—</div><div class="w-sub">Buffer-Konto einrichten</div>';
+      const color = p.pct < 30 ? 'neg' : p.pct < 70 ? 'warn' : 'pos';
+      return `<div class="w-val ${color}">${p.pct}%</div>
+        <div class="w-sub">${fmtS(p.balance)} / ${fmtS(p.goal)}</div>`;
     },
     detail() {
       const p = Computed.puffer();
-      return { value: p.months.toFixed(1) + ' Monate', formula: 'Liquide Mittel / Ø monatliche Geschäftsausgaben',
-        interpretation: p.months >= 3 ? 'Guter Puffer.' : 'Weniger als 3 Monate — Vorsicht bei Auftragsrückgang.' };
+      if (!p) return { value: '—', interpretation: 'Kein Buffer-Konto gefunden. Erstelle ein Konto mit "Buffer" im Namen oder Typ "Pocket".' };
+      return { value: p.pct + '%', formula: 'Buffer-Konto Saldo ÷ Puffer-Ziel × 100',
+        interpretation: p.pct >= 100 ? 'Puffer voll!' : `Noch ${fmtS(p.goal - p.balance)} bis zum Ziel.`,
+        data: [['Aktuell', fmtS(p.balance)], ['Ziel', fmtS(p.goal)], ['Konto', p.konto]] };
     }
   },
 
@@ -8317,28 +8332,34 @@ const WIDGETS = [
     }
   },
   { id: 'deckungsbeitrag', cat: 'geschaeft', name: 'Deckungsbeitrag', icon: '🎯', size: 'medium',
-    requires: ['buchungen','clockify'], desc: 'Umsatz minus variable Kosten',
+    requires: ['buchungen','clockify'], desc: 'Minimum-Stunden für Fixkosten',
     render() {
       const d = Computed.deckungsbeitrag();
-      return `<div class="w-val ${d.db >= 0 ? 'pos' : 'neg'}">${fmtS(d.db)}</div>
-        <div class="w-sub">DB-Marge: ${d.margin.toFixed(0)}%</div>`;
+      if (!d || !d.hourlyRate) return '<div class="w-val muted">—</div><div class="w-sub">Clockify + Recurrings nötig</div>';
+      return `<div class="w-val">${d.minBillableHours}h</div>
+        <div class="w-sub">Minimum/Monat bei ${fmtS(d.fixCosts)} Fixkosten</div>
+        ${d.surplusHours !== null ? `<div class="w-sub ${d.surplusHours >= 0 ? 'pos' : 'neg'}">${d.surplusHours >= 0 ? '+' : ''}${d.surplusHours}h Surplus</div>` : ''}`;
     },
     detail() {
       const d = Computed.deckungsbeitrag();
-      return { value: fmtS(d.db), formula: 'Umsatz − variable Kosten (geschäftliche Ausgaben)',
-        interpretation: d.margin > 50 ? 'Gute Marge.' : 'Variable Kosten fressen viel vom Umsatz.',
-        data: [['Umsatz', fmtS(d.revenue)],['Variable Kosten', fmtS(d.variableCosts)],['DB', fmtS(d.db)],['Marge', d.margin.toFixed(0)+'%']] };
+      if (!d || !d.hourlyRate) return { value: '—', interpretation: 'Braucht Clockify-Daten und geschäftliche Recurrings.' };
+      return { value: d.minBillableHours + 'h/Monat',
+        formula: 'Monatliche Fixkosten (geschäftl. Recurrings) ÷ Effektiver Stundensatz',
+        interpretation: d.surplusHours >= 0 ? `Du arbeitest ${d.surplusHours}h über dem Minimum.` : `Dir fehlen ${Math.abs(d.surplusHours)}h um Fixkosten zu decken.`,
+        data: [['Fixkosten/Mt.', fmtS(d.fixCosts)], ['Stundensatz', fmtS(d.hourlyRate)+'/h'], ['Min. Stunden', d.minBillableHours+'h'], ['Surplus', d.surplusHours !== null ? d.surplusHours+'h' : '—']] };
     }
   },
   { id: 'runway', cat: 'geschaeft', name: 'Runway', icon: '🛫', size: 'small',
     requires: ['konten','buchungen'], desc: 'Wie lange reicht dein Geld noch?',
     render() {
       const r = Computed.runway();
+      if (!r) return '<div class="w-val muted">—</div><div class="w-sub">Saldo + Geschäftsausgaben nötig</div>';
       const color = r.months < 3 ? 'neg' : r.months < 6 ? 'warn' : 'pos';
       return `<div class="w-val ${color}">${r.months < 99 ? r.months.toFixed(1) + ' Mt.' : '∞'}</div>`;
     },
     detail() {
       const r = Computed.runway();
+      if (!r) return { value: '—', interpretation: 'Braucht ein Konto mit Saldo und Geschäftsausgaben der letzten 3 Monate.' };
       return { value: r.months < 99 ? r.months.toFixed(1)+' Monate' : '∞',
         formula: 'Gesamtvermögen / Ø monatliche Gesamtausgaben',
         interpretation: r.months >= 6 ? 'Komfortable Runway.' : 'Weniger als 6 Monate — plane voraus.' };
@@ -8620,11 +8641,33 @@ function renderCockpit() {
       </div>` : ''}`;
 }
 
+function canRenderWidget(w) {
+  if (w.comingSoon) return { ok: false, msg: 'Coming Soon' };
+  if (w.requires.includes('clockify') || w.requires.includes('clockify-timestamps')) {
+    const z = Computed.zeitKPIs();
+    if (!z || !z.hasClockify) return { ok: false, msg: 'Clockify verbinden → Einstellungen' };
+  }
+  if (w.requires.includes('konten') && Store.konten.length === 0)
+    return { ok: false, msg: 'Konto einrichten → Einstellungen' };
+  if (w.requires.includes('buchungen') && Store.buchungen.length === 0)
+    return { ok: false, msg: 'Erste Buchung erfassen' };
+  if (w.requires.includes('rechnungen') && Store.rechnungen.length === 0)
+    return { ok: false, msg: 'Erste Rechnung erstellen' };
+  if (w.requires.includes('recurrings') && Store.recurrings.length === 0)
+    return { ok: false, msg: 'Recurrings einrichten' };
+  return { ok: true };
+}
+
 function widgetCardHTML(w, overrides) {
   const sizeClass = 'size-' + (w.size || 'small');
   let content;
-  try { content = w.render(overrides || {}); }
-  catch (e) { content = `<div class="w-val muted">Fehler</div>`; console.warn('Widget render error:', w.id, e); }
+  const check = canRenderWidget(w);
+  if (!check.ok) {
+    content = `<div class="w-val muted">—</div><div class="w-sub">${check.msg}</div>`;
+  } else {
+    try { content = w.render(overrides || {}); }
+    catch (e) { content = `<div class="w-val muted">Fehler</div>`; console.warn('Widget render error:', w.id, e); }
+  }
   return `
     <div class="widget ${sizeClass}" data-widget-id="${w.id}" onclick="openWidgetDetail('${w.id}')">
       <div class="widget-edit-controls" style="display:none">
@@ -8645,14 +8688,15 @@ function cockpitCashflowInner() {
   const data = Computed.cashflowByMonth();
   if (!data || data.length === 0) return '<div class="w-val muted">Keine Daten</div>';
   const maxVal = Math.max(...data.map(d => Math.max(d.income, d.expense)), 1);
+  const maxH = 100; // px
   return `<div style="display:flex;gap:2px;align-items:flex-end;height:120px;margin-top:8px">
     ${data.map(d => {
-      const incH = Math.round(d.income / maxVal * 100);
-      const expH = Math.round(d.expense / maxVal * 100);
+      const incH = Math.round(d.income / maxVal * maxH);
+      const expH = Math.round(d.expense / maxVal * maxH);
       return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">
-        <div style="display:flex;flex-direction:column;gap:1px;width:100%;align-items:center;flex:1;justify-content:flex-end">
-          <div style="width:70%;background:var(--green);border-radius:3px 3px 0 0;height:${incH}%;min-height:${d.income>0?2:0}px"></div>
-          <div style="width:70%;background:var(--red);border-radius:0 0 3px 3px;height:${expH}%;min-height:${d.expense>0?2:0}px;opacity:0.7"></div>
+        <div style="display:flex;flex-direction:column;gap:1px;width:100%;align-items:center;height:${maxH}px;justify-content:flex-end">
+          <div style="width:70%;background:var(--green);border-radius:3px 3px 0 0;height:${incH}px;min-height:${d.income>0?2:0}px"></div>
+          <div style="width:70%;background:var(--red);border-radius:0 0 3px 3px;height:${expH}px;min-height:${d.expense>0?2:0}px;opacity:0.7"></div>
         </div>
         <div style="font-size:9px;color:var(--muted);margin-top:2px">${d.label}</div>
       </div>`;
@@ -8669,13 +8713,13 @@ function cockpitLiquiditaetInner() {
   const mainK = Store.konten.find(k => k.active !== false && k.stand != null);
   const baseEst = mainK ? Computed.estimatedBalance(mainK.name, mainK.stand, mainK.saldoDatum) : null;
   if (baseEst === null) return '<div class="w-val muted">—</div><div class="w-sub">Konto mit Saldo nötig</div>';
-  const projected = baseEst + proj.expectedIn - proj.expectedOut;
+  const projected = baseEst + proj.totalInflow - proj.totalOutflow;
   const color = projected < 0 ? 'neg' : '';
   return `<div class="w-val ${color}">${fmtS(projected)}</div>
     <div class="w-sub">in ${_liqHorizon} Tagen</div>
     <div style="display:flex;gap:8px;margin-top:8px;font-size:12px">
-      <span style="color:var(--green)">+${fmtS(proj.expectedIn)}</span>
-      <span style="color:var(--red)">−${fmtS(proj.expectedOut)}</span>
+      <span style="color:var(--green)">+${fmtS(proj.totalInflow)}</span>
+      <span style="color:var(--red)">−${fmtS(proj.totalOutflow)}</span>
     </div>`;
 }
 
