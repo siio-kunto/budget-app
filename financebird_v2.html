@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!--
+  FinanceBird · © 2025-2026 Oswald H. König · All rights reserved.
+  This software is proprietary. Unauthorized copying, modification,
+  distribution, or use is strictly prohibited. See LICENSE for details.
+  Contact: hello@oswaldkoenig.ch
+-->
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -9,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.22a.2026-04-09">
+<meta name="fb-version" content="2.23a.2026-04-12">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2804,6 +2810,7 @@ const Auth = {
     const h = {
       'Content-Type': 'application/json',
       'X-FB-Key':     this.FB_SHARED_SECRET,
+      'X-FB-Device':  loadLocal('fb_device_token', ''),
     };
     const lk = this.licenseKey;
     if (lk) h['X-FB-License'] = lk;
@@ -2864,6 +2871,36 @@ const Auth = {
       return await resp.json(); // { licenseKey, plan }
     } catch (e) {
       return { error: 'network_error' };
+    }
+  },
+
+  /**
+   * Device-Token registrieren (Sprint 1: Triple-Auth).
+   * Wird nach erfolgreichem OAuth, Pairing-Claim und License-Verify aufgerufen.
+   * Returns token string oder null bei Fehler.
+   */
+  async registerDevice() {
+    try {
+      const resp = await fetch(this.FB_WORKER_AUTH + '/device/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-FB-Key': this.FB_SHARED_SECRET,
+          'X-FB-License': this.licenseKey || '',
+        },
+        body: JSON.stringify({ userAgent: navigator.userAgent }),
+      });
+      if (resp.ok) {
+        const { token } = await resp.json();
+        saveLocal('fb_device_token', token);
+        console.log('[Auth] Device-Token registriert');
+        return token;
+      }
+      console.warn('[Auth] Device-Register fehlgeschlagen:', resp.status);
+      return null;
+    } catch (e) {
+      console.warn('[Auth] Device-Register Netzfehler:', e.message);
+      return null;
     }
   },
 
@@ -3047,6 +3084,11 @@ const Auth = {
     localStorage.removeItem('fb_oauth_worker');
 
     showToast('success', '✅', 'Notion verbunden', tokenData.workspace_name || 'OAuth erfolgreich');
+
+    // Sprint 1: Device-Token registrieren (falls noch keiner vorhanden)
+    if (!loadLocal('fb_device_token', null) && this.licenseKey) {
+      await this.registerDevice();
+    }
 
     // DB-Setup: Discover oder erstellen — mit Mutex gegen Race Condition (BUG-032)
     if (!dbsConfigured()) {
@@ -3964,6 +4006,7 @@ async function notionFetch(path, method = 'GET', body = null, _retry = 0) {
       'Notion-Version': NOTION_VER,
       'Content-Type':   'application/json',
       'X-FB-Key':       Auth.FB_SHARED_SECRET,
+      'X-FB-Device':    loadLocal('fb_device_token', ''),
     }
   };
   // Lizenz-Key mitsenden falls vorhanden
@@ -3974,8 +4017,21 @@ async function notionFetch(path, method = 'GET', body = null, _retry = 0) {
 
   const resp = await fetch(base + path, opts);
 
-  // 401 — Token ungültig: Re-Auth-Flow triggern
+  // 401 — Token ungültig oder Device nicht registriert
   if (resp.status === 401) {
+    // Device-Token Auto-Healing: register + retry (max 1×)
+    let errBody;
+    try { errBody = await resp.clone().json(); } catch { errBody = {}; }
+    if (errBody.error === 'device_not_registered' && _retry === 0) {
+      console.log('[notionFetch] Device not registered — auto-registering…');
+      const token = await Auth.registerDevice();
+      if (token) {
+        return notionFetch(path, method, body, _retry + 1);
+      }
+      // Register fehlgeschlagen → Repair
+      Auth.triggerReAuth('Gerät konnte nicht registriert werden');
+      throw new Error('DEVICE_REGISTER_FAILED');
+    }
     Auth.triggerReAuth('Notion-Verbindung unterbrochen — Token ungültig');
     throw new Error('AUTH_EXPIRED');
   }
@@ -4967,7 +5023,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.22a.2026-04-09';
+const APP_VERSION = '2.23a.2026-04-12';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
