@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.23a.2026-04-12">
+<meta name="fb-version" content="2.23c.2026-04-12">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2562,6 +2562,58 @@ function saveLocal(key, val) {
 /** Deep-clone a plain object/array */
 const deepClone = obj => JSON.parse(JSON.stringify(obj));
 
+/* ─────────────────────────────────────────────────────────────
+   AES-256-GCM Encryption (Sprint 1, L6)
+   Verschlüsselt API-Keys in Notion. localStorage bleibt Klartext.
+   Key-Derivation: PBKDF2 mit Lizenz-Key als Input.
+───────────────────────────────────────────────────────────── */
+const FB_ENCRYPT_SALT = 'FinanceBird-Salt-2026-v1'; // nicht geheim — verhindert Rainbow Tables
+
+async function fbDeriveKey(licenseKey) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(licenseKey), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode(FB_ENCRYPT_SALT), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function fbEncrypt(plaintext, licenseKey) {
+  if (!plaintext || !licenseKey) return '';
+  try {
+    const key = await fbDeriveKey(licenseKey);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+    // Format: base64(iv + ciphertext)
+    const combined = new Uint8Array(iv.length + cipherBuf.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(cipherBuf), iv.length);
+    return btoa(String.fromCharCode(...combined));
+  } catch (e) {
+    console.warn('[Encrypt] Failed:', e.message);
+    return '';
+  }
+}
+
+async function fbDecrypt(ciphertext, licenseKey) {
+  if (!ciphertext || !licenseKey) return '';
+  try {
+    const key = await fbDeriveKey(licenseKey);
+    const raw = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+    const iv = raw.slice(0, 12);
+    const data = raw.slice(12);
+    const decBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return new TextDecoder().decode(decBuf);
+  } catch (e) {
+    console.warn('[Decrypt] Failed:', e.message);
+    return '';
+  }
+}
+
 /** Debounce a function */
 function debounce(fn, ms) {
   let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -2937,6 +2989,7 @@ const Auth = {
    */
   _pollInterval: null,
   _pollTimeout:  null,
+  _deviceRegisterPromise: null,
 
   _startPolling(state, workerBase) {
     // Bereits aktiv?
@@ -4024,7 +4077,13 @@ async function notionFetch(path, method = 'GET', body = null, _retry = 0) {
     try { errBody = await resp.clone().json(); } catch { errBody = {}; }
     if (errBody.error === 'device_not_registered' && _retry === 0) {
       console.log('[notionFetch] Device not registered — auto-registering…');
-      const token = await Auth.registerDevice();
+      // Mutex: nur ein Request registriert gleichzeitig
+      if (!Auth._deviceRegisterPromise) {
+        Auth._deviceRegisterPromise = Auth.registerDevice().finally(() => {
+          Auth._deviceRegisterPromise = null;
+        });
+      }
+      const token = await Auth._deviceRegisterPromise;
       if (token) {
         return notionFetch(path, method, body, _retry + 1);
       }
@@ -5023,7 +5082,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.23a.2026-04-12';
+const APP_VERSION = '2.23c.2026-04-12';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -11599,15 +11658,21 @@ function healthSummary(hc) {
 
 async function saveSettingsToNotion() {
   if (!DB.EINSTELLUNGEN || !Auth.isAuthenticated) return;
+  // Sprint 1 L6: API-Keys verschlüsselt in Notion speichern
+  const lk = Auth.licenseKey;
+  const clockifyRaw = loadLocal('fb_clockify_key', '');
+  const claudeRaw   = loadLocal('fb_claude_key', '');
+  const clockifyEnc = lk && clockifyRaw ? await fbEncrypt(clockifyRaw, lk) : clockifyRaw;
+  const claudeEnc   = lk && claudeRaw   ? await fbEncrypt(claudeRaw, lk)   : claudeRaw;
   const settings = {
     land: AppState.country || 'CH', waehrung: AppState.currency || 'CHF',
     sprache: AppState.lang || 'de', konten: JSON.stringify(OB.accounts || []),
-    clockify_key: loadLocal('fb_clockify_key', ''), claude_key: loadLocal('fb_claude_key', ''),
+    clockify_key: clockifyEnc, claude_key: claudeEnc,
   };
   try {
     const db = getActiveDataAdapter();
     await db.saveDeviceSettings(settings);
-    console.log('[Settings] Saved to Notion');
+    console.log('[Settings] Saved to Notion (keys encrypted:', !!lk, ')');
   } catch (e) { console.warn('[Settings] Save failed:', e.message); }
 }
 
@@ -11625,8 +11690,35 @@ async function loadSettingsFromNotion() {
     if (s.sprache) AppState.lang = s.sprache;
     saveAppState();
     if (s.konten) { try { const k = JSON.parse(s.konten); if (Array.isArray(k)) { OB.accounts = k; saveLocal('fb_ob_accounts', k); } } catch {} }
-    if (s.clockify) { saveLocal('fb_clockify_key', s.clockify); OB.clockifyConnected = true; }
-    if (s.claude) { saveLocal('fb_claude_key', s.claude); OB.kiConnected = true; }
+    // Sprint 1 L6: API-Keys aus Notion entschlüsseln
+    const lk = Auth.licenseKey;
+    let clockifyVal = s.clockify || '';
+    let claudeVal   = s.claude || '';
+    if (lk && clockifyVal) {
+      const dec = await fbDecrypt(clockifyVal, lk);
+      if (dec) { clockifyVal = dec; }
+      else if (clockifyVal.length > 0) {
+        // Entschlüsselung fehlgeschlagen — könnte noch unverschlüsselt sein (Migration)
+        // Heuristik: verschlüsselte Werte sind base64 und > 30 Zeichen
+        if (clockifyVal.length > 30 && /^[A-Za-z0-9+/=]+$/.test(clockifyVal)) {
+          console.warn('[Settings] Clockify-Key Entschlüsselung fehlgeschlagen');
+          clockifyVal = '';
+        }
+        // Sonst: noch Klartext (pre-Encryption), behalten
+      }
+    }
+    if (lk && claudeVal) {
+      const dec = await fbDecrypt(claudeVal, lk);
+      if (dec) { claudeVal = dec; }
+      else if (claudeVal.length > 0) {
+        if (claudeVal.length > 30 && /^[A-Za-z0-9+/=]+$/.test(claudeVal)) {
+          console.warn('[Settings] Claude-Key Entschlüsselung fehlgeschlagen');
+          claudeVal = '';
+        }
+      }
+    }
+    if (clockifyVal) { saveLocal('fb_clockify_key', clockifyVal); OB.clockifyConnected = true; }
+    if (claudeVal) { saveLocal('fb_claude_key', claudeVal); OB.kiConnected = true; }
     // BUG-071: Sync cockpit layout from Notion (Notion = source of truth)
     try {
       const layoutJson = await db.loadSetting('cockpit_layout');
@@ -13402,6 +13494,11 @@ function migrateLocalStorage() {
           showToast('error', '⚠️', 'Notion-Datenbanken fehlen', 'Bitte Notion neu verbinden.',
             [], { label: 'Jetzt verbinden →', fn: () => nav('einstellungen') }, 0);
         }
+      }
+      // Sprint 1: Device-Token sicherstellen vor erstem Notion-Call
+      if (!loadLocal('fb_device_token', null) && Auth.licenseKey) {
+        console.log('[Auth] Kein Device-Token — registriere…');
+        await Auth.registerDevice();
       }
       await ensureSettingsSchema();
       await loadSettingsFromNotion();
