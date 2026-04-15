@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZFSG Projektcockpit</title>
+<style>
+:root {
+  --zf-green: #2E8B57;
+  --zf-pink: #E85A8A;
+  --zf-teal: #6BA5B5;
+  --zf-dark: #202020;
+  --zf-text: #333333;
+  --zf-text-muted: #777777;
+  --zf-bg: #F9F7F4;
+  --zf-bg-alt: #F3F0EB;
+  --zf-card: #FFFFFF;
+  --zf-border: #E5E2DA;
+  --zf-green-light: #EDF5EE;
+  --zf-pink-light: #FDF0F4;
+  --zf-teal-light: #ECF4F7;
+  --zf-font-h: 'Trebuchet MS', 'Inter', system-ui, sans-serif;
+  --zf-font-b: 'Calibri', 'Inter', system-ui, sans-serif;
+  --zf-radius: 8px;
+  --zf-radius-lg: 12px;
+  --zf-danger: #c0392b;
+  --zf-danger-light: #fdecea;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--zf-font-b); background: var(--zf-bg); color: var(--zf-text); min-height: 100vh; }
+input, select, textarea, button { font-family: inherit; font-size: inherit; }
+input[type="text"], input[type="email"], input[type="url"], input[type="tel"], input[type="date"], input[type="number"], textarea, select {
+  border: 1px solid var(--zf-border); border-radius: var(--zf-radius); padding: 6px 10px; background: var(--zf-card);
+  color: var(--zf-text); width: 100%; outline: none; font-size: 13px;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--zf-teal); }
+textarea { resize: vertical; min-height: 60px; }
+button { cursor: pointer; }
+.btn { padding: 6px 14px; border-radius: var(--zf-radius); border: 1px solid var(--zf-border); background: var(--zf-card);
+  color: var(--zf-text); font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.btn:hover { background: var(--zf-bg-alt); }
+.btn-primary { background: var(--zf-green); color: #fff; border-color: var(--zf-green); }
+.btn-primary:hover { background: #257a4a; }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+.btn-danger { color: var(--zf-danger); border-color: var(--zf-danger); }
+.btn-danger:hover { background: var(--zf-danger-light); }
+
+/* Layout */
+.app-header { padding: 12px 20px; border-bottom: 1px solid var(--zf-border); background: var(--zf-card); }
+.tri-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; }
+.tri-bar span { flex: 1; }
+.title-row { display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px; }
+.app-title { font-family: var(--zf-font-h); font-size: 18px; font-weight: 600; }
+.nav-tabs { display: flex; gap: 2px; background: var(--zf-bg-alt); border-radius: var(--zf-radius); padding: 3px; margin-top: 10px; }
+.nav-tab { flex: 1; text-align: center; padding: 7px 10px; font-size: 13px; font-weight: 500; border-radius: 6px;
+  cursor: pointer; color: var(--zf-text-muted); background: transparent; border: none; transition: all 0.15s; }
+.nav-tab:hover { color: var(--zf-text); }
+.nav-tab.active { background: var(--zf-card); color: var(--zf-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.tab-content { display: none; padding: 16px 20px; }
+.tab-content.active { display: block; }
+.section-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--zf-text-muted); margin-bottom: 8px; margin-top: 16px; }
+.section-label:first-child { margin-top: 0; }
+.card { background: var(--zf-card); border: 1px solid var(--zf-border); border-radius: var(--zf-radius-lg); padding: 14px 16px; margin-bottom: 12px; }
+
+/* Pills */
+.pill { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; display: inline-block; white-space: nowrap; }
+.pill-green { background: var(--zf-green-light); color: var(--zf-green); }
+.pill-pink { background: var(--zf-pink-light); color: var(--zf-pink); }
+.pill-teal { background: var(--zf-teal-light); color: var(--zf-teal); }
+.pill-muted { background: var(--zf-bg-alt); color: var(--zf-text-muted); }
+.pill-danger { background: var(--zf-danger-light); color: var(--zf-danger); }
+
+/* Cockpit */
+.timeline { position: relative; margin-bottom: 16px; }
+.tl-track { display: flex; gap: 3px; }
+.tl-phase { flex: 1; border-radius: var(--zf-radius); padding: 8px 10px; min-height: 56px; position: relative; cursor: pointer; transition: outline 0.15s; }
+.tl-phase:hover { outline: 1.5px solid var(--zf-teal); outline-offset: -1.5px; }
+.tl-phase.current { outline: 2px solid var(--zf-green); outline-offset: -2px; }
+.tl-phase-label { font-size: 10px; font-weight: 500; }
+.tl-phase-title { font-size: 12px; font-weight: 500; color: var(--zf-dark); }
+.tl-phase-dates { font-size: 10px; color: var(--zf-text-muted); margin-top: 1px; }
+.tl-now { position: absolute; top: -8px; font-size: 9px; font-weight: 500; color: #fff; background: var(--zf-green);
+  padding: 1px 6px; border-radius: 4px; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.metric { background: var(--zf-bg-alt); border-radius: var(--zf-radius); padding: 10px 12px; }
+.metric-label { font-size: 11px; color: var(--zf-text-muted); }
+.metric-value { font-size: 20px; font-weight: 500; color: var(--zf-dark); margin-top: 2px; }
+.metric-sub { font-size: 10px; color: var(--zf-text-muted); margin-top: 1px; }
+.mod-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.mod-card { background: var(--zf-card); border: 1px solid var(--zf-border); border-radius: var(--zf-radius-lg); padding: 12px 14px; }
+.mod-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.mod-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.mod-title { font-size: 13px; font-weight: 500; color: var(--zf-dark); }
+.mod-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 0.5px solid var(--zf-border); font-size: 12px; }
+.mod-item:last-child { border-bottom: none; }
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+/* Tasks */
+.task-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.task-list { }
+.task-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--zf-border);
+  border-radius: var(--zf-radius); margin-bottom: 4px; background: var(--zf-card); cursor: pointer; transition: all 0.1s; }
+.task-row:hover { border-color: var(--zf-teal); }
+.task-check { width: 16px; height: 16px; border: 1.5px solid var(--zf-border); border-radius: 3px; cursor: pointer;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.task-check.done { background: var(--zf-green); border-color: var(--zf-green); color: #fff; font-size: 10px; }
+.task-title { flex: 1; font-size: 13px; }
+.task-title.done { text-decoration: line-through; color: var(--zf-text-muted); }
+.task-meta { display: flex; gap: 6px; align-items: center; }
+.task-deadline { font-size: 11px; color: var(--zf-text-muted); }
+.task-deadline.overdue { color: var(--zf-danger); font-weight: 500; }
+
+/* CRM */
+.crm-list-row { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 0.8fr 80px; gap: 8px; align-items: center;
+  padding: 8px 10px; border: 1px solid var(--zf-border); border-radius: var(--zf-radius); margin-bottom: 4px;
+  background: var(--zf-card); cursor: pointer; font-size: 12px; transition: all 0.1s; }
+.crm-list-row:hover { border-color: var(--zf-teal); }
+.crm-list-header { font-weight: 500; color: var(--zf-text-muted); font-size: 11px; cursor: default; border: none; background: none; }
+.crm-list-header:hover { border-color: transparent; }
+.crm-detail-panel { }
+.crm-field-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0;
+  border-bottom: 0.5px solid var(--zf-border); font-size: 13px; }
+.crm-field-row:last-child { border-bottom: none; }
+.crm-field-label { color: var(--zf-text-muted); min-width: 140px; }
+.crm-field-value { font-weight: 500; color: var(--zf-dark); cursor: pointer; }
+.crm-field-value:hover { color: var(--zf-teal); }
+.note-card { padding: 10px 12px; background: var(--zf-bg-alt); border-radius: var(--zf-radius); margin-bottom: 6px; font-size: 12px; }
+.note-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.note-author { font-weight: 500; color: var(--zf-dark); }
+.note-date { color: var(--zf-text-muted); font-size: 11px; }
+
+/* Timetrack (simplified from existing) */
+.tt-person-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+.tt-pill { padding: 4px 12px; border-radius: 14px; border: 1px solid var(--zf-border); font-size: 12px; cursor: pointer;
+  background: var(--zf-card); transition: all 0.1s; user-select: none; }
+.tt-pill.selected { background: var(--zf-green); color: #fff; border-color: var(--zf-green); }
+.progress-bar { background: var(--zf-bg-alt); height: 6px; border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* Modal/Overlay */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3);
+  display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--zf-card); border-radius: var(--zf-radius-lg); padding: 20px 24px; max-width: 520px;
+  width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+.modal h3 { font-family: var(--zf-font-h); font-size: 16px; color: var(--zf-dark); margin-bottom: 14px; }
+.form-group { margin-bottom: 10px; }
+.form-group label { display: block; font-size: 11px; font-weight: 500; color: var(--zf-text-muted);
+  text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+/* Inline edit */
+.editable { cursor: pointer; border-bottom: 1px dashed transparent; transition: border-color 0.15s; }
+.editable:hover { border-bottom-color: var(--zf-teal); }
+
+/* Footer */
+.three-dots { display: flex; justify-content: center; gap: 6px; padding: 16px 0; }
+.three-dots span { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .mod-grid { grid-template-columns: 1fr; }
+  .crm-list-row { grid-template-columns: 1fr 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="tri-bar"><span style="background:var(--zf-green)"></span><span style="background:var(--zf-teal)"></span><span style="background:var(--zf-pink)"></span></div>
+  <div class="title-row">
+    <span class="app-title">
+      <span style="color:var(--zf-green)">Zukunfts</span><span style="color:var(--zf-pink)">festival</span>
+      <span style="color:var(--zf-green);margin-left:3px">St.</span><span style="color:var(--zf-teal)">Gallen</span>
+      <span style="color:var(--zf-pink);margin-left:3px">2026</span>
+    </span>
+    <span style="font-size:12px;color:var(--zf-text-muted)" id="dateDisplay"></span>
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" data-tab="cockpit">Cockpit</button>
+    <button class="nav-tab" data-tab="tasks">Aufgaben</button>
+    <button class="nav-tab" data-tab="crm">CRM</button>
+    <button class="nav-tab" data-tab="timetrack">Arbeitszeit</button>
+  </div>
+</div>
+
+<!-- COCKPIT TAB -->
+<div class="tab-content active" id="tab-cockpit">
+  <div class="section-label">Projektphasen</div>
+  <div class="timeline"><div class="tl-track" id="phaseTrack"></div></div>
+  <div class="metrics" id="cockpitMetrics"></div>
+  <div class="section-label">Auf einen Blick</div>
+  <div class="mod-grid" id="cockpitModules"></div>
+  <div class="three-dots"><span style="background:var(--zf-green)"></span><span style="background:var(--zf-teal)"></span><span style="background:var(--zf-pink)"></span></div>
+</div>
+
+<!-- TASKS TAB -->
+<div class="tab-content" id="tab-tasks">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="section-label" style="margin:0">Aufgaben</div>
+    <button class="btn btn-primary btn-sm" onclick="openTaskModal()">+ Neue Aufgabe</button>
+  </div>
+  <div class="task-filters" id="taskFilters">
+    <select id="taskFilterPerson" style="width:auto;min-width:100px" onchange="renderTasks()">
+      <option value="">Alle Personen</option>
+    </select>
+    <select id="taskFilterPhase" style="width:auto;min-width:120px" onchange="renderTasks()">
+      <option value="">Alle Phasen</option>
+    </select>
+    <select id="taskFilterStatus" style="width:auto;min-width:100px" onchange="renderTasks()">
+      <option value="">Alle Status</option>
+      <option value="open">Offen</option>
+      <option value="in_progress">In Arbeit</option>
+      <option value="waiting">Wartet</option>
+      <option value="done">Erledigt</option>
+    </select>
+    <select id="taskFilterArea" style="width:auto;min-width:120px" onchange="renderTasks()">
+      <option value="">Alle Bereiche</option>
+      <option value="strategie">Strategie & Konzept</option>
+      <option value="partner">Partner & Netzwerk</option>
+      <option value="finanzen">Finanzen & Fundraising</option>
+      <option value="kommunikation">Kommunikation</option>
+      <option value="tools">Tools & Infrastruktur</option>
+      <option value="programm">Programm & Kuration</option>
+    </select>
+  </div>
+  <div id="taskList" class="task-list"></div>
+</div>
+
+<!-- CRM TAB -->
+<div class="tab-content" id="tab-crm">
+  <div id="crmView"></div>
+</div>
+
+<!-- TIMETRACK TAB -->
+<div class="tab-content" id="tab-timetrack">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="section-label" style="margin:0">Arbeitszeit erfassen</div>
+    <button class="btn btn-sm" onclick="exportTimeCSV()">CSV Export</button>
+  </div>
+  <div class="card" id="ttForm">
+    <div class="form-row">
+      <div class="form-group"><label>Datum</label><input type="date" id="ttDate"></div>
+      <div class="form-group"><label>Stunden (pro Person)</label><input type="number" id="ttHours" step="0.25" min="0" value="1"></div>
+    </div>
+    <div class="form-group"><label>Personen</label><div class="tt-person-pills" id="ttPersonPills"></div></div>
+    <div class="form-row">
+      <div class="form-group"><label>Kategorie</label><select id="ttCategory"></select></div>
+      <div class="form-group"><label>Beschreibung</label><input type="text" id="ttDesc" placeholder="Was wurde gemacht?"></div>
+    </div>
+    <div style="text-align:right;margin-top:8px"><button class="btn btn-primary" onclick="saveTimeEntry()">Erfassen</button></div>
+  </div>
+  <div class="section-label">Letzte Einträge</div>
+  <div id="ttEntries"></div>
+  <div class="section-label">Übersicht</div>
+  <div id="ttSummary"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <h3 id="taskModalTitle">Neue Aufgabe</h3>
+    <input type="hidden" id="taskEditId">
+    <div class="form-group"><label>Titel</label><input type="text" id="taskTitle" placeholder="Was muss getan werden?"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Zuständig</label>
+        <div class="tt-person-pills" id="taskPersonPills"></div>
+      </div>
+      <div class="form-group"><label>Deadline</label><input type="date" id="taskDeadline"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Bereich</label>
+        <select id="taskArea">
+          <option value="strategie">Strategie & Konzept</option>
+          <option value="partner">Partner & Netzwerk</option>
+          <option value="finanzen">Finanzen & Fundraising</option>
+          <option value="kommunikation">Kommunikation</option>
+          <option value="tools">Tools & Infrastruktur</option>
+          <option value="programm">Programm & Kuration</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Phase</label><select id="taskPhase"></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Priorität</label>
+        <select id="taskPrio">
+          <option value="high">Hoch</option>
+          <option value="medium" selected>Mittel</option>
+          <option value="low">Niedrig</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="taskStatus">
+          <option value="open">Offen</option>
+          <option value="in_progress">In Arbeit</option>
+          <option value="waiting">Wartet</option>
+          <option value="done">Erledigt</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Notizen</label><textarea id="taskNotes" rows="2"></textarea></div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeModal('taskModal')">Abbrechen</button>
+      <button class="btn btn-danger" id="taskDeleteBtn" style="display:none" onclick="deleteTask()">Löschen</button>
+      <button class="btn btn-primary" onclick="saveTask()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="crmModal">
+  <div class="modal">
+    <h3 id="crmModalTitle">Neuer Kontakt</h3>
+    <input type="hidden" id="crmEditId">
+    <div class="form-row">
+      <div class="form-group"><label>Name</label><input type="text" id="crmName" placeholder="Vor- und Nachname"></div>
+      <div class="form-group"><label>Organisation</label><input type="text" id="crmOrg" placeholder="Firma / Verein / Institution"></div>
+    </div>
+    <div class="form-group"><label>Kurzbeschreibung</label><input type="text" id="crmDesc" placeholder="Warum ist dieser Kontakt für uns relevant?"></div>
+    <div class="form-row">
+      <div class="form-group"><label>E-Mail</label><input type="email" id="crmEmail"></div>
+      <div class="form-group"><label>Telefon</label><input type="tel" id="crmPhone"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Webseite</label><input type="url" id="crmWeb" placeholder="https://..."></div>
+      <div class="form-group"><label>Hauptansprechperson</label><select id="crmOwner"></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Partnerkategorie</label>
+        <select id="crmCategory">
+          <option value="co-ownership">Co-Ownership</option>
+          <option value="partnerschaft">Partnerschaft (Container)</option>
+          <option value="kuratiert">Kuratierte Beitragende</option>
+          <option value="direkt">Direkt Beitragende</option>
+          <option value="foerderer">Förderer / Stiftung</option>
+          <option value="media">Medien / Presse</option>
+          <option value="volunteer">Volunteer</option>
+          <option value="andere">Andere Stakeholder</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="crmStatus">
+          <option value="idee">Idee</option>
+          <option value="kontaktiert">Kontaktiert</option>
+          <option value="in_gespraech">In Gespräch</option>
+          <option value="zugesagt">Zugesagt</option>
+          <option value="format_definiert">Format definiert</option>
+          <option value="bereit">Bereit</option>
+          <option value="antrag_eingereicht">Antrag eingereicht</option>
+          <option value="bewilligt">Bewilligt</option>
+          <option value="abgelehnt">Abgelehnt</option>
+          <option value="interessiert">Interessiert</option>
+          <option value="bestaetigt">Bestätigt</option>
+          <option value="pitch_gesendet">Pitch gesendet</option>
+          <option value="pausiert">Pausiert</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Priorität</label>
+        <select id="crmPrio">
+          <option value="high">Hoch</option>
+          <option value="medium" selected>Mittel</option>
+          <option value="low">Niedrig</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Zugeordneter Ort</label>
+        <select id="crmOrt">
+          <option value="">—</option>
+          <option value="klosterplatz">Klosterplatz</option>
+          <option value="bibliothek">Stadtbibliothek</option>
+          <option value="marktplatz">Waaghaus / Marktplatz</option>
+          <option value="stadtpark">Stadtpark</option>
+          <option value="bahnhof">Bahnhof</option>
+          <option value="hsg">HSG / OST</option>
+          <option value="gallusplatz">Gallusplatz</option>
+          <option value="lokremise">Lokremise</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Sektor-Tags (kommagetrennt)</label><input type="text" id="crmTags" placeholder="z.B. Politik, Kunst, Wirtschaft"></div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeModal('crmModal')">Abbrechen</button>
+      <button class="btn btn-danger" id="crmDeleteBtn" style="display:none" onclick="deleteContact()">Löschen</button>
+      <button class="btn btn-primary" onclick="saveContact()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="noteModal">
+  <div class="modal">
+    <h3>Notiz hinzufügen</h3>
+    <input type="hidden" id="noteContactId">
+    <div class="form-group"><label>Autor</label><select id="noteAuthor"></select></div>
+    <div class="form-group"><label>Notiz</label><textarea id="noteText" rows="3" placeholder="Was wurde besprochen?"></textarea></div>
+    <div class="form-group"><label>Action Item (optional)</label><input type="text" id="noteAction" placeholder="Was ist der nächste Schritt?"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Action zuständig</label><select id="noteActionOwner"></select></div>
+      <div class="form-group"><label>Action Deadline</label><input type="date" id="noteActionDeadline"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeModal('noteModal')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveNote()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="phaseModal">
+  <div class="modal">
+    <h3 id="phaseModalTitle">Phase bearbeiten</h3>
+    <input type="hidden" id="phaseEditId">
+    <div class="form-group"><label>Titel</label><input type="text" id="phaseTitle"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Startmonat</label><input type="text" id="phaseStart" placeholder="z.B. Jan"></div>
+      <div class="form-group"><label>Endmonat</label><input type="text" id="phaseEnd" placeholder="z.B. Mär"></div>
+    </div>
+    <div class="form-group">
+      <label>Ist aktuelle Phase?</label>
+      <select id="phaseCurrent"><option value="false">Nein</option><option value="true">Ja</option></select>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeModal('phaseModal')">Abbrechen</button>
+      <button class="btn btn-danger" id="phaseDeleteBtn" style="display:none" onclick="deletePhase()">Löschen</button>
+      <button class="btn btn-primary" onclick="savePhase()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// Firebase Config — same project as the existing Arbeitsjournal
+const firebaseConfig = {
+  apiKey: "AIzaSyDXxQc_BV7VmIXMvQXnMbMepdMSVMpB76k",
+  authDomain: "zfsg-arbeitsjournal.firebaseapp.com",
+  databaseURL: "https://zfsg-arbeitsjournal-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "zfsg-arbeitsjournal",
+  storageBucket: "zfsg-arbeitsjournal.appspot.com",
+  messagingSenderId: "710699691845",
+  appId: "1:710699691845:web:bd4e3f0c1a7e8b2a3c4d5e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ============ STATE ============
+let STATE = {
+  persons: ["Osi", "Severin", "Tobias", "Lena"],
+  phases: {},
+  tasks: {},
+  contacts: {},
+  timeEntries: {},
+  timeCategories: {},
+  crmDetailId: null
+};
+
+const PRIO_LABELS = { high: "Hoch", medium: "Mittel", low: "Niedrig" };
+const PRIO_PILLS = { high: "pill-pink", medium: "pill-muted", low: "pill-muted" };
+const STATUS_LABELS = {
+  open: "Offen", in_progress: "In Arbeit", waiting: "Wartet", done: "Erledigt",
+  idee: "Idee", kontaktiert: "Kontaktiert", in_gespraech: "In Gespräch", zugesagt: "Zugesagt",
+  format_definiert: "Format def.", bereit: "Bereit", antrag_eingereicht: "Antrag eingereicht",
+  bewilligt: "Bewilligt", abgelehnt: "Abgelehnt", interessiert: "Interessiert",
+  bestaetigt: "Bestätigt", pitch_gesendet: "Pitch gesendet", pausiert: "Pausiert"
+};
+const STATUS_PILLS = {
+  open: "pill-muted", in_progress: "pill-teal", waiting: "pill-pink", done: "pill-green",
+  idee: "pill-muted", kontaktiert: "pill-muted", in_gespraech: "pill-teal", zugesagt: "pill-green",
+  format_definiert: "pill-green", bereit: "pill-green", antrag_eingereicht: "pill-teal",
+  bewilligt: "pill-green", abgelehnt: "pill-danger", interessiert: "pill-muted",
+  bestaetigt: "pill-green", pitch_gesendet: "pill-teal", pausiert: "pill-muted"
+};
+const AREA_LABELS = {
+  strategie: "Strategie", partner: "Partner", finanzen: "Finanzen",
+  kommunikation: "Kommunikation", tools: "Tools", programm: "Programm"
+};
+const AREA_PILLS = {
+  strategie: "pill-green", partner: "pill-teal", finanzen: "pill-pink",
+  kommunikation: "pill-muted", tools: "pill-muted", programm: "pill-green"
+};
+const CAT_LABELS = {
+  "co-ownership": "Co-Ownership", partnerschaft: "Partnerschaft", kuratiert: "Kuratierte Beitr.",
+  direkt: "Direkt Beitr.", foerderer: "Förderer", media: "Medien",
+  volunteer: "Volunteer", andere: "Andere"
+};
+
+// ============ FIREBASE LISTENERS ============
+function initFirebase() {
+  // Persons
+  db.ref("projektcockpit/persons").on("value", snap => {
+    if (snap.val()) STATE.persons = snap.val();
+    populatePersonSelects();
+  });
+  // Phases
+  db.ref("projektcockpit/phases").on("value", snap => {
+    STATE.phases = snap.val() || {};
+    renderPhases();
+    populatePhaseSelects();
+    renderCockpit();
+  });
+  // Tasks
+  db.ref("projektcockpit/tasks").on("value", snap => {
+    STATE.tasks = snap.val() || {};
+    renderTasks();
+    renderCockpit();
+  });
+  // Contacts
+  db.ref("projektcockpit/contacts").on("value", snap => {
+    STATE.contacts = snap.val() || {};
+    renderCRM();
+    renderCockpit();
+  });
+  // Time entries (from existing arbeitsjournal)
+  db.ref("arbeitsjournal/entries").on("value", snap => {
+    STATE.timeEntries = snap.val() || {};
+    renderTimetrack();
+    renderCockpit();
+  });
+  db.ref("arbeitsjournal/categories").on("value", snap => {
+    STATE.timeCategories = snap.val() || {};
+    populateTimeCategories();
+  });
+  db.ref("arbeitsjournal/persons").on("value", snap => {
+    if (snap.val()) STATE.persons = snap.val();
+    db.ref("projektcockpit/persons").set(snap.val());
+    populatePersonSelects();
+  });
+}
+
+// ============ SEED DEFAULT PHASES ============
+function seedDefaults() {
+  db.ref("projektcockpit/phases").once("value", snap => {
+    if (!snap.val()) {
+      const defaults = {
+        "p1": { title: "Kickoff & Konzept", start: "Jan", end: "Mär", current: false, order: 1 },
+        "p2": { title: "Strategic Outreach & Fundraising", start: "Apr", end: "Mai", current: true, order: 2 },
+        "p3": { title: "Co-Design & Go/No-Go", start: "Mai", end: "Jul", current: false, order: 3 },
+        "p4": { title: "Konkretisierung", start: "Jul", end: "Aug", current: false, order: 4 },
+        "p5": { title: "Festival!", start: "Sep", end: "Sep", current: false, order: 5 }
+      };
+      db.ref("projektcockpit/phases").set(defaults);
+    }
+  });
+}
+
+// ============ TAB NAVIGATION ============
+document.getElementById("navTabs").addEventListener("click", e => {
+  if (!e.target.classList.contains("nav-tab")) return;
+  document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  e.target.classList.add("active");
+  document.getElementById("tab-" + e.target.dataset.tab).classList.add("active");
+});
+
+// ============ MODAL HELPERS ============
+function openModal(id) { document.getElementById(id).classList.add("show"); }
+function closeModal(id) { document.getElementById(id).classList.remove("show"); }
+document.querySelectorAll(".modal-overlay").forEach(m => {
+  m.addEventListener("click", e => { if (e.target === m) m.classList.remove("show"); });
+});
+
+// ============ POPULATE SELECTS ============
+function populatePersonSelects() {
+  const selects = ["taskFilterPerson", "crmOwner", "noteAuthor", "noteActionOwner"];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const val = el.value;
+    const isFilter = id.includes("Filter");
+    el.innerHTML = isFilter ? '<option value="">Alle Personen</option>' : '<option value="">—</option>';
+    STATE.persons.forEach(p => { el.innerHTML += `<option value="${p}">${p}</option>`; });
+    el.value = val;
+  });
+}
+
+function populatePhaseSelects() {
+  const el = document.getElementById("taskFilterPhase");
+  const el2 = document.getElementById("taskPhase");
+  if (!el) return;
+  const sorted = Object.entries(STATE.phases).sort((a,b) => (a[1].order||0) - (b[1].order||0));
+  el.innerHTML = '<option value="">Alle Phasen</option>';
+  if (el2) el2.innerHTML = '<option value="">—</option>';
+  sorted.forEach(([id, p]) => {
+    el.innerHTML += `<option value="${id}">${p.title}</option>`;
+    if (el2) el2.innerHTML += `<option value="${id}">${p.title}</option>`;
+  });
+}
+
+function populateTimeCategories() {
+  const el = document.getElementById("ttCategory");
+  if (!el) return;
+  el.innerHTML = '<option value="">—</option>';
+  Object.entries(STATE.timeCategories).forEach(([id, c]) => {
+    el.innerHTML += `<option value="${id}">${c.name}</option>`;
+  });
+}
+
+// ============ RENDER COCKPIT ============
+function renderCockpit() {
+  renderPhases();
+  // Metrics
+  const tasks = Object.values(STATE.tasks);
+  const openTasks = tasks.filter(t => t.status !== "done");
+  const today = new Date().toISOString().slice(0,10);
+  const overdue = openTasks.filter(t => t.deadline && t.deadline < today);
+  const contacts = Object.values(STATE.contacts);
+  const inGespraech = contacts.filter(c => ["in_gespraech","zugesagt","format_definiert"].includes(c.status));
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  let monthHours = 0;
+  let personHours = {};
+  STATE.persons.forEach(p => personHours[p] = 0);
+  Object.values(STATE.timeEntries).forEach(e => {
+    if (e.date && e.date.startsWith(monthKey)) {
+      const hrs = parseFloat(e.hours) || 0;
+      (e.persons || []).forEach(p => { personHours[p] = (personHours[p]||0) + hrs; });
+      monthHours += hrs * (e.persons||[]).length;
+    }
+  });
+
+  document.getElementById("cockpitMetrics").innerHTML = `
+    <div class="metric"><div class="metric-label">Offene Aufgaben</div>
+      <div class="metric-value">${openTasks.length}</div>
+      <div class="metric-sub" ${overdue.length?'style="color:var(--zf-danger)"':''}>${overdue.length} überfällig</div></div>
+    <div class="metric"><div class="metric-label">CRM Kontakte</div>
+      <div class="metric-value">${contacts.length}</div>
+      <div class="metric-sub">${inGespraech.length} in Gespräch/zugesagt</div></div>
+    <div class="metric"><div class="metric-label">Budget gesichert</div>
+      <div class="metric-value" style="color:var(--zf-green)">40k</div>
+      <div class="metric-sub">Pipeline: ~25k</div></div>
+    <div class="metric"><div class="metric-label">Stunden ${now.toLocaleString("de",{month:"long"})}</div>
+      <div class="metric-value">${Math.round(monthHours)}h</div>
+      <div class="metric-sub">${STATE.persons.map(p=>`${p.slice(0,3)} ${Math.round(personHours[p]||0)}`).join(" · ")}</div></div>
+  `;
+
+  // Module cards
+  const urgentTasks = openTasks.sort((a,b) => {
+    if (a.deadline && !b.deadline) return -1; if (!a.deadline && b.deadline) return 1;
+    return (a.deadline||"").localeCompare(b.deadline||"");
+  }).slice(0, 5);
+
+  const recentContacts = contacts.sort((a,b) => {
+    const aLast = (a.notes||[]).length ? a.notes[a.notes.length-1].date : "";
+    const bLast = (b.notes||[]).length ? b.notes[b.notes.length-1].date : "";
+    return bLast.localeCompare(aLast);
+  }).slice(0, 5);
+
+  document.getElementById("cockpitModules").innerHTML = `
+    <div class="mod-card">
+      <div class="mod-header"><div class="mod-icon" style="background:var(--zf-pink-light);color:var(--zf-pink)">✓</div>
+        <div class="mod-title">Nächste Aufgaben</div></div>
+      ${urgentTasks.map(t => `<div class="mod-item"><div style="display:flex;align-items:center;gap:6px">
+        <span class="dot" style="background:${t.deadline&&t.deadline<today?'var(--zf-danger)':'var(--zf-teal)'}"></span>
+        <span style="font-size:12px">${esc(t.title)}</span></div>
+        <span class="pill ${AREA_PILLS[t.area]||'pill-muted'}">${t.persons?t.persons[0]:""}</span></div>`).join("")}
+    </div>
+    <div class="mod-card">
+      <div class="mod-header"><div class="mod-icon" style="background:var(--zf-teal-light);color:var(--zf-teal)">●</div>
+        <div class="mod-title">CRM aktuell</div></div>
+      ${recentContacts.map(c => `<div class="mod-item"><span style="font-size:12px">${esc(c.name)}</span>
+        <span class="pill ${STATUS_PILLS[c.status]||'pill-muted'}">${STATUS_LABELS[c.status]||c.status}</span></div>`).join("")}
+    </div>
+    <div class="mod-card">
+      <div class="mod-header"><div class="mod-icon" style="background:var(--zf-green-light);color:var(--zf-green)">⏲</div>
+        <div class="mod-title">Arbeitszeit</div></div>
+      ${STATE.persons.map(p => {
+        const h = personHours[p]||0; const maxH = Math.max(...Object.values(personHours),1);
+        const colors = ["var(--zf-green)","var(--zf-teal)","var(--zf-pink)","var(--zf-green)"];
+        const ci = STATE.persons.indexOf(p) % colors.length;
+        return `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px">
+          <span>${p}</span><span style="font-weight:500">${h.toFixed(1)}h</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${(h/maxH*100).toFixed(0)}%;background:${colors[ci]}"></div></div></div>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+// ============ RENDER PHASES ============
+function renderPhases() {
+  const sorted = Object.entries(STATE.phases).sort((a,b) => (a[1].order||0) - (b[1].order||0));
+  const colors = [
+    {bg: "var(--zf-green-light)", fg: "var(--zf-green)"},
+    {bg: "var(--zf-teal-light)", fg: "var(--zf-teal)"},
+    {bg: "var(--zf-pink-light)", fg: "var(--zf-pink)"},
+    {bg: "var(--zf-green-light)", fg: "var(--zf-green)"},
+    {bg: "var(--zf-pink-light)", fg: "var(--zf-pink)"}
+  ];
+  const track = document.getElementById("phaseTrack");
+  if (!track) return;
+  track.innerHTML = sorted.map(([id, p], i) => {
+    const c = colors[i % colors.length];
+    return `<div class="tl-phase ${p.current?'current':''}" style="background:${c.bg}" onclick="openPhaseModal('${id}')">
+      ${p.current?'<div class="tl-now" style="left:30%">jetzt</div>':''}
+      <div class="tl-phase-label" style="color:${c.fg}">Phase ${i+1}</div>
+      <div class="tl-phase-title">${esc(p.title)}</div>
+      <div class="tl-phase-dates">${esc(p.start||"")} – ${esc(p.end||"")}</div>
+    </div>`;
+  }).join("") + `<div class="tl-phase" style="background:var(--zf-bg-alt);display:flex;align-items:center;justify-content:center;min-width:40px;flex:0.3;cursor:pointer" onclick="openPhaseModal()">
+    <span style="font-size:18px;color:var(--zf-text-muted)">+</span></div>`;
+}
+
+// ============ RENDER TASKS ============
+function renderTasks() {
+  const filterPerson = document.getElementById("taskFilterPerson").value;
+  const filterPhase = document.getElementById("taskFilterPhase").value;
+  const filterStatus = document.getElementById("taskFilterStatus").value;
+  const filterArea = document.getElementById("taskFilterArea").value;
+  const today = new Date().toISOString().slice(0,10);
+
+  let tasks = Object.entries(STATE.tasks).map(([id,t]) => ({id,...t}));
+  if (filterPerson) tasks = tasks.filter(t => (t.persons||[]).includes(filterPerson));
+  if (filterPhase) tasks = tasks.filter(t => t.phase === filterPhase);
+  if (filterStatus) tasks = tasks.filter(t => t.status === filterStatus);
+  if (filterArea) tasks = tasks.filter(t => t.area === filterArea);
+
+  tasks.sort((a,b) => {
+    if (a.status === "done" && b.status !== "done") return 1;
+    if (a.status !== "done" && b.status === "done") return -1;
+    const pa = {high:0,medium:1,low:2}; if ((pa[a.prio]||1) !== (pa[b.prio]||1)) return (pa[a.prio]||1) - (pa[b.prio]||1);
+    if (a.deadline && !b.deadline) return -1; if (!a.deadline && b.deadline) return 1;
+    return (a.deadline||"").localeCompare(b.deadline||"");
+  });
+
+  document.getElementById("taskList").innerHTML = tasks.map(t => {
+    const isDone = t.status === "done";
+    const isOverdue = !isDone && t.deadline && t.deadline < today;
+    const deadlineStr = t.deadline ? new Date(t.deadline+"T00:00").toLocaleDateString("de-CH",{day:"numeric",month:"short"}) : "";
+    return `<div class="task-row" onclick="openTaskModal('${t.id}')">
+      <div class="task-check ${isDone?'done':''}" onclick="event.stopPropagation();toggleTask('${t.id}')">${isDone?'✓':''}</div>
+      <div class="task-title ${isDone?'done':''}">${esc(t.title)}</div>
+      <div class="task-meta">
+        ${t.phase?`<span class="pill pill-muted" style="font-size:9px">${esc((STATE.phases[t.phase]||{}).title||"")}</span>`:''}
+        <span class="pill ${AREA_PILLS[t.area]||'pill-muted'}">${AREA_LABELS[t.area]||""}</span>
+        <span class="pill ${PRIO_PILLS[t.prio]||'pill-muted'}">${(t.persons||[]).join(", ")}</span>
+        ${deadlineStr?`<span class="task-deadline ${isOverdue?'overdue':''}">${deadlineStr}</span>`:''}
+      </div>
+    </div>`;
+  }).join("") || '<div style="text-align:center;color:var(--zf-text-muted);padding:20px;font-size:13px">Keine Aufgaben gefunden</div>';
+}
+
+// ============ RENDER CRM ============
+function renderCRM() {
+  if (STATE.crmDetailId && STATE.contacts[STATE.crmDetailId]) {
+    renderCRMDetail(STATE.crmDetailId);
+    return;
+  }
+  STATE.crmDetailId = null;
+  const contacts = Object.entries(STATE.contacts).map(([id,c]) => ({id,...c}));
+  contacts.sort((a,b) => {
+    const pa = {high:0,medium:1,low:2}; return (pa[a.prio]||1) - (pa[b.prio]||1) || (a.name||"").localeCompare(b.name||"");
+  });
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="section-label" style="margin:0">Kontakte (${contacts.length})</div>
+    <button class="btn btn-primary btn-sm" onclick="openCrmModal()">+ Neuer Kontakt</button></div>`;
+  html += `<div class="crm-list-header crm-list-row"><span>Name / Organisation</span><span>Beschreibung</span>
+    <span>Kategorie</span><span>Status</span><span>Prio</span><span>Kontakt</span></div>`;
+  html += contacts.map(c => `<div class="crm-list-row" onclick="showCrmDetail('${c.id}')">
+    <div><div style="font-weight:500;color:var(--zf-dark)">${esc(c.name)}</div>
+      <div style="font-size:11px;color:var(--zf-text-muted)">${esc(c.org||"")}</div></div>
+    <div style="font-size:11px;color:var(--zf-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.desc||"")}</div>
+    <span class="pill ${["co-ownership","partnerschaft"].includes(c.category)?'pill-green':c.category==='foerderer'?'pill-pink':'pill-muted'}">${CAT_LABELS[c.category]||c.category}</span>
+    <span class="pill ${STATUS_PILLS[c.status]||'pill-muted'}">${STATUS_LABELS[c.status]||c.status}</span>
+    <span class="pill ${PRIO_PILLS[c.prio]||'pill-muted'}">${PRIO_LABELS[c.prio]||""}</span>
+    <span style="font-size:11px">${esc(c.owner||"")}</span>
+  </div>`).join("");
+
+  document.getElementById("crmView").innerHTML = html;
+}
+
+function showCrmDetail(id) {
+  STATE.crmDetailId = id;
+  renderCRMDetail(id);
+}
+
+function renderCRMDetail(id) {
+  const c = STATE.contacts[id];
+  if (!c) return;
+  const notes = (c.notes || []).sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  const actions = (c.actions || []);
+  const tags = (c.tags || "").split(",").map(t=>t.trim()).filter(Boolean);
+  const initials = (c.name||"??").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+
+  let html = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:12px;color:var(--zf-text-muted);cursor:pointer" onclick="STATE.crmDetailId=null;renderCRM()">← Alle Kontakte</div>`;
+  html += `<div class="card">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--zf-teal-light);display:flex;align-items:center;justify-content:center;font-weight:500;font-size:15px;color:var(--zf-teal)">${initials}</div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:500;color:var(--zf-dark)">${esc(c.name)}</div>
+        <div style="font-size:12px;color:var(--zf-text-muted)">${esc(c.org||"")}${c.web?` · <a href="${esc(c.web)}" target="_blank" style="color:var(--zf-teal)">${esc(c.web.replace(/https?:\\/\\//,""))}</a>`:""}</div>
+        ${c.desc?`<div style="font-size:12px;color:var(--zf-text);margin-top:2px;font-style:italic">${esc(c.desc)}</div>`:""}
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="openCrmModal('${id}')">Bearbeiten</button>
+      </div>
+    </div>
+    <div class="crm-field-row"><span class="crm-field-label">Partnerkategorie</span><span class="pill ${["co-ownership","partnerschaft"].includes(c.category)?'pill-green':'pill-muted'}">${CAT_LABELS[c.category]||c.category}</span></div>
+    <div class="crm-field-row"><span class="crm-field-label">Status</span><span class="pill ${STATUS_PILLS[c.status]||'pill-muted'}">${STATUS_LABELS[c.status]||c.status}</span></div>
+    <div class="crm-field-row"><span class="crm-field-label">Priorität</span><span class="pill ${PRIO_PILLS[c.prio]||'pill-muted'}">${PRIO_LABELS[c.prio]||""}</span></div>
+    <div class="crm-field-row"><span class="crm-field-label">Sektor</span><div>${tags.map(t=>`<span class="pill pill-muted" style="margin-right:3px">${esc(t)}</span>`).join("")||"—"}</div></div>
+    <div class="crm-field-row"><span class="crm-field-label">Zugeordneter Ort</span><span>${esc(c.ort||"—")}</span></div>
+    <div class="crm-field-row"><span class="crm-field-label">Hauptansprechperson</span><span class="pill pill-teal">${esc(c.owner||"—")}</span></div>
+    <div class="crm-field-row"><span class="crm-field-label">E-Mail</span><span>${c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--zf-teal)">${esc(c.email)}</a>`:"—"}</span></div>
+    <div class="crm-field-row"><span class="crm-field-label">Telefon</span><span>${esc(c.phone||"—")}</span></div>
+  </div>`;
+
+  html += `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div class="section-label" style="margin:0">Gesprächsnotizen</div>
+    <button class="btn btn-sm" onclick="openNoteModal('${id}')">+ Notiz</button></div>
+    ${notes.map(n => `<div class="note-card"><div class="note-header"><span class="note-author">${esc(n.author||"")}</span>
+      <span class="note-date">${n.date?new Date(n.date).toLocaleDateString("de-CH",{day:"numeric",month:"short",year:"numeric"}):""}</span></div>
+      <div style="line-height:1.5">${esc(n.text||"")}</div></div>`).join("") || '<div style="font-size:12px;color:var(--zf-text-muted);padding:8px 0">Noch keine Notizen</div>'}
+  </div>`;
+
+  html += `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div class="section-label" style="margin:0">Action Items</div></div>
+    ${actions.map((a,i) => {
+      const isOverdue = !a.done && a.deadline && a.deadline < new Date().toISOString().slice(0,10);
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--zf-border);font-size:12px">
+        <div style="width:14px;height:14px;border:1.5px solid ${a.done?'var(--zf-green)':'var(--zf-border)'};border-radius:3px;flex-shrink:0;margin-top:1px;cursor:pointer;background:${a.done?'var(--zf-green)':'transparent'};display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px"
+          onclick="toggleAction('${id}',${i})">${a.done?'✓':''}</div>
+        <div><div style="color:${a.done?'var(--zf-text-muted)':'var(--zf-dark)'};font-weight:500;${a.done?'text-decoration:line-through':''}">${esc(a.text||"")}</div>
+          <div style="display:flex;gap:8px;margin-top:2px;color:var(--zf-text-muted);font-size:11px">
+            <span>${esc(a.owner||"")}</span>
+            ${a.deadline?`<span ${isOverdue?'style="color:var(--zf-danger);font-weight:500"':''}>bis ${new Date(a.deadline+"T00:00").toLocaleDateString("de-CH",{day:"numeric",month:"short"})}</span>`:''}
+          </div></div></div>`;
+    }).join("") || '<div style="font-size:12px;color:var(--zf-text-muted);padding:8px 0">Keine Action Items</div>'}
+  </div>`;
+
+  document.getElementById("crmView").innerHTML = html;
+}
+
+// ============ RENDER TIMETRACK ============
+function renderTimetrack() {
+  // Populate person pills
+  const pills = document.getElementById("ttPersonPills");
+  if (pills && !pills.dataset.init) {
+    pills.innerHTML = STATE.persons.map(p => `<span class="tt-pill" data-person="${p}" onclick="this.classList.toggle('selected')">${p}</span>`).join("");
+    pills.dataset.init = "1";
+  }
+
+  // Recent entries
+  const entries = Object.entries(STATE.timeEntries).map(([id,e])=>({id,...e})).sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,15);
+  document.getElementById("ttEntries").innerHTML = entries.map(e => {
+    const catName = (STATE.timeCategories[e.category]||{}).name || "Unkategorisiert";
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border:1px solid var(--zf-border);border-radius:var(--zf-radius);margin-bottom:3px;background:var(--zf-card);font-size:12px">
+      <div><span style="color:var(--zf-text-muted);margin-right:8px">${e.date||""}</span><span style="font-weight:500">${esc(e.description||"")}</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="pill pill-muted">${catName}</span>
+        <span class="pill pill-teal">${(e.persons||[]).join(", ")}</span>
+        <span style="font-weight:500">${e.hours||0}h</span>
+        <button class="btn btn-sm btn-danger" onclick="deleteTimeEntry('${e.id}')" style="padding:1px 5px;font-size:10px">✕</button>
+      </div></div>`;
+  }).join("") || '<div style="text-align:center;color:var(--zf-text-muted);padding:12px;font-size:13px">Keine Einträge</div>';
+
+  // Summary
+  let personHours = {}; STATE.persons.forEach(p => personHours[p] = 0);
+  Object.values(STATE.timeEntries).forEach(e => {
+    const hrs = parseFloat(e.hours)||0;
+    (e.persons||[]).forEach(p => { personHours[p] = (personHours[p]||0) + hrs; });
+  });
+  const maxH = Math.max(...Object.values(personHours), 1);
+  const colors = ["var(--zf-green)","var(--zf-teal)","var(--zf-pink)","var(--zf-green)"];
+  document.getElementById("ttSummary").innerHTML = STATE.persons.map((p,i) => {
+    const h = personHours[p]||0;
+    return `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+      <span>${p}</span><span style="font-weight:500">${h.toFixed(1)}h</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(h/maxH*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div>`;
+  }).join("");
+}
+
+// ============ TASK CRUD ============
+function openTaskModal(id) {
+  const isEdit = !!id;
+  document.getElementById("taskModalTitle").textContent = isEdit ? "Aufgabe bearbeiten" : "Neue Aufgabe";
+  document.getElementById("taskDeleteBtn").style.display = isEdit ? "" : "none";
+  document.getElementById("taskEditId").value = id || "";
+
+  // Person pills
+  const pp = document.getElementById("taskPersonPills");
+  pp.innerHTML = STATE.persons.map(p => `<span class="tt-pill" data-person="${p}" onclick="this.classList.toggle('selected')">${p}</span>`).join("");
+
+  if (isEdit) {
+    const t = STATE.tasks[id];
+    document.getElementById("taskTitle").value = t.title || "";
+    document.getElementById("taskDeadline").value = t.deadline || "";
+    document.getElementById("taskArea").value = t.area || "strategie";
+    document.getElementById("taskPhase").value = t.phase || "";
+    document.getElementById("taskPrio").value = t.prio || "medium";
+    document.getElementById("taskStatus").value = t.status || "open";
+    document.getElementById("taskNotes").value = t.notes || "";
+    (t.persons||[]).forEach(p => {
+      const pill = pp.querySelector(`[data-person="${p}"]`);
+      if (pill) pill.classList.add("selected");
+    });
+  } else {
+    document.getElementById("taskTitle").value = "";
+    document.getElementById("taskDeadline").value = "";
+    document.getElementById("taskArea").value = "strategie";
+    document.getElementById("taskPhase").value = "";
+    document.getElementById("taskPrio").value = "medium";
+    document.getElementById("taskStatus").value = "open";
+    document.getElementById("taskNotes").value = "";
+  }
+  openModal("taskModal");
+}
+
+function saveTask() {
+  const id = document.getElementById("taskEditId").value || db.ref("projektcockpit/tasks").push().key;
+  const persons = [...document.querySelectorAll("#taskPersonPills .tt-pill.selected")].map(p=>p.dataset.person);
+  const data = {
+    title: document.getElementById("taskTitle").value.trim(),
+    persons, deadline: document.getElementById("taskDeadline").value,
+    area: document.getElementById("taskArea").value, phase: document.getElementById("taskPhase").value,
+    prio: document.getElementById("taskPrio").value, status: document.getElementById("taskStatus").value,
+    notes: document.getElementById("taskNotes").value.trim(),
+    updated: new Date().toISOString()
+  };
+  if (!data.title) return alert("Bitte Titel eingeben");
+  db.ref("projektcockpit/tasks/" + id).set(data);
+  closeModal("taskModal");
+}
+
+function deleteTask() {
+  const id = document.getElementById("taskEditId").value;
+  if (id && confirm("Aufgabe wirklich löschen?")) {
+    db.ref("projektcockpit/tasks/" + id).remove();
+    closeModal("taskModal");
+  }
+}
+
+function toggleTask(id) {
+  const t = STATE.tasks[id];
+  if (!t) return;
+  db.ref("projektcockpit/tasks/" + id + "/status").set(t.status === "done" ? "open" : "done");
+}
+
+// ============ CRM CRUD ============
+function openCrmModal(id) {
+  const isEdit = !!id;
+  document.getElementById("crmModalTitle").textContent = isEdit ? "Kontakt bearbeiten" : "Neuer Kontakt";
+  document.getElementById("crmDeleteBtn").style.display = isEdit ? "" : "none";
+  document.getElementById("crmEditId").value = id || "";
+
+  if (isEdit) {
+    const c = STATE.contacts[id];
+    document.getElementById("crmName").value = c.name || "";
+    document.getElementById("crmOrg").value = c.org || "";
+    document.getElementById("crmDesc").value = c.desc || "";
+    document.getElementById("crmEmail").value = c.email || "";
+    document.getElementById("crmPhone").value = c.phone || "";
+    document.getElementById("crmWeb").value = c.web || "";
+    document.getElementById("crmOwner").value = c.owner || "";
+    document.getElementById("crmCategory").value = c.category || "andere";
+    document.getElementById("crmStatus").value = c.status || "idee";
+    document.getElementById("crmPrio").value = c.prio || "medium";
+    document.getElementById("crmOrt").value = c.ort || "";
+    document.getElementById("crmTags").value = c.tags || "";
+  } else {
+    ["crmName","crmOrg","crmDesc","crmEmail","crmPhone","crmWeb","crmTags"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("crmOwner").value = "";
+    document.getElementById("crmCategory").value = "andere";
+    document.getElementById("crmStatus").value = "idee";
+    document.getElementById("crmPrio").value = "medium";
+    document.getElementById("crmOrt").value = "";
+  }
+  openModal("crmModal");
+}
+
+function saveContact() {
+  const id = document.getElementById("crmEditId").value || db.ref("projektcockpit/contacts").push().key;
+  const existing = STATE.contacts[id] || {};
+  const data = {
+    name: document.getElementById("crmName").value.trim(),
+    org: document.getElementById("crmOrg").value.trim(),
+    desc: document.getElementById("crmDesc").value.trim(),
+    email: document.getElementById("crmEmail").value.trim(),
+    phone: document.getElementById("crmPhone").value.trim(),
+    web: document.getElementById("crmWeb").value.trim(),
+    owner: document.getElementById("crmOwner").value,
+    category: document.getElementById("crmCategory").value,
+    status: document.getElementById("crmStatus").value,
+    prio: document.getElementById("crmPrio").value,
+    ort: document.getElementById("crmOrt").value,
+    tags: document.getElementById("crmTags").value.trim(),
+    notes: existing.notes || [],
+    actions: existing.actions || [],
+    updated: new Date().toISOString()
+  };
+  if (!data.name) return alert("Bitte Name eingeben");
+  db.ref("projektcockpit/contacts/" + id).set(data);
+  closeModal("crmModal");
+}
+
+function deleteContact() {
+  const id = document.getElementById("crmEditId").value;
+  if (id && confirm("Kontakt wirklich löschen?")) {
+    db.ref("projektcockpit/contacts/" + id).remove();
+    STATE.crmDetailId = null;
+    closeModal("crmModal");
+  }
+}
+
+// ============ NOTES & ACTIONS ============
+function openNoteModal(contactId) {
+  document.getElementById("noteContactId").value = contactId;
+  document.getElementById("noteText").value = "";
+  document.getElementById("noteAction").value = "";
+  document.getElementById("noteActionDeadline").value = "";
+  openModal("noteModal");
+}
+
+function saveNote() {
+  const contactId = document.getElementById("noteContactId").value;
+  const c = STATE.contacts[contactId];
+  if (!c) return;
+  const notes = c.notes || [];
+  notes.push({
+    author: document.getElementById("noteAuthor").value,
+    date: new Date().toISOString().slice(0,10),
+    text: document.getElementById("noteText").value.trim()
+  });
+  db.ref(`projektcockpit/contacts/${contactId}/notes`).set(notes);
+
+  const actionText = document.getElementById("noteAction").value.trim();
+  if (actionText) {
+    const actions = c.actions || [];
+    actions.push({
+      text: actionText,
+      owner: document.getElementById("noteActionOwner").value,
+      deadline: document.getElementById("noteActionDeadline").value,
+      done: false
+    });
+    db.ref(`projektcockpit/contacts/${contactId}/actions`).set(actions);
+  }
+  closeModal("noteModal");
+}
+
+function toggleAction(contactId, idx) {
+  const c = STATE.contacts[contactId];
+  if (!c || !c.actions || !c.actions[idx]) return;
+  c.actions[idx].done = !c.actions[idx].done;
+  db.ref(`projektcockpit/contacts/${contactId}/actions`).set(c.actions);
+}
+
+// ============ PHASE CRUD ============
+function openPhaseModal(id) {
+  const isEdit = !!id;
+  document.getElementById("phaseModalTitle").textContent = isEdit ? "Phase bearbeiten" : "Neue Phase";
+  document.getElementById("phaseDeleteBtn").style.display = isEdit ? "" : "none";
+  document.getElementById("phaseEditId").value = id || "";
+  if (isEdit) {
+    const p = STATE.phases[id];
+    document.getElementById("phaseTitle").value = p.title || "";
+    document.getElementById("phaseStart").value = p.start || "";
+    document.getElementById("phaseEnd").value = p.end || "";
+    document.getElementById("phaseCurrent").value = p.current ? "true" : "false";
+  } else {
+    document.getElementById("phaseTitle").value = "";
+    document.getElementById("phaseStart").value = "";
+    document.getElementById("phaseEnd").value = "";
+    document.getElementById("phaseCurrent").value = "false";
+  }
+  openModal("phaseModal");
+}
+
+function savePhase() {
+  const id = document.getElementById("phaseEditId").value || db.ref("projektcockpit/phases").push().key;
+  const existing = STATE.phases[id] || {};
+  const maxOrder = Math.max(0, ...Object.values(STATE.phases).map(p=>p.order||0));
+  const isCurrent = document.getElementById("phaseCurrent").value === "true";
+  if (isCurrent) {
+    Object.entries(STATE.phases).forEach(([pid, p]) => {
+      if (pid !== id && p.current) db.ref("projektcockpit/phases/" + pid + "/current").set(false);
+    });
+  }
+  db.ref("projektcockpit/phases/" + id).set({
+    title: document.getElementById("phaseTitle").value.trim(),
+    start: document.getElementById("phaseStart").value.trim(),
+    end: document.getElementById("phaseEnd").value.trim(),
+    current: isCurrent,
+    order: existing.order || maxOrder + 1
+  });
+  closeModal("phaseModal");
+}
+
+function deletePhase() {
+  const id = document.getElementById("phaseEditId").value;
+  if (id && confirm("Phase wirklich löschen?")) {
+    db.ref("projektcockpit/phases/" + id).remove();
+    closeModal("phaseModal");
+  }
+}
+
+// ============ TIMETRACK CRUD ============
+function saveTimeEntry() {
+  const persons = [...document.querySelectorAll("#ttPersonPills .tt-pill.selected")].map(p=>p.dataset.person);
+  if (!persons.length) return alert("Bitte mindestens eine Person auswählen");
+  const data = {
+    date: document.getElementById("ttDate").value,
+    persons, hours: parseFloat(document.getElementById("ttHours").value) || 0,
+    category: document.getElementById("ttCategory").value,
+    description: document.getElementById("ttDesc").value.trim(),
+    source: "manuell"
+  };
+  if (!data.date) return alert("Bitte Datum eingeben");
+  db.ref("arbeitsjournal/entries").push(data);
+  document.getElementById("ttDesc").value = "";
+}
+
+function deleteTimeEntry(id) {
+  if (confirm("Eintrag löschen?")) db.ref("arbeitsjournal/entries/" + id).remove();
+}
+
+function exportTimeCSV() {
+  const BOM = "\uFEFF";
+  let csv = BOM + "Datum;Personen;Kategorie;Stunden;Beschreibung\n";
+  Object.values(STATE.timeEntries).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).forEach(e => {
+    const cat = (STATE.timeCategories[e.category]||{}).name || "";
+    csv += `${e.date};${(e.persons||[]).join(", ")};${cat};${e.hours};${(e.description||"").replace(/;/g,",")}\n`;
+  });
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `arbeitsjournal_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ============ HELPERS ============
+function esc(s) { const d = document.createElement("div"); d.textContent = s||""; return d.innerHTML; }
+
+// ============ INIT ============
+document.getElementById("dateDisplay").textContent = "Stand: " + new Date().toLocaleDateString("de-CH", {day:"numeric",month:"long",year:"numeric"});
+document.getElementById("ttDate").value = new Date().toISOString().slice(0,10);
+seedDefaults();
+initFirebase();
+</script>
+</body>
+</html>

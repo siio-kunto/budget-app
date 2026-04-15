@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.23d.2026-04-13">
+<meta name="fb-version" content="2.24c.2026-04-15">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1711,22 +1711,22 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         <div class="onboard-tile required" id="obTileNotion" onclick="obConnectNotion()">
           <div class="tile-icon">📊</div>
           <div class="tile-label">Datenbank</div>
-          <div class="tile-sub">Notion (Pflicht)</div>
+          <div class="tile-sub">Wo deine Daten gespeichert werden</div>
         </div>
-        <div class="onboard-tile" id="obTileDrive" onclick="obConnectDrive()">
-          <div class="tile-icon">📎</div>
-          <div class="tile-label">Belege</div>
-          <div class="tile-sub">Ablage konfigurieren</div>
+        <div class="onboard-tile" id="obTileDrive" onclick="obSelectProvider('storage')">
+          <div class="tile-icon">📁</div>
+          <div class="tile-label">Ablage</div>
+          <div class="tile-sub">Wo deine Belege gespeichert werden</div>
         </div>
-        <div class="onboard-tile" id="obTileClock" onclick="obConnectClockify()">
+        <div class="onboard-tile" id="obTileClock" onclick="obSelectProvider('time')">
           <div class="tile-icon">⏱</div>
-          <div class="tile-label">Zeit & Projekte</div>
-          <div class="tile-sub">Clockify verbinden</div>
+          <div class="tile-label">Zeiterfassung</div>
+          <div class="tile-sub">Buchhaltung im Kontext deiner Zeit</div>
         </div>
-        <div class="onboard-tile" id="obTileKi" onclick="obConnectKi()">
+        <div class="onboard-tile" id="obTileKi" onclick="obSelectProvider('vision')">
           <div class="tile-icon">🤖</div>
-          <div class="tile-label">KI-Beleganalyse</div>
-          <div class="tile-sub">Claude API Key</div>
+          <div class="tile-label">KI Features</div>
+          <div class="tile-sub">Belege automatisch auslesen</div>
         </div>
       </div>
       <!-- Inline input areas (hidden by default) -->
@@ -1801,6 +1801,9 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Alles jederzeit in den Einstellungen anpassbar.</div>
       <div id="overviewChecks" style="background:var(--bg2);border-radius:12px;padding:14px 18px;margin-bottom:16px"></div>
       <button class="btn btn-primary" id="overviewFinishBtn" style="width:100%;padding:14px;font-size:15px" onclick="onboardFinish()" disabled>System wird geprüft…</button>
+      <div style="font-size:12px;color:var(--muted);margin-top:12px;text-align:center">
+        📬 Feedback jederzeit über das Menü → Feedback
+      </div>
       <div class="onboard-dots"><div class="onboard-dot done"></div><div class="onboard-dot done"></div><div class="onboard-dot done"></div><div class="onboard-dot done"></div><div class="onboard-dot active"></div></div>
     </div>
   </div>
@@ -1934,6 +1937,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div class="sidebar-item" data-tab="aktivitaeten" onclick="nav('aktivitaeten')"> <span class="nav-icon">🦚</span> Aktivitäten</div>
       <div class="sidebar-item" data-tab="kompass"      onclick="nav('kompass')">      <span class="nav-icon">🦉</span> Kompass</div>
       <div class="sidebar-item" data-tab="einstellungen" onclick="nav('einstellungen')"><span class="nav-icon">🦤</span> Einstellungen</div>
+      <div class="sidebar-item" onclick="closeSidebar();showFeedbackForm()"><span class="nav-icon">💬</span> Feedback</div>
     </nav>
     <div class="sidebar-footer">
       <a class="sidebar-contact" href="/cdn-cgi/l/email-protection#bfd7dad3d3d0ffd0ccc8ded3dbd4d0dad1d6d891dcd7">
@@ -2421,11 +2425,13 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         <div class="form-group">
           <label class="form-label">Typ</label>
           <select id="erfInvTyp" class="form-input">
-            <option value="Honorar">Beratung / Prozessbegleitung</option>
-            <option value="Workshop">Workshop & Facilitation</option>
-            <option value="Coaching">Coaching</option>
-            <option value="Raumvermietung">🏠 Raumvermietung</option>
-            <option value="Sonstiges">Sonstiges</option>
+            <!-- dynamisch populiert via renderInvoiceTypeDropdown -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Steuerkategorie</label>
+          <select id="erfInvSteuerkat" class="form-input">
+            <!-- dynamisch populiert -->
           </select>
         </div>
       </div>
@@ -2460,6 +2466,19 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
    Architecture: 4-layer (Adapter → Data → Computed → Inbox → UI)
    Auth: Notion OAuth (primary) + Manual Token (fallback)
    ═══════════════════════════════════════════════════════════════ */
+
+/* ── Sprint 4: Error-Buffer (sammelt letzte 20 console.error) ── */
+const _errorLog = [];
+const _origConsoleError = console.error;
+console.error = function(...args) {
+  _errorLog.push({
+    ts: Date.now(),
+    msg: args.map(a => typeof a === 'object' ? JSON.stringify(a).slice(0, 200) : String(a).slice(0, 200)).join(' '),
+  });
+  if (_errorLog.length > 20) _errorLog.shift();
+  _origConsoleError.apply(console, args);
+};
+function getErrorLog() { return [..._errorLog]; }
 
 
 /* ══════════════════════════════════════════════════════
@@ -2757,6 +2776,14 @@ const AppState = {
   /* Sync */
   syncState:     'idle',  // 'idle' | 'syncing' | 'error' | 'offline'
   lastSyncTime:  null,
+
+  /* Providers (Sprint 3, BL-105) */
+  providers: {
+    data:    'notion',     // 'notion' | 'sheets' (Phase 2+)
+    time:    'clockify',   // 'clockify' | 'toggl' | null
+    storage: 'gdrive',    // 'gdrive' | null
+    vision:  'claude',    // 'claude' | 'openai' | null
+  },
 
   /* Cache checksums for delta sync */
   lastEdited: {
@@ -3444,8 +3471,8 @@ GDriveAdapter.ensureFolders = async function(config) {
 
 /** Return the active storage adapter (Phase 0.5: always GDrive) */
 function getActiveStorageAdapter() {
-  // Phase 2: basierend auf loadLocal('fb_storage_provider')
-  return GDriveAdapter;
+  const id = AppState.providers?.storage || 'gdrive';
+  return PROVIDER_REGISTRY?.storage?.[id] || GDriveAdapter;
 }
 
 
@@ -3760,9 +3787,9 @@ async function createMissingDatabases(parentPageId, missingKeys) {
       'Datum': { date: {} },
       'Typ': { select: { options: [{ name: 'Einnahme', color: 'green' }, { name: 'Ausgabe', color: 'red' }] } },
       'Bereich': { select: { options: [{ name: 'Geschäftlich', color: 'blue' }, { name: 'Privat', color: 'purple' }] } },
-      'Kategorie': { select: { options: CATEGORIES_20.map(c => ({ name: c })) } }, // PATCH B9b: max 20 at creation; CATS_PRIVATE added via ensureBuchungenSchema
+      'Kategorie': { select: { options: getCategories20().map(c => ({ name: c })) } }, // PATCH B9b: max 20 at creation; getCatsPrivate() added via ensureBuchungenSchema
       'Steuerkategorie': { select: { options: [] } },
-      'Einnahmequelle': { select: { options: CATS_INCOME.map(c => ({ name: c })) } },
+      'Einnahmequelle': { select: { options: getCatsIncome().map(c => ({ name: c })) } },
       'Betrag': { number: { format: 'number' } },
       'Konto': { select: { options: [] } },
       'Gegenpartei': { rich_text: {} },
@@ -3943,15 +3970,15 @@ async function ensureBuchungenSchema() {
       { name: 'validiert', color: 'blue' },
     ]}},
     'Teilabzug':          { number: { format: 'percent' } },
-    'Korrektur-Kategorie':{ select: { options: CATEGORIES_20.map(c => ({ name: c })) } },
+    'Korrektur-Kategorie':{ select: { options: getCategories20().map(c => ({ name: c })) } },
     'Korrektur-Von':      { rich_text: {} },
     'Korrektur-Datum':    { date: {} },
   };
-  // PATCH B9: also update Kategorie options to include CATS_PRIVATE
+  // PATCH B9: also update Kategorie options to include getCatsPrivate()
   // (Notion API limit prevents setting all options during DB creation)
   const kategorieUpdate = {
-    'Kategorie': { select: { options: [...new Set(CATEGORIES_20.concat(CATS_PRIVATE))].map(c => ({ name: c })) } },
-    'Korrektur-Kategorie': { select: { options: CATEGORIES_20.map(c => ({ name: c })) } },
+    'Kategorie': { select: { options: [...new Set(getCategories20().concat(getCatsPrivate()))].map(c => ({ name: c })) } },
+    'Korrektur-Kategorie': { select: { options: getCategories20().map(c => ({ name: c })) } },
   };
   try {
     await notionFetch(`/databases/${DB.BUCHUNGEN}`, 'PATCH', { properties: { ...newProps, ...kategorieUpdate } });
@@ -3978,6 +4005,10 @@ async function ensureRechnungenSchema() {
           dual_property: {}
         }
       };
+    }
+    // BL-080: Steuerkategorie auf Rechnungen
+    if (!existing.includes('Steuerkategorie')) {
+      updates['Steuerkategorie'] = { select: { options: getCatsIncome().map(c => ({ name: c })) } };
     }
     if (Object.keys(updates).length > 0) {
       await notionFetch('/databases/' + DB.RECHNUNGEN, 'PATCH', { properties: updates });
@@ -4251,6 +4282,7 @@ function parseRechnung(page) {
     type:     N.sel(p['Typ']),
     projekt:  N.txt(p['Projekt']),
     buchungIds: N.rel(p['Buchung']),  // Array of Buchung page IDs, [] if empty
+    taxCat: N.sel(p['Steuerkategorie']),  // BL-080: string | null
   };
 }
 
@@ -4724,6 +4756,7 @@ function invoiceToProps(d) {
   if (d.paidAmount) props['Bereits erhalten'] = { number: d.paidAmount };
   if (d.account) props['Konto']   = { select: { name: d.account } };
   if (d.type)    props['Typ']     = { select: { name: d.type } };
+  if (d.taxCat)  props['Steuerkategorie'] = { select: { name: d.taxCat } };
   if (d.projekt) props['Projekt'] = { rich_text: [{ text: { content: d.projekt } }] };
   // BL-081: Preserve Buchung relation on edit
   if (d.buchungIds && d.buchungIds.length > 0) {
@@ -4799,10 +4832,10 @@ function recurringToProps(d) {
   };
 }
 
-/** Return the active data adapter (Phase 0.5: always Notion) */
+/** Return the active data adapter. Nie null (Fallback Notion). */
 function getActiveDataAdapter() {
-  // Phase 2: basierend auf loadLocal('fb_data_provider')
-  return NotionAdapter;
+  const id = AppState.providers?.data || 'notion';
+  return PROVIDER_REGISTRY?.data?.[id] || NotionAdapter;
 }
 
 
@@ -5091,7 +5124,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.23d.2026-04-13';
+const APP_VERSION = '2.24c.2026-04-15';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5938,45 +5971,128 @@ ClockifyAdapter.getTimeEntries = async function(from, to) {
     }));
 };
 
+/* ── TogglAdapter (Sprint 3, BL-099) ── */
+const TOGGL_API = 'https://api.track.toggl.com/api/v9';
+const TogglAdapter = Object.create(TimeAdapterInterface);
+
+TogglAdapter._fetch = async function(path) {
+  const key = loadLocal('fb_toggl_key', '');
+  if (!key) throw new Error('No Toggl API key');
+  const resp = await fetch(TOGGL_API + path, {
+    headers: {
+      'Authorization': 'Basic ' + btoa(key + ':api_token'),
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!resp.ok) throw new Error('Toggl error: ' + resp.statusText);
+  return resp.json();
+};
+
+TogglAdapter.getProviderName = function() { return 'Toggl Track'; };
+TogglAdapter.isConfigured = function() { return !!loadLocal('fb_toggl_key', ''); };
+
+TogglAdapter.getWorkspaceId = async function() {
+  const me = await this._fetch('/me');
+  return me.default_workspace_id;
+};
+
+TogglAdapter.getProjects = async function() {
+  const wsId = await this.getWorkspaceId();
+  const projects = await this._fetch('/workspaces/' + wsId + '/projects?per_page=200');
+  let clients = [];
+  try { clients = await this._fetch('/workspaces/' + wsId + '/clients'); } catch {}
+  const clientMap = {};
+  clients.forEach(c => { clientMap[c.id] = c.name; });
+  return projects.map(p => ({
+    id:         String(p.id),
+    name:       p.name,
+    client:     p.client_id ? (clientMap[p.client_id] || null) : null,
+    clientId:   p.client_id ? String(p.client_id) : null,
+    archived:   p.status === 'archived',
+    billable:   !!p.billable,
+    color:      p.color || null,
+    hourlyRate: p.rate ? p.rate / 100 : null,
+  }));
+};
+
+TogglAdapter.getTimeEntries = async function(from, to) {
+  const entries = await this._fetch('/me/time_entries?start_date=' + from + '&end_date=' + to);
+  return entries
+    .filter(e => e.stop)
+    .map(e => ({
+      id:          String(e.id),
+      projectId:   e.project_id ? String(e.project_id) : null,
+      start:       e.start,
+      end:         e.stop,
+      duration:    e.duration > 0 ? e.duration : 0,
+      description: e.description || '',
+    }));
+};
+
 /* ══════════════════════════════════════════════════════
-   B2 — CLOCKIFY SYNC
+   B2 — TIME TRACKER SYNC (Sprint 3: generisch)
    Full sync of projects + time entries for current year.
    Stores results in localStorage for Computed.zeitKPIs().
    ══════════════════════════════════════════════════════ */
 
-async function syncClockify() {
-  const key = loadLocal('fb_clockify_key', '');
+async function syncTimeTracker() {
+  const adapter = getActiveTimeAdapter();
+  if (!adapter) {
+    showToast('warning', '⚙️', 'Kein Zeittracker',
+      'Verbinde Clockify oder Toggl in den Einstellungen.',
+      [], { label: 'Einstellungen', fn: () => nav('einstellungen') }, 0);
+    return;
+  }
+
+  const providerName = adapter.getProviderName ? adapter.getProviderName() : 'Zeittracker';
+  const providerId = AppState.providers?.time || 'clockify';
+  const keyName = 'fb_' + providerId + '_key';
+  const key = loadLocal(keyName, '');
   if (!key) {
-    showToast('warning', '⚙️', 'Kein Clockify API Key',
+    showToast('warning', '⚙️', 'Kein ' + providerName + ' API Key',
       'Bitte in Einstellungen → API Keys hinterlegen',
       [], { label: 'Zu Einstellungen', fn: () => nav('einstellungen') }, 0);
     return;
   }
 
-  showLoading('Clockify synchronisieren…');
+  showLoading(providerName + ' synchronisieren…');
   try {
-    // 1. Get workspace + user
-    const user = await ClockifyAdapter._fetch('/user');
-    saveLocal('fb_clockify_userid', user.id);
-    const wsId = user.activeWorkspace || user.defaultWorkspace;
-    saveLocal('fb_clockify_wsid', wsId);
+    // 1. Get workspace + user (for Clockify compatibility)
+    let wsId = null;
+    try {
+      if (adapter._fetch) {
+        if (providerId === 'clockify') {
+          const user = await adapter._fetch('/user');
+          saveLocal('fb_clockify_userid', user.id);
+          wsId = user.activeWorkspace || user.defaultWorkspace;
+          saveLocal('fb_clockify_wsid', wsId);
+        } else {
+          wsId = await adapter.getWorkspaceId();
+        }
+      }
+    } catch {}
 
     // 2. Get all projects
-    const projects = await ClockifyAdapter.getProjects();
-    saveLocal('fb_clockify_projects', projects);
+    const projects = await adapter.getProjects();
+    saveLocal('fb_' + providerId + '_projects', projects);
 
     // 3. Get clients map
-    let clients = [];
-    try { clients = await ClockifyAdapter._fetch(`/workspaces/${wsId}/clients?page-size=100`); } catch {}
-    const clientMap = {};
-    clients.forEach(c => { clientMap[c.id] = c.name; });
-    saveLocal('fb_clockify_client_map', clientMap);
+    let clientMap = {};
+    if (providerId === 'clockify' && wsId) {
+      let clients = [];
+      try { clients = await adapter._fetch(`/workspaces/${wsId}/clients?page-size=100`); } catch {}
+      clients.forEach(c => { clientMap[c.id] = c.name; });
+    } else {
+      // Toggl: clientMap already resolved in getProjects
+      projects.forEach(p => { if (p.client && p.clientId) clientMap[p.clientId] = p.client; });
+    }
+    saveLocal('fb_' + providerId + '_client_map', clientMap);
 
     // 4. Get time entries for current year
     const yr    = new Date().getFullYear();
     const from  = `${yr}-01-01`;
     const to    = `${yr}-12-31`;
-    const entries = await ClockifyAdapter.getTimeEntries(from, to);
+    const entries = await adapter.getTimeEntries(from, to);
 
     // 5. Aggregate hours per project + per month
     const hoursPerProject = {};
@@ -5991,7 +6107,7 @@ async function syncClockify() {
     saveLocal('fb_clockify_hours',   hoursPerProject);
     saveLocal('fb_clockify_monthly', monthlyPerProject);
 
-    // 6. Merge with local projekte (same logic as v1 — Clockify is master)
+    // 6. Merge with local projekte (same logic as v1 — time tracker is master)
     const HEART_PREFIX    = '[<3]';
     const OVERHEAD_PREFIX = 'ohkt_';
     const classify = cp => {
@@ -6004,7 +6120,7 @@ async function syncClockify() {
     const merged = [];
     projects.forEach(cp => {
       const type = classify(cp);
-      if (type === 'overhead') return; // overhead lives in its own section
+      if (type === 'overhead') return;
       const existing = existingLocal.find(p => p.clockifyId === cp.id)
                     || existingLocal.find(p => p.name.toLowerCase() === cp.name.replace(HEART_PREFIX,'').trim().toLowerCase());
       let dispName = cp.name.startsWith(HEART_PREFIX) ? cp.name.slice(HEART_PREFIX.length).trim() : cp.name;
@@ -6012,7 +6128,7 @@ async function syncClockify() {
         id:         existing?.id || 'cf_' + cp.id,
         clockifyId: cp.id,
         name:       dispName,
-        client:     existing?.client || (cp.clientId ? (clientMap[cp.clientId] || '') : ''),
+        client:     existing?.client || (cp.clientId ? (clientMap[cp.clientId] || cp.client || '') : ''),
         type:       existing?.type   || (type === 'heart' ? 'Herzensarbeit' : 'Honorar'),
         status:     cp.archived ? 'inactive' : 'active',
         kategorie:  existing?.kategorie || (type === 'heart' ? 'heartwork' : ''),
@@ -6022,7 +6138,6 @@ async function syncClockify() {
         cfColor:    cp.color || null,
       });
     });
-    // Keep manual-only local projects
     existingLocal.filter(p => !p.clockifyId).forEach(p => merged.push(p));
     saveLocal('projekte', merged);
 
@@ -6033,17 +6148,16 @@ async function syncClockify() {
     const billable  = projects.filter(p => classify(p) === 'auftrag').length;
     const heart     = projects.filter(p => classify(p) === 'heart').length;
     const overhead  = projects.filter(p => classify(p) === 'overhead').length;
-    showToast('success', '🔄', 'Clockify sync OK',
+    showToast('success', '🔄', providerName + ' sync OK',
       `${projects.length} Projekte · ${billable} Aufträge · ${heart} ❤ · ${overhead} Overhead`);
 
-    // Refresh Aktivitäten tab if active
     if (AppState.currentTab === 'aktivitaeten') renderAktivitaeten();
     renderCockpit();
   } catch (e) {
     hideLoading();
-    showToast('error', '❌', 'Clockify Fehler', e.message,
-      [], { label: 'Retry', fn: syncClockify }, 0);
-    console.error('Clockify sync failed:', e);
+    showToast('error', '❌', providerName + ' Fehler', e.message,
+      [], { label: 'Retry', fn: syncTimeTracker }, 0);
+    console.error(providerName + ' sync failed:', e);
   }
 }
 
@@ -6533,218 +6647,257 @@ async function getFXRate(from, to = 'CHF', date = null) {
 /* ════════════════════════════════════════════════════════════
    BLOCK: CATEGORIES + TAX-MAPPING
    Scope: Kategorie-Listen, MWST-Sätze, Steuerformular-Mapping CH/DE/AT
-   Key:   CATEGORIES_20, CATS_INCOME, CATS_EXPENSE, CATS_PRIVATE,
-          TAX_MAPPING, getMwstRate(), calcMwst(), getSteuerformular()
+   Key:   REGION_CONFIG, getRegion(), getCatsIncome(), getCatsExpense(), getCatsPrivate(),
+          getDefaultTaxMapping(), getTaxCats(), getMwstRate(), calcMwst(), getSteuerformular()
           merchantRules, suggestCategory(), FIELD_HELP
    Owner: App-Coding · Neue Kategorien → Strategie
 ════════════════════════════════════════════════════════════ (Session 3)
    ══════════════════════════════════════════════════════ */
 
-// ── Einnahmen-Kategorien (3) ──
-const CATS_INCOME = [
-  'Umsatzerlöse',
-  'Übrige betriebliche Erträge',
-  'Zins- & Finanzerträge',
-];
-
-// ── Ausgaben-Kategorien (17) ──
-const CATS_EXPENSE = [
-  'Material & Waren',
-  'Fremdleistungen',
-  'Löhne & Gehälter',
-  'Sozialabgaben (Mitarbeitende)',
-  'Eigene Sozialversicherung',
-  'Abschreibungen & GWG',
-  'Miete & Pacht',
-  'Nebenkosten & Liegenschaft',
-  'Fahrzeug & Transport',
-  'Reise & Spesen',
-  'Kommunikation',
-  'Büro & IT',
-  'Versicherungen',
-  'Werbung & Marketing',
-  'Beratung & Recht',
-  'Zins- & Bankgebühren',
-  'Übriger Betriebsaufwand',
-];
-
-// ── Alle 20 Business-Kategorien (für DB-Schema, Dropdowns etc.) ──
-const CATEGORIES_20 = [...CATS_INCOME, ...CATS_EXPENSE];
-
-// ── Private Kategorien (bestehend + Catch-All + Freitext-Option) ──
-const CATS_PRIVATE = [
-  'Einkauf & Lebensmittel', 'Essen auswärts', 'Kleider', 'Reisen',
-  'Gesundheit', 'Sport', 'Versicherungen', 'Schuldenrückzahlung',
-  '3. Säule', 'Baby', 'Wohnen', 'Übriges Privat',
-];
-
-// ── Legacy aliases for backward compat ──
-const CATS_BIZ = CATS_EXPENSE;
-const CATS_PRIV = CATS_PRIVATE;
-const INCOME_SOURCES = CATS_INCOME;
-function getActiveCatsBiz()  { return CATS_EXPENSE; }
-function getActiveCatsPriv() { return CATS_PRIVATE; }
-
-// ── Steuerformular-Mapping (ersetzt TAX_CATS + DEFAULT_TAX_MAPPING) ──
-const TAX_MAPPING = {
+// ── REGION_CONFIG: Zentrales Config-Objekt für CH/DE/AT (Sprint 2, BL-104) ──
+const REGION_CONFIG = {
   CH: {
-    'Umsatzerlöse':                 'Umsatz / Ertrag',
-    'Übrige betriebliche Erträge':  'Übrige Erträge',
-    'Zins- & Finanzerträge':        'Finanzerträge',
-    'Material & Waren':             'Direkter Aufwand',
-    'Fremdleistungen':              'Direkter Aufwand',
-    'Löhne & Gehälter':            'Personalaufwand',
-    'Sozialabgaben (Mitarbeitende)':'Personalaufwand',
-    'Eigene Sozialversicherung':    'AHV/IV/EO-Beiträge',
-    'Abschreibungen & GWG':        'Abschreibungen',
-    'Miete & Pacht':                'Raumaufwand',
-    'Nebenkosten & Liegenschaft':   'Raumaufwand',
-    'Fahrzeug & Transport':         'Fahrzeugaufwand',
-    'Reise & Spesen':               'Reisespesen',
-    'Kommunikation':                'Verwaltungsaufwand',
-    'Büro & IT':                    'Verwaltungsaufwand',
-    'Versicherungen':               'Versicherungen',
-    'Werbung & Marketing':          'Werbeaufwand',
-    'Beratung & Recht':             'Verwaltungsaufwand',
-    'Zins- & Bankgebühren':         'Finanzaufwand',
-    'Übriger Betriebsaufwand':      'Übriger Betriebsaufwand',
+    label: '🇨🇭 Schweiz',
+    currency: 'CHF',
+    categories: {
+      income: ['Umsatzerlöse', 'Übrige betriebliche Erträge', 'Zins- & Finanzerträge'],
+      expense: [
+        'Material & Waren', 'Fremdleistungen', 'Löhne & Gehälter',
+        'Sozialabgaben (Mitarbeitende)', 'Eigene Sozialversicherung',
+        'Abschreibungen & GWG', 'Miete & Pacht', 'Nebenkosten & Liegenschaft',
+        'Fahrzeug & Transport', 'Reise & Spesen', 'Kommunikation',
+        'Büro & IT', 'Versicherungen', 'Werbung & Marketing',
+        'Beratung & Recht', 'Zins- & Bankgebühren', 'Übriger Betriebsaufwand',
+      ],
+      private: [
+        'Einkauf & Lebensmittel', 'Essen auswärts', 'Kleider', 'Reisen',
+        'Gesundheit', 'Sport', 'Versicherungen', 'Schuldenrückzahlung',
+        '3. Säule', 'Baby', 'Wohnen', 'Übriges Privat',
+      ],
+    },
+    mwst: {
+      standard: 8.1, reduziert: 2.6, beherbergung: 3.8, befreit: 0,
+      methods: ['effektiv', 'saldo'],
+      categoryRates: {
+        'Umsatzerlöse': 8.1, 'Übrige betriebliche Erträge': 8.1,
+        'Zins- & Finanzerträge': 0, 'Material & Waren': 8.1,
+        'Fremdleistungen': 8.1, 'Löhne & Gehälter': 0,
+        'Sozialabgaben (Mitarbeitende)': 0, 'Eigene Sozialversicherung': 0,
+        'Abschreibungen & GWG': 0, 'Miete & Pacht': 0,
+        'Nebenkosten & Liegenschaft': 8.1, 'Fahrzeug & Transport': 8.1,
+        'Reise & Spesen': 3.8, 'Kommunikation': 8.1,
+        'Büro & IT': 8.1, 'Versicherungen': 0,
+        'Werbung & Marketing': 8.1, 'Beratung & Recht': 8.1,
+        'Zins- & Bankgebühren': 0, 'Übriger Betriebsaufwand': 8.1,
+      },
+    },
+    taxMapping: {
+      'Umsatzerlöse': 'Umsatz / Ertrag',
+      'Übrige betriebliche Erträge': 'Übrige Erträge',
+      'Zins- & Finanzerträge': 'Finanzerträge',
+      'Material & Waren': 'Direkter Aufwand',
+      'Fremdleistungen': 'Direkter Aufwand',
+      'Löhne & Gehälter': 'Personalaufwand',
+      'Sozialabgaben (Mitarbeitende)': 'Personalaufwand',
+      'Eigene Sozialversicherung': 'AHV/IV/EO-Beiträge',
+      'Abschreibungen & GWG': 'Abschreibungen',
+      'Miete & Pacht': 'Raumaufwand',
+      'Nebenkosten & Liegenschaft': 'Raumaufwand',
+      'Fahrzeug & Transport': 'Fahrzeugaufwand',
+      'Reise & Spesen': 'Reisespesen',
+      'Kommunikation': 'Verwaltungsaufwand',
+      'Büro & IT': 'Verwaltungsaufwand',
+      'Versicherungen': 'Versicherungen',
+      'Werbung & Marketing': 'Werbeaufwand',
+      'Beratung & Recht': 'Verwaltungsaufwand',
+      'Zins- & Bankgebühren': 'Finanzaufwand',
+      'Übriger Betriebsaufwand': 'Übriger Betriebsaufwand',
+    },
+    taxReserve: { rate: 33, breakdown: { AHV: 0.10, Steuern: 0.20, FAK: 0.03 } },
+    invoiceTypes: ['Dienstleistung', 'Beratung', 'Produkt', 'Lizenz', 'Vermietung', 'Sonstiges'],
+    labels: { mwst: 'MWST', steuerformular: 'Formular 2', steuerkategorie: 'Steuerkategorie' },
   },
   DE: {
-    'Umsatzerlöse':                 'EÜR Z.14 Betriebseinnahmen',
-    'Übrige betriebliche Erträge':  'EÜR Z.14 Betriebseinnahmen',
-    'Zins- & Finanzerträge':        'EÜR Z.19 Zinsen/Finanzierung',
-    'Material & Waren':             'EÜR Z.26 Wareneinkauf',
-    'Fremdleistungen':              'EÜR Z.27 Fremdleistungen',
-    'Löhne & Gehälter':            'EÜR Z.28 Löhne',
-    'Sozialabgaben (Mitarbeitende)':'EÜR Z.29 Sozialabgaben',
-    'Eigene Sozialversicherung':    'EÜR Z.44 Vorsorgeaufwand',
-    'Abschreibungen & GWG':        'EÜR Z.33 AfA',
-    'Miete & Pacht':                'EÜR Z.36 Miete',
-    'Nebenkosten & Liegenschaft':   'EÜR Z.36 Miete',
-    'Fahrzeug & Transport':         'EÜR Z.57 Fahrtkosten',
-    'Reise & Spesen':               'EÜR Z.60 Reisekosten',
-    'Kommunikation':                'EÜR Z.46 Übrige Betriebsausgaben',
-    'Büro & IT':                    'EÜR Z.46 Übrige Betriebsausgaben',
-    'Versicherungen':               'EÜR Z.43 Versicherungen',
-    'Werbung & Marketing':          'EÜR Z.46 Übrige Betriebsausgaben',
-    'Beratung & Recht':             'EÜR Z.46 Übrige Betriebsausgaben',
-    'Zins- & Bankgebühren':         'EÜR Z.48 Schuldzinsen',
-    'Übriger Betriebsaufwand':      'EÜR Z.46 Übrige Betriebsausgaben',
+    label: '🇩🇪 Deutschland',
+    currency: 'EUR',
+    categories: {
+      income: ['Umsatzerlöse', 'Übrige betriebliche Erträge', 'Zins- & Finanzerträge'],
+      expense: [
+        'Material & Waren', 'Fremdleistungen', 'Löhne & Gehälter',
+        'Sozialabgaben (Mitarbeitende)', 'Eigene Sozialversicherung',
+        'Abschreibungen & GWG', 'Miete & Pacht', 'Nebenkosten & Liegenschaft',
+        'Fahrzeug & Transport', 'Reise & Spesen', 'Kommunikation',
+        'Büro & IT', 'Versicherungen', 'Werbung & Marketing',
+        'Beratung & Recht', 'Zins- & Bankgebühren', 'Übriger Betriebsaufwand',
+      ],
+      private: [
+        'Einkauf & Lebensmittel', 'Essen auswärts', 'Kleider', 'Reisen',
+        'Gesundheit', 'Sport', 'Versicherungen', 'Schuldenrückzahlung',
+        'Riester / Rürup', 'Baby', 'Wohnen', 'Übriges Privat',
+      ],
+    },
+    mwst: {
+      standard: 19, reduziert: 7,
+      methods: null,
+      categoryRates: {
+        'Umsatzerlöse': 19, 'Übrige betriebliche Erträge': 19,
+        'Zins- & Finanzerträge': 0, 'Material & Waren': 19,
+        'Fremdleistungen': 19, 'Löhne & Gehälter': 0,
+        'Sozialabgaben (Mitarbeitende)': 0, 'Eigene Sozialversicherung': 0,
+        'Abschreibungen & GWG': 19, 'Miete & Pacht': 19,
+        'Nebenkosten & Liegenschaft': 19, 'Fahrzeug & Transport': 19,
+        'Reise & Spesen': 19, 'Kommunikation': 19,
+        'Büro & IT': 19, 'Versicherungen': 19,
+        'Werbung & Marketing': 19, 'Beratung & Recht': 19,
+        'Zins- & Bankgebühren': 0, 'Übriger Betriebsaufwand': 19,
+      },
+    },
+    taxMapping: {
+      'Umsatzerlöse': 'EÜR Z.14 Betriebseinnahmen',
+      'Übrige betriebliche Erträge': 'EÜR Z.14 Betriebseinnahmen',
+      'Zins- & Finanzerträge': 'EÜR Z.19 Zinsen/Finanzierung',
+      'Material & Waren': 'EÜR Z.26 Wareneinkauf',
+      'Fremdleistungen': 'EÜR Z.27 Fremdleistungen',
+      'Löhne & Gehälter': 'EÜR Z.28 Löhne',
+      'Sozialabgaben (Mitarbeitende)': 'EÜR Z.29 Sozialabgaben',
+      'Eigene Sozialversicherung': 'EÜR Z.44 Vorsorgeaufwand',
+      'Abschreibungen & GWG': 'EÜR Z.33 AfA',
+      'Miete & Pacht': 'EÜR Z.36 Miete',
+      'Nebenkosten & Liegenschaft': 'EÜR Z.36 Miete',
+      'Fahrzeug & Transport': 'EÜR Z.57 Fahrtkosten',
+      'Reise & Spesen': 'EÜR Z.60 Reisekosten',
+      'Kommunikation': 'EÜR Z.46 Übrige Betriebsausgaben',
+      'Büro & IT': 'EÜR Z.46 Übrige Betriebsausgaben',
+      'Versicherungen': 'EÜR Z.43 Versicherungen',
+      'Werbung & Marketing': 'EÜR Z.46 Übrige Betriebsausgaben',
+      'Beratung & Recht': 'EÜR Z.46 Übrige Betriebsausgaben',
+      'Zins- & Bankgebühren': 'EÜR Z.48 Schuldzinsen',
+      'Übriger Betriebsaufwand': 'EÜR Z.46 Übrige Betriebsausgaben',
+    },
+    taxReserve: { rate: 30, breakdown: { 'ESt+Soli': 0.22, GKV: 0.08 } },
+    invoiceTypes: ['Dienstleistung', 'Beratung', 'Produkt', 'Lizenz', 'Vermietung', 'Sonstiges'],
+    labels: { mwst: 'USt', steuerformular: 'EÜR', steuerkategorie: 'Steuerkategorie' },
   },
   AT: {
-    'Umsatzerlöse':                 'E1a KZ 9040',
-    'Übrige betriebliche Erträge':  'E1a KZ 9040',
-    'Zins- & Finanzerträge':        'E1a KZ 9060',
-    'Material & Waren':             'E1a KZ 9110',
-    'Fremdleistungen':              'E1a KZ 9120',
-    'Löhne & Gehälter':            'E1a KZ 9130',
-    'Sozialabgaben (Mitarbeitende)':'E1a KZ 9130',
-    'Eigene Sozialversicherung':    'E1a KZ 9225',
-    'Abschreibungen & GWG':        'E1a KZ 9140',
-    'Miete & Pacht':                'E1a KZ 9165',
-    'Nebenkosten & Liegenschaft':   'E1a KZ 9165',
-    'Fahrzeug & Transport':         'E1a KZ 9170',
-    'Reise & Spesen':               'E1a KZ 9180',
-    'Kommunikation':                'E1a KZ 9230',
-    'Büro & IT':                    'E1a KZ 9230',
-    'Versicherungen':               'E1a KZ 9200',
-    'Werbung & Marketing':          'E1a KZ 9190',
-    'Beratung & Recht':             'E1a KZ 9230',
-    'Zins- & Bankgebühren':         'E1a KZ 9210',
-    'Übriger Betriebsaufwand':      'E1a KZ 9230',
+    label: '🇦🇹 Österreich',
+    currency: 'EUR',
+    categories: {
+      income: ['Umsatzerlöse', 'Übrige betriebliche Erträge', 'Zins- & Finanzerträge'],
+      expense: [
+        'Material & Waren', 'Fremdleistungen', 'Löhne & Gehälter',
+        'Sozialabgaben (Mitarbeitende)', 'Eigene Sozialversicherung',
+        'Abschreibungen & GWG', 'Miete & Pacht', 'Nebenkosten & Liegenschaft',
+        'Fahrzeug & Transport', 'Reise & Spesen', 'Kommunikation',
+        'Büro & IT', 'Versicherungen', 'Werbung & Marketing',
+        'Beratung & Recht', 'Zins- & Bankgebühren', 'Übriger Betriebsaufwand',
+      ],
+      private: [
+        'Einkauf & Lebensmittel', 'Essen auswärts', 'Kleider', 'Reisen',
+        'Gesundheit', 'Sport', 'Versicherungen', 'Schuldenrückzahlung',
+        'Zukunftsvorsorge', 'Baby', 'Wohnen', 'Übriges Privat',
+      ],
+    },
+    mwst: {
+      standard: 20, reduziert: 10, sonder: 13,
+      methods: null,
+      categoryRates: {
+        'Umsatzerlöse': 20, 'Übrige betriebliche Erträge': 20,
+        'Zins- & Finanzerträge': 0, 'Material & Waren': 20,
+        'Fremdleistungen': 20, 'Löhne & Gehälter': 0,
+        'Sozialabgaben (Mitarbeitende)': 0, 'Eigene Sozialversicherung': 0,
+        'Abschreibungen & GWG': 20, 'Miete & Pacht': 20,
+        'Nebenkosten & Liegenschaft': 20, 'Fahrzeug & Transport': 20,
+        'Reise & Spesen': 20, 'Kommunikation': 20,
+        'Büro & IT': 20, 'Versicherungen': 20,
+        'Werbung & Marketing': 20, 'Beratung & Recht': 20,
+        'Zins- & Bankgebühren': 0, 'Übriger Betriebsaufwand': 20,
+      },
+    },
+    taxMapping: {
+      'Umsatzerlöse': 'E1a KZ 9040',
+      'Übrige betriebliche Erträge': 'E1a KZ 9040',
+      'Zins- & Finanzerträge': 'E1a KZ 9060',
+      'Material & Waren': 'E1a KZ 9110',
+      'Fremdleistungen': 'E1a KZ 9120',
+      'Löhne & Gehälter': 'E1a KZ 9130',
+      'Sozialabgaben (Mitarbeitende)': 'E1a KZ 9130',
+      'Eigene Sozialversicherung': 'E1a KZ 9225',
+      'Abschreibungen & GWG': 'E1a KZ 9140',
+      'Miete & Pacht': 'E1a KZ 9165',
+      'Nebenkosten & Liegenschaft': 'E1a KZ 9165',
+      'Fahrzeug & Transport': 'E1a KZ 9170',
+      'Reise & Spesen': 'E1a KZ 9180',
+      'Kommunikation': 'E1a KZ 9230',
+      'Büro & IT': 'E1a KZ 9230',
+      'Versicherungen': 'E1a KZ 9200',
+      'Werbung & Marketing': 'E1a KZ 9190',
+      'Beratung & Recht': 'E1a KZ 9230',
+      'Zins- & Bankgebühren': 'E1a KZ 9210',
+      'Übriger Betriebsaufwand': 'E1a KZ 9230',
+    },
+    taxReserve: { rate: 30, breakdown: { ESt: 0.20, SVS: 0.10 } },
+    invoiceTypes: ['Dienstleistung', 'Beratung', 'Produkt', 'Lizenz', 'Vermietung', 'Sonstiges'],
+    labels: { mwst: 'USt', steuerformular: 'E1a', steuerkategorie: 'Steuerkategorie' },
   },
 };
 
-// Legacy compat: TAX_CATS and DEFAULT_TAX_MAPPING derived from new system
-const TAX_CATS = [...new Set(Object.values(TAX_MAPPING.CH))];
-const DEFAULT_TAX_MAPPING = Object.fromEntries(
-  CATS_EXPENSE.map(c => [c, TAX_MAPPING.CH[c] || 'Übriger Betriebsaufwand'])
-);
+/** Returns REGION_CONFIG for current country. Never returns null (fallback CH). */
+function getRegion() { return REGION_CONFIG[AppState.country] || REGION_CONFIG.CH; }
 
-// ── 1c: MWST-Lookup-Tabelle ──
-const MWST_DEFAULTS = {
-  CH: {
-    standard: 8.1, reduziert: 2.6, beherbergung: 3.8, befreit: 0,
-    categoryRates: {
-      'Umsatzerlöse': 8.1,
-      'Übrige betriebliche Erträge': 8.1,
-      'Zins- & Finanzerträge': 0,
-      'Material & Waren': 8.1,
-      'Fremdleistungen': 8.1,
-      'Löhne & Gehälter': 0,
-      'Sozialabgaben (Mitarbeitende)': 0,
-      'Eigene Sozialversicherung': 0,
-      'Abschreibungen & GWG': 0,
-      'Miete & Pacht': 0,
-      'Nebenkosten & Liegenschaft': 8.1,
-      'Fahrzeug & Transport': 8.1,
-      'Reise & Spesen': 3.8,
-      'Kommunikation': 8.1,
-      'Büro & IT': 8.1,
-      'Versicherungen': 0,
-      'Werbung & Marketing': 8.1,
-      'Beratung & Recht': 8.1,
-      'Zins- & Bankgebühren': 0,
-      'Übriger Betriebsaufwand': 8.1,
-    }
-  },
-  DE: {
-    standard: 19, reduziert: 7,
-    categoryRates: {
-      'Umsatzerlöse': 19,
-      'Übrige betriebliche Erträge': 19,
-      'Zins- & Finanzerträge': 0,
-      'Material & Waren': 19,
-      'Fremdleistungen': 19,
-      'Löhne & Gehälter': 0,
-      'Sozialabgaben (Mitarbeitende)': 0,
-      'Eigene Sozialversicherung': 0,
-      'Abschreibungen & GWG': 19,
-      'Miete & Pacht': 19,
-      'Nebenkosten & Liegenschaft': 19,
-      'Fahrzeug & Transport': 19,
-      'Reise & Spesen': 19,
-      'Kommunikation': 19,
-      'Büro & IT': 19,
-      'Versicherungen': 19,
-      'Werbung & Marketing': 19,
-      'Beratung & Recht': 19,
-      'Zins- & Bankgebühren': 0,
-      'Übriger Betriebsaufwand': 19,
-    }
-  },
-  AT: {
-    standard: 20, reduziert: 10, sonder: 13,
-    categoryRates: {
-      'Umsatzerlöse': 20,
-      'Übrige betriebliche Erträge': 20,
-      'Zins- & Finanzerträge': 0,
-      'Material & Waren': 20,
-      'Fremdleistungen': 20,
-      'Löhne & Gehälter': 0,
-      'Sozialabgaben (Mitarbeitende)': 0,
-      'Eigene Sozialversicherung': 0,
-      'Abschreibungen & GWG': 20,
-      'Miete & Pacht': 20,
-      'Nebenkosten & Liegenschaft': 20,
-      'Fahrzeug & Transport': 20,
-      'Reise & Spesen': 20,
-      'Kommunikation': 20,
-      'Büro & IT': 20,
-      'Versicherungen': 20,
-      'Werbung & Marketing': 20,
-      'Beratung & Recht': 20,
-      'Zins- & Bankgebühren': 0,
-      'Übriger Betriebsaufwand': 20,
-    }
-  },
-};
+// ── Category Accessors (Funktionen, reagieren auf setCountry) ──
+function getCatsIncome()   { return getRegion().categories.income; }
+function getCatsExpense()  { return getRegion().categories.expense; }
+function getCatsPrivate()  { return getRegion().categories.private; }
+function getCategories20() { return [...getCatsIncome(), ...getCatsExpense()]; }
+function getActiveCatsBiz()  { return getCatsExpense(); }
+function getActiveCatsPriv() { return getCatsPrivate(); }
 
-/** Get MWST rate for a category in the user's country */
+// ── Tax Mapping Accessors (ersetzen getTaxCats() + getDefaultTaxMapping()) ──
+function getTaxCats()          { return [...new Set(Object.values(getRegion().taxMapping))]; }
+function getDefaultTaxMapping() {
+  const tm = getRegion().taxMapping;
+  return Object.fromEntries(getCatsExpense().map(c => [c, tm[c] || 'Übriger Betriebsaufwand']));
+}
+
+// ── BL-079: Rechnungstypen konfigurierbar ──
+function getInvoiceTypes() {
+  const custom = loadLocal('fb_invoice_types', null);
+  if (custom && Array.isArray(custom) && custom.length > 0) return custom;
+  return getRegion().invoiceTypes;
+}
+function renderInvoiceTypeDropdown(selectId, selectedValue) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  const types = getInvoiceTypes();
+  const allTypes = selectedValue && !types.includes(selectedValue)
+    ? [selectedValue, ...types] : types;
+  el.innerHTML = allTypes.map(t =>
+    `<option value="${esc(t)}" ${t === selectedValue ? 'selected' : ''}>${esc(t)}</option>`
+  ).join('') + '<option value="__custom__">Eigene hinzufügen…</option>';
+  el.onchange = function() { if (this.value === '__custom__') erfAddCustomInvoiceType(selectId); };
+}
+function erfAddCustomInvoiceType(selectId) {
+  const name = prompt('Neuen Rechnungstyp eingeben:');
+  if (!name || !name.trim()) {
+    const el = document.getElementById(selectId);
+    if (el) el.value = getInvoiceTypes()[0];
+    return;
+  }
+  const trimmed = name.trim();
+  const current = loadLocal('fb_invoice_types', null) || [...getRegion().invoiceTypes];
+  if (!current.includes(trimmed)) {
+    current.push(trimmed);
+    saveLocal('fb_invoice_types', current);
+    const db = getActiveDataAdapter();
+    if (db.saveSetting) db.saveSetting('fb_invoice_types', JSON.stringify(current)).catch(() => {});
+  }
+  renderInvoiceTypeDropdown(selectId, trimmed);
+}
+
+/** Get MWST rate for a category in the user's country. Never null. */
 function getMwstRate(category) {
-  const country = AppState.country || 'CH';
-  const rates = MWST_DEFAULTS[country]?.categoryRates || MWST_DEFAULTS.CH.categoryRates;
-  return rates[category] ?? MWST_DEFAULTS[country]?.standard ?? 8.1;
+  const r = getRegion();
+  return r.mwst.categoryRates[category] ?? r.mwst.standard;
 }
 
 /** Calculate MWST breakdown from a gross amount + rate */
@@ -6755,10 +6908,9 @@ function calcMwst(grossAmount, mwstRate) {
   return { mwstBetrag, nettoBetrag };
 }
 
-/** Get Steuerformular line for a category in the user's country */
+/** Get Steuerformular line for a category. Returns '' if not found. */
 function getSteuerformular(category) {
-  const country = AppState.country || 'CH';
-  return TAX_MAPPING[country]?.[category] || TAX_MAPPING.CH?.[category] || '';
+  return getRegion().taxMapping[category] || '';
 }
 
 // ── 1e: Default Merchant Rules per country ──
@@ -6933,7 +7085,19 @@ function erfSetMode(mode) {
   erfShowScreen(screens[mode] || 0);
   if (mode === 'buchung')  { erfSetType('expense'); erfSetBereich('business'); erfRenderCatChips(); erfUpdateMwstField(); }
   if (mode === 'transfer') { erfPopulateAccountSelects(); }
-  if (mode === 'rechnung') { erfPrefillInvNr(); }
+  if (mode === 'rechnung') {
+    erfPrefillInvNr();
+    // BL-079: Rechnungstyp-Dropdown dynamisch populieren
+    renderInvoiceTypeDropdown('erfInvTyp', null);
+    // BL-080: Steuerkategorie-Dropdown populieren
+    const steuerkatEl = document.getElementById('erfInvSteuerkat');
+    if (steuerkatEl) {
+      const cats = getCatsIncome();
+      steuerkatEl.innerHTML = cats.map(c =>
+        `<option value="${esc(c)}" ${c === cats[0] ? 'selected' : ''}>${esc(c)}</option>`
+      ).join('');
+    }
+  }
 }
 
 /* ── Buchung form logic ── */
@@ -7005,7 +7169,7 @@ function erfRenderCatChips() {
 
   if (isIncome) {
     if (label) label.textContent = 'Einnahmequelle';
-    chips.innerHTML = INCOME_SOURCES.map(s => `
+    chips.innerHTML = getCatsIncome().map(s => `
       <div class="chip ${Erf.source === s ? 'active' : ''}"
         onclick="erfSelectSource('${s.replace(/'/g,"\\'")}')">
         ${s}
@@ -7033,7 +7197,7 @@ function erfRenderCatChips() {
       </div>`;
     }
     chips.innerHTML = chipsHtml;
-    // Tax hint from new TAX_MAPPING system (Session 3)
+    // Tax hint from REGION_CONFIG taxMapping (Sprint 2)
     if (taxHint && Erf.cat && Erf.bereich === 'business') {
       const mapped = getSteuerformular(Erf.cat);
       if (mapped) {
@@ -7217,7 +7381,7 @@ async function erfSaveBuchung() {
     btn.textContent = 'Speichert…';
   }
 
-  const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   const taxCat = (Erf.bereich === 'business' && Erf.cat) ? (tm[Erf.cat] || 'Alle übrigen Geschäftsaufwände') : '';
 
   // Map display source name → Notion option name
@@ -7408,7 +7572,8 @@ async function erfSaveRechnung() {
     mwst:     parseFloat(document.getElementById('erfInvMwst')?.value) || 0,
     status:   document.getElementById('erfInvStatus')?.value || 'Offen',
     account:  document.getElementById('erfInvKonto')?.value || '',
-    type:     document.getElementById('erfInvTyp')?.value || 'Honorar',
+    type:     document.getElementById('erfInvTyp')?.value || getInvoiceTypes()[0],
+    taxCat:   document.getElementById('erfInvSteuerkat')?.value || getCatsIncome()[0],
     note:     document.getElementById('erfInvNote')?.value || '',
     paidDate: '',
     projekt:  '',
@@ -7979,7 +8144,6 @@ async function createBookingFromInvoice(inv) {
   if (!inv) return;
   try {
     const db = getActiveDataAdapter();
-    const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
     const { success, result } = await db.createBooking({
       desc:       'Rechnung ' + (inv.nr || '') + (inv.client ? ' · ' + inv.client : ''),
       date:       toDay(),
@@ -7987,7 +8151,7 @@ async function createBookingFromInvoice(inv) {
       bereich:    'Geschäftlich',
       amount:     inv.amount || 0,
       paid:       true,
-      cat:        '',
+      cat:        inv.taxCat || getCatsIncome()[0],
       account:    inv.account || '',
       note:       'Auto-erstellt aus Rechnung ' + (inv.nr || ''),
       invRef:     inv.nr || '',
@@ -8100,7 +8264,7 @@ async function inboxRecurBook(recurId) {
       });
     } else {
       // External payment → via adapter
-      const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+      const tm = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
       const db = getActiveDataAdapter();
       await db.createBooking({
         desc:    r.name + (r.note ? ' \u2014 ' + r.note : ''),
@@ -8744,16 +8908,12 @@ Computed.clientConcentration = function() {
 
 Computed.taxReserve = function() {
   const profit = Math.max(0, this.totalIncome() - this.totalExpense());
-  const country = AppState.country || 'CH';
-  let rate, breakdown;
-  if (country === 'DE') {
-    rate = 30; breakdown = { 'ESt+Soli': profit * 0.22, GKV: profit * 0.08 };
-  } else if (country === 'AT') {
-    rate = 30; breakdown = { ESt: profit * 0.20, SVS: profit * 0.10 };
-  } else {
-    rate = 33; breakdown = { AHV: profit * 0.10, Steuern: profit * 0.20, FAK: profit * 0.03 };
+  const tr = getRegion().taxReserve;
+  const breakdown = {};
+  for (const [k, pct] of Object.entries(tr.breakdown)) {
+    breakdown[k] = Math.round(profit * pct);
   }
-  return { amount: Math.round(profit * rate / 100), rate, breakdown };
+  return { amount: Math.round(profit * tr.rate / 100), rate: tr.rate, breakdown };
 };
 
 Computed.freedomMonths = function() {
@@ -9429,7 +9589,7 @@ function catStatusIcon(b) {
 }
 
 function buchungenFiltered() {
-  const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   return Store.buchungen.filter(b => {
     if (BuchFilter.type   && b.type    !== BuchFilter.type)   return false;
     if (BuchFilter.bereich && b.bereich !== BuchFilter.bereich) return false;
@@ -9446,7 +9606,7 @@ function buchungenFiltered() {
 }
 
 function buchungRowHTML(b) {
-  const tm     = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm     = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   const taxCat = b.taxCat || (b.cat && b.bereich==='Geschäftlich' ? tm[b.cat] || '' : '');
   const isPend = b._pending;
   return `
@@ -9530,7 +9690,7 @@ async function confirmBuchungCategory(id) {
 
 
 function exportBuchungenCSV() {
-  const tm   = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm   = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   const rows = [['Datum','Beschreibung','Gegenpartei','Typ','Bereich','Kategorie',
     'Steuerkategorie','Konto','Betrag CHF','Bezahlt','Rechnungs-Nr','Projekt','Notiz']];
   buchungenFiltered().forEach(b => rows.push([
@@ -9738,7 +9898,17 @@ function openRechnungEdit(id) {
     set('erfInvStatus', r.status);
     set('erfInvKonto', r.account);
     set('erfInvNote', r.note);
-    set('erfInvTyp', r.type);
+    // BL-079: Typ-Dropdown dynamisch populieren mit bestehendem Wert
+    renderInvoiceTypeDropdown('erfInvTyp', r.type);
+    // BL-080: Steuerkategorie-Dropdown populieren
+    const steuerkatEl = document.getElementById('erfInvSteuerkat');
+    if (steuerkatEl) {
+      const cats = getCatsIncome();
+      steuerkatEl.innerHTML = cats.map(c =>
+        `<option value="${esc(c)}">${esc(c)}</option>`
+      ).join('');
+      steuerkatEl.value = r.taxCat || cats[0];
+    }
     // Store editId for save function
     window._editInvoiceId = id;
     const saveBtn = document.getElementById('erfInvSaveBtn');
@@ -10146,18 +10316,18 @@ function renderRecurringsHTML() {
 function renderAbschluesseHTML() {
   const years = [...new Set(Store.buchungen.map(b => getYear(b.date)).filter(Boolean))].sort().reverse();
   const yr    = new Date().getFullYear();
-  const tm    = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm    = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
 
   // Tax mapping editor
-  const mappingRows = CATS_BIZ.map(c => `
+  const mappingRows = getCatsExpense().map(c => `
     <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13.5px">
       <div style="flex:1;font-weight:500">${c}</div>
       <span style="color:var(--muted)">→</span>
       <select style="padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:12.5px;
         font-family:inherit;color:var(--ink);background:var(--paper);cursor:pointer"
         onchange="updateTaxMapping('${c.replace(/'/g,"\\'")}',this.value)">
-        ${TAX_CATS.map(tc =>
-          `<option value="${tc}" ${(tm[c]||DEFAULT_TAX_MAPPING[c])===tc?'selected':''}>${tc}</option>`
+        ${getTaxCats().map(tc =>
+          `<option value="${tc}" ${(tm[c]||getDefaultTaxMapping()[c])===tc?'selected':''}>${tc}</option>`
         ).join('')}
       </select>
     </div>`).join('');
@@ -10190,7 +10360,7 @@ function renderAbschluesseHTML() {
 }
 
 function updateTaxMapping(cat, val) {
-  const tm = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   tm[cat]  = val;
   saveLocal('fb_tax_mapping', tm);
 }
@@ -10198,7 +10368,7 @@ function updateTaxMapping(cat, val) {
 /** Layer 5 — Jahresabschluss-Checkliste */
 function renderAbschlussChecklist() {
   const yr  = new Date().getFullYear();
-  const tm  = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm  = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   const biz = Store.buchungen.filter(b => getYear(b.date) === String(yr) && b.bereich === 'Geschäftlich');
 
   const noCat    = biz.filter(b => !b.cat).length;
@@ -10254,12 +10424,12 @@ function renderAbschlussChecklist() {
 /** Layer 5 — PDF Print */
 function printJahresabschluss() {
   const yr   = document.getElementById('exportYear')?.value || String(new Date().getFullYear());
-  const tm   = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm   = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   const ytx  = Store.buchungen.filter(b => getYear(b.date) === yr);
   const biz  = ytx.filter(b => b.bereich === 'Geschäftlich');
   const inc  = biz.filter(b => b.type==='Einnahme').reduce((s,b)=>s+b.amount,0);
   const taxGroups = {};
-  TAX_CATS.forEach(c => taxGroups[c] = 0);
+  getTaxCats().forEach(c => taxGroups[c] = 0);
   biz.filter(b => b.type==='Ausgabe').forEach(b => {
     const tc = tm[b.cat] || 'Alle übrigen Geschäftsaufwände';
     taxGroups[tc] = (taxGroups[tc]||0) + b.amount;
@@ -10312,7 +10482,7 @@ function printJahresabschluss() {
   <div class="summary-row total"><span>Total Einnahmen</span><span>CHF ${fmt(inc)}</span></div>
 
   <h2>Geschäftsaufwand</h2>
-  ${TAX_CATS.map(c => taxGroups[c] > 0 ? `
+  ${getTaxCats().map(c => taxGroups[c] > 0 ? `
     <div class="summary-row"><span>${c}</span><span>CHF ${fmt(taxGroups[c])}</span></div>` : '').join('')}
   <div class="summary-row total"><span>Total Aufwand</span><span>CHF ${fmt(totalExp)}</span></div>
 
@@ -10340,14 +10510,14 @@ function printJahresabschluss() {
 
 function exportJahresabschluss() {
   const yr   = document.getElementById('exportYear')?.value || String(new Date().getFullYear());
-  const tm   = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm   = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   const ytx  = Store.buchungen.filter(b => getYear(b.date) === yr);
   const biz  = ytx.filter(b => b.bereich === 'Geschäftlich');
   const inc  = biz.filter(b => b.type==='Einnahme').reduce((s,b)=>s+b.amount,0);
 
   // Group expenses by tax category
   const taxGroups = {};
-  TAX_CATS.forEach(c => taxGroups[c] = 0);
+  getTaxCats().forEach(c => taxGroups[c] = 0);
   biz.filter(b => b.type==='Ausgabe').forEach(b => {
     const tc = tm[b.cat] || 'Alle übrigen Geschäftsaufwände';
     taxGroups[tc] = (taxGroups[tc]||0) + b.amount;
@@ -10360,7 +10530,7 @@ function exportJahresabschluss() {
     ['Total Einnahmen', inc, ''],
     ['', '', ''],
     ['GESCHÄFTSAUFWAND', '', ''],
-    ...TAX_CATS.map(c => [c, taxGroups[c]||0, '']),
+    ...getTaxCats().map(c => [c, taxGroups[c]||0, '']),
     ['', '', ''],
     ['Total Geschäftsaufwand', totalExp, ''],
     ['GEWINN / VERLUST', inc - totalExp, ''],
@@ -10494,7 +10664,7 @@ function renderAktivitaeten() {
       <div style="padding:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
           <h2 style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600">Aktivitäten</h2>
-          <button class="btn btn-primary btn-sm" onclick="syncClockify()">🔄 Sync starten</button>
+          <button class="btn btn-primary btn-sm" onclick="syncTimeTracker()">🔄 Sync starten</button>
         </div>
         <div class="empty"><div class="ico">🦚</div><p>Klicke Sync um Zeiterfassungsdaten zu laden</p></div>
       </div>`;
@@ -10569,7 +10739,7 @@ function renderAktivitaeten() {
           <h2 style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600">Aktivitäten</h2>
           <div style="font-size:12px;color:var(--muted)">Clockify · ${lastSync ? 'Sync: '+lastSync : 'noch nie sync'}</div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="syncClockify()">🔄 Sync</button>
+        <button class="btn btn-outline btn-sm" onclick="syncTimeTracker()">🔄 Sync</button>
       </div>
       <div class="cockpit-hero" style="margin-bottom:16px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
@@ -10681,9 +10851,14 @@ function renderEinstellungen() {
   if (!el) return;
 
   try {
-  const cfKey      = loadLocal('fb_clockify_key', '');
-  const claudeKey  = loadLocal('fb_claude_key', '');
+  const _p = AppState.providers || {};
+  const _timeId = _p.time || 'clockify';
+  const _visionId = _p.vision || 'claude';
+  const cfKey      = loadLocal('fb_' + _timeId + '_key', '');
+  const claudeKey  = loadLocal('fb_' + _visionId + '_key', '');
   const cfLastSync = loadLocal('fb_clockify_last_sync', null);
+  const _timeName  = PROVIDER_REGISTRY.time[_timeId]?.getProviderName?.() || _timeId;
+  const _visionName = PROVIDER_REGISTRY.vision[_visionId]?.getProviderName?.() || _visionId;
   const diagReport = buildDiagReport();
 
   el.innerHTML = `
@@ -10710,25 +10885,25 @@ function renderEinstellungen() {
         </div>
         <div style="padding:12px 0;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
           <div>
-            <div style="font-weight:600;font-size:14px">Clockify ${helpBtn('clockify-key')}</div>
+            <div style="font-weight:600;font-size:14px">${esc(_timeName)} ${helpBtn('clockify-key')}</div>
             <div style="font-size:12px;color:var(--muted)">
               ${cfKey ? '✅ Verbunden' + (cfLastSync ? ' · Sync: '+cfLastSync : ' · noch nie sync') : '❌ Nicht verbunden'}
             </div>
           </div>
           <div style="display:flex;gap:8px">
             ${cfKey
-              ? '<button class="btn btn-outline btn-sm" onclick="syncClockify()">🔄 Sync</button><button class="btn btn-danger btn-sm" onclick="clearClockifyKey()">✕</button>'
-              : '<button class="btn btn-primary btn-sm" onclick="changeClockifyKey()">Verbinden</button>'}
+              ? '<button class="btn btn-outline btn-sm" onclick="syncTimeTracker()">🔄 Sync</button><button class="btn btn-danger btn-sm" onclick="clearTimeTrackerKey()">✕</button>'
+              : '<button class="btn btn-primary btn-sm" onclick="changeTimeTrackerKey()">Verbinden</button>'}
           </div>
         </div>
         <div style="padding:12px 0;display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-weight:600;font-size:14px">Claude AI (Beleganalyse) ${helpBtn('claude-key')}</div>
+            <div style="font-weight:600;font-size:14px">${esc(_visionName)} (Beleganalyse) ${helpBtn('claude-key')}</div>
             <div style="font-size:12px;color:var(--muted)">${claudeKey ? '✅ API Key gesetzt' : '❌ Nicht gesetzt'}</div>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-outline btn-sm" onclick="changeClaudeKey()">✏️</button>
-            ${claudeKey ? '<button class="btn btn-danger btn-sm" onclick="clearClaudeKey()">✕</button>' : ''}
+            <button class="btn btn-outline btn-sm" onclick="changeVisionKey()">✏️</button>
+            ${claudeKey ? '<button class="btn btn-danger btn-sm" onclick="clearVisionKey()">✕</button>' : ''}
           </div>
         </div>
       </div>
@@ -10824,12 +10999,11 @@ function renderEinstellungen() {
         <div style="padding:10px 0;display:flex;justify-content:space-between;align-items:center">
           <div>
             <div style="font-weight:600;font-size:14px">MWST-Methode</div>
-            <div style="font-size:12px;color:var(--muted)">${AppState.country === 'CH' ? 'Effektiv oder Saldosteuersatz' : 'Standardmethode'}</div>
+            <div style="font-size:12px;color:var(--muted)">${getRegion().mwst.methods ? 'Effektiv oder Saldosteuersatz' : 'Standardmethode'}</div>
           </div>
-          ${AppState.country === 'CH' ? `
+          ${getRegion().mwst.methods ? `
           <select class="form-input" style="width:auto;padding:7px 10px" onchange="saveLocal('fb_mwst_method',this.value)">
-            <option value="effektiv" ${loadLocal('fb_mwst_method','effektiv')==='effektiv'?'selected':''}>Effektiv</option>
-            <option value="saldo" ${loadLocal('fb_mwst_method','effektiv')==='saldo'?'selected':''}>Saldosteuersatz</option>
+            ${getRegion().mwst.methods.map(m => `<option value="${m}" ${loadLocal('fb_mwst_method','effektiv')===m?'selected':''}>${m.charAt(0).toUpperCase()+m.slice(1)}</option>`).join('')}
           </select>` : `<span style="font-size:13px;color:var(--muted)">Standard</span>`}
         </div>` : ''}
       </div>
@@ -11034,17 +11208,21 @@ function buildDiagReport() {
       ? err(`${qPending} ausstehende Einträge`, 'Klick "Queue senden"')
       : ok('Queue leer'));
 
-  // Clockify
-  const cfKey = loadLocal('fb_clockify_key', '');
+  // Time Tracker
+  const _diagTimeId = (AppState.providers || {}).time || 'clockify';
+  const _diagTimeName = PROVIDER_REGISTRY.time[_diagTimeId]?.getProviderName?.() || _diagTimeId;
+  const cfKey = loadLocal('fb_' + _diagTimeId + '_key', '');
   checks.push(cfKey
-    ? ok('Clockify API Key gesetzt')
-    : warn('Clockify nicht verbunden', 'Optional'));
+    ? ok(_diagTimeName + ' API Key gesetzt')
+    : warn(_diagTimeName + ' nicht verbunden', 'Optional'));
 
-  // Claude
-  const claudeKey = loadLocal('fb_claude_key', '');
+  // Vision
+  const _diagVisionId = (AppState.providers || {}).vision || 'claude';
+  const _diagVisionName = PROVIDER_REGISTRY.vision[_diagVisionId]?.getProviderName?.() || _diagVisionId;
+  const claudeKey = loadLocal('fb_' + _diagVisionId + '_key', '');
   checks.push(claudeKey
-    ? ok('Claude API Key gesetzt', 'Beleganalyse aktiv')
-    : warn('Kein Claude API Key', 'Beleganalyse deaktiviert'));
+    ? ok(_diagVisionName + ' API Key gesetzt', 'Beleganalyse aktiv')
+    : warn('Kein ' + _diagVisionName + ' API Key', 'Beleganalyse deaktiviert'));
 
   // localStorage usage estimate
   let lsSize = 0;
@@ -11076,34 +11254,98 @@ function buildDiagReport() {
    D8 — FEEDBACK BUTTON + FORMULAR
    ══════════════════════════════════════════════════════ */
 
+/** Sprint 4 DS6: In-App Feedback-Formular als Bottom-Sheet */
 function showFeedbackForm() {
-  // Simple prompt-based feedback for now
-  // Full modal UI and Worker /feedback endpoint in Phase 1 polish
-  const msg = prompt('Feedback / Bug-Report:\n\nWas ist aufgefallen oder was würdest du dir wünschen?');
-  if (!msg || !msg.trim()) return;
+  const lastSent = loadLocal('fb_feedback_cooldown', 0);
+  if (Date.now() - lastSent < 60000) {
+    showToast('info', '⏳', 'Bitte warten', 'Feedback kann alle 60 Sekunden gesendet werden.');
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.id = 'feedbackOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(44,31,14,0.55);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="background:var(--paper);border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:480px;animation:sheetUp .3s ease">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600">Feedback</div>
+        <button onclick="document.getElementById('feedbackOverlay')?.remove()"
+          style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn btn-outline btn-sm fb-type-btn active" data-type="bug" onclick="fbSelectType('bug')">🐛 Bug</button>
+        <button class="btn btn-outline btn-sm fb-type-btn" data-type="feature" onclick="fbSelectType('feature')">💡 Feature</button>
+        <button class="btn btn-outline btn-sm fb-type-btn" data-type="frage" onclick="fbSelectType('frage')">❓ Frage</button>
+      </div>
+      <textarea id="fbMessage" class="form-input" rows="4"
+        placeholder="Was ist aufgefallen oder was würdest du dir wünschen?"
+        style="margin-bottom:12px;font-size:14px;resize:vertical"></textarea>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+        📊 Automatisch mitgesendet: App-Version, Systemstatus, letzte Fehlermeldungen.
+        Keine persönlichen Daten oder Finanzdaten.
+      </div>
+      <button class="btn btn-primary" id="fbSendBtn" style="width:100%;padding:14px" onclick="submitFeedback()">
+        Feedback senden
+      </button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('fbMessage')?.focus();
+}
 
-  const diagData = {
-    version: 'v2',
-    url: window.location.href,
-    lastSync: AppState.lastSyncTime,
-    buchungen: Store.buchungen.length,
-    queueLen: loadLocal(QUEUE_KEY, []).length,
-    userAgent: navigator.userAgent.slice(0,80),
+let _fbType = 'bug';
+function fbSelectType(type) {
+  _fbType = type;
+  document.querySelectorAll('.fb-type-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === type);
+  });
+}
+
+/** Sprint 4 DS6: Feedback senden mit Auto-Diagnostik */
+async function submitFeedback() {
+  const msg = document.getElementById('fbMessage')?.value?.trim();
+  if (!msg || msg.length < 10) {
+    showToast('warning', '✏️', 'Zu kurz', 'Bitte mindestens 10 Zeichen schreiben.');
+    return;
+  }
+  const btn = document.getElementById('fbSendBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sendet…'; }
+
+  const diagnostics = {
+    version: APP_VERSION, type: _fbType,
+    tab: AppState.currentTab || 'unknown', country: AppState.country || 'CH',
+    providers: AppState.providers || {},
+    buchungen: Store.buchungen?.length || 0, rechnungen: Store.rechnungen?.length || 0,
+    konten: Store.konten?.length || 0, queueLen: loadLocal(QUEUE_KEY, []).length,
+    lastSync: AppState.lastSyncTime || 'never',
+    userAgent: navigator.userAgent.slice(0, 100),
+    screen: window.innerWidth + 'x' + window.innerHeight,
+    online: navigator.onLine, errors: getErrorLog().slice(-10),
   };
 
-  // Send to Worker B /feedback endpoint (Audit-Fix R2)
-  fetch(Auth.FB_WORKER_AUTH + '/feedback', {
-    method: 'POST',
-    headers: Auth.workerHeaders(),
-    body: JSON.stringify({ message: msg, context: JSON.stringify(diagData) }),
-  }).then(resp => {
-    if (resp.ok) showToast('success', '💬', 'Feedback gesendet', 'Danke!');
-    else throw new Error('Status ' + resp.status);
-  }).catch(() => {
-    navigator.clipboard?.writeText(msg + '\n\n[Diag: ' + JSON.stringify(diagData) + ']')
-      .then(() => showToast('info', '📋', 'Feedback kopiert', 'Clipboard — bitte per Email senden'))
-      .catch(() => showToast('info', '💬', 'Feedback notiert', 'Danke für dein Feedback!'));
-  });
+  try {
+    const resp = await fetch(Auth.FB_WORKER_AUTH + '/feedback', {
+      method: 'POST', headers: Auth.workerHeaders(),
+      body: JSON.stringify({ message: msg, type: _fbType, context: JSON.stringify(diagnostics) }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (resp.ok) {
+      saveLocal('fb_feedback_cooldown', Date.now());
+      document.getElementById('feedbackOverlay')?.remove();
+      showToast('success', '💬', 'Feedback gesendet', 'Danke! Wir schauen uns das an.');
+    } else if (resp.status === 429) {
+      showToast('warning', '⏳', 'Rate-Limit', 'Bitte warte einen Moment und versuche es erneut.');
+    } else { throw new Error('Status ' + resp.status); }
+  } catch (e) {
+    const fallback = msg + '\n\n[Typ: ' + _fbType + ']\n[Diagnostik: ' + JSON.stringify(diagnostics) + ']';
+    navigator.clipboard?.writeText(fallback).then(() => {
+      showToast('info', '📋', 'Feedback kopiert', 'Senden fehlgeschlagen — bitte per E-Mail an hello@oswaldkoenig.ch');
+    }).catch(() => {
+      showToast('error', '❌', 'Senden fehlgeschlagen', 'Bitte versuche es später erneut.');
+    });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Feedback senden'; }
+  }
 }
 
 
@@ -11382,10 +11624,86 @@ Felder:
 Antworte nur mit dem JSON.`;
 }
 
-/** Return the active vision adapter (Phase 0.5: always Claude) */
+/* ── OpenAIAdapter (Sprint 3, BL-100) ── */
+const OpenAIAdapter = Object.create(VisionInterface);
+
+OpenAIAdapter.isConfigured = function() { return !!loadLocal('fb_openai_key', ''); };
+OpenAIAdapter.getProviderName = function() { return 'OpenAI'; };
+
+OpenAIAdapter.validateKey = async function() {
+  const apiKey = loadLocal('fb_openai_key', '');
+  if (!apiKey) return false;
+  try {
+    const resp = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': 'Bearer ' + apiKey },
+      signal: AbortSignal.timeout(5000),
+    });
+    return resp.ok;
+  } catch { return false; }
+};
+
+OpenAIAdapter.analyseReceipt = async function(imageData, options) {
+  const apiKey = loadLocal('fb_openai_key', '');
+  if (!apiKey) throw new Error('Kein OpenAI API-Key konfiguriert');
+  if (imageData.type === 'pdf') throw new Error('PDF-Analyse wird nur mit Claude unterstützt. Bitte als Bild scannen.');
+
+  const content = [
+    { type: 'image_url', image_url: { url: 'data:' + (imageData.mediaType || 'image/jpeg') + ';base64,' + imageData.base64, detail: 'low' } },
+    { type: 'text', text: buildReceiptPrompt(options) },
+  ];
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST', signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 600, messages: [{ role: 'user', content }] }),
+    });
+    clearTimeout(timeout);
+    if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error?.message || resp.statusText); }
+    const data = await resp.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    return JSON.parse(raw.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim());
+  } catch (e) { clearTimeout(timeout); throw e; }
+};
+
+OpenAIAdapter.complete = async function(prompt, options = {}) {
+  const apiKey = loadLocal('fb_openai_key', '');
+  if (!apiKey) throw new Error('Kein OpenAI API-Key konfiguriert');
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+    body: JSON.stringify({ model: options.model || 'gpt-4o-mini', max_tokens: options.maxTokens || 600, messages: [{ role: 'user', content: prompt }] }),
+    signal: AbortSignal.timeout(options.timeout || 15000),
+  });
+  if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error?.message || resp.statusText); }
+  const data = await resp.json();
+  const raw = data.choices?.[0]?.message?.content || '';
+  if (options.json !== false) return JSON.parse(raw.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim());
+  return raw;
+};
+
+/* ── PROVIDER_REGISTRY (Sprint 3, BL-105) ── */
+const PROVIDER_REGISTRY = {
+  data:    { notion: NotionAdapter },
+  time:    { clockify: ClockifyAdapter, toggl: TogglAdapter },
+  storage: { gdrive: GDriveAdapter },
+  vision:  { claude: ClaudeAdapter, openai: OpenAIAdapter },
+};
+
+/** Return the active vision adapter or null (keine KI konfiguriert). */
 function getActiveVisionAdapter() {
-  // Phase 1: if (loadLocal('fb_vision_provider') === 'openai') return OpenAIAdapter;
-  return ClaudeAdapter;
+  const id = AppState.providers?.vision;
+  if (!id) return null;
+  return PROVIDER_REGISTRY?.vision?.[id] || null;
+}
+
+/** Return the active time adapter or null (kein Tracker konfiguriert). */
+function getActiveTimeAdapter() {
+  const id = AppState.providers?.time;
+  if (!id) return null;
+  return PROVIDER_REGISTRY?.time?.[id] || null;
 }
 
 /**
@@ -11413,7 +11731,7 @@ async function analyseBeleg(imageDataUrl, isPDF = false) {
     } else { hideAiAnalysis(); return; }
 
     const parsed = await vision.analyseReceipt(imageData, {
-      categories: [...CATEGORIES_20, ...CATS_PRIVATE],
+      categories: [...getCategories20(), ...getCatsPrivate()],
       today: toDay(),
       language: AppState.lang || 'de',
     });
@@ -11660,6 +11978,18 @@ function healthSummary(hc) {
   if (!hc.notion.token_present) issues.push({ key: 'notion_missing', label: 'Notion nicht verbunden', action: 'notion_reauth' });
   if (hc.notion.token_valid === false) issues.push({ key: 'notion_invalid', label: 'Notion-Verbindung abgelaufen', action: 'notion_reauth' });
   if (hc.notion.dbs_found === false)  issues.push({ key: 'dbs_missing', label: 'Datenbanken fehlen', action: 'db_repair' });
+  // Sprint 4: Provider-aware Issues
+  const _tp = AppState.providers || {};
+  const _timeAdapter = getActiveTimeAdapter();
+  if (_timeAdapter && !_timeAdapter.isConfigured?.()) {
+    const _tn = _timeAdapter.getProviderName?.() || _tp.time;
+    issues.push({ key: 'time_not_configured', label: _tn + ' nicht konfiguriert', action: 'time_rekey' });
+  }
+  const _visionAdapter = getActiveVisionAdapter();
+  if (_visionAdapter && !_visionAdapter.isConfigured?.()) {
+    const _vn = _visionAdapter.getProviderName?.() || _tp.vision;
+    issues.push({ key: 'vision_not_configured', label: _vn + ' nicht konfiguriert', action: 'vision_rekey' });
+  }
   return { ok: issues.length === 0, issues };
 }
 
@@ -11669,14 +11999,20 @@ async function saveSettingsToNotion() {
   if (!DB.EINSTELLUNGEN || !Auth.isAuthenticated) return;
   // Sprint 1 L6: API-Keys verschlüsselt in Notion speichern
   const lk = Auth.licenseKey;
-  const clockifyRaw = loadLocal('fb_clockify_key', '');
-  const claudeRaw   = loadLocal('fb_claude_key', '');
-  const clockifyEnc = lk && clockifyRaw ? await fbEncrypt(clockifyRaw, lk) : clockifyRaw;
-  const claudeEnc   = lk && claudeRaw   ? await fbEncrypt(claudeRaw, lk)   : claudeRaw;
+  const p = AppState.providers || {};
+  // Encrypt active provider keys
+  const timeKey    = p.time    ? loadLocal('fb_' + p.time + '_key', '')    : '';
+  const visionKey  = p.vision  ? loadLocal('fb_' + p.vision + '_key', '') : '';
+  const timeEnc   = lk && timeKey   ? await fbEncrypt(timeKey, lk)   : timeKey;
+  const visionEnc = lk && visionKey ? await fbEncrypt(visionKey, lk) : visionKey;
   const settings = {
     land: AppState.country || 'CH', waehrung: AppState.currency || 'CHF',
     sprache: AppState.lang || 'de', konten: JSON.stringify(OB.accounts || []),
-    clockify_key: clockifyEnc, claude_key: claudeEnc,
+    clockify_key: p.time === 'clockify' ? timeEnc : '',
+    claude_key:   p.vision === 'claude' ? visionEnc : '',
+    toggl_key:    p.time === 'toggl' ? timeEnc : '',
+    openai_key:   p.vision === 'openai' ? visionEnc : '',
+    providers:    JSON.stringify(p),
   };
   try {
     const db = getActiveDataAdapter();
@@ -11697,6 +12033,8 @@ async function loadSettingsFromNotion() {
     if (s.land) AppState.country = s.land;
     if (s.waehrung) AppState.currency = s.waehrung;
     if (s.sprache) AppState.lang = s.sprache;
+    // Sprint 3: Providers laden
+    if (s.providers) { try { AppState.providers = JSON.parse(s.providers); } catch {} }
     saveAppState();
     if (s.konten) { try { const k = JSON.parse(s.konten); if (Array.isArray(k)) { OB.accounts = k; saveLocal('fb_ob_accounts', k); } } catch {} }
     // Sprint 1 L6: API-Keys aus Notion entschlüsseln
@@ -11728,6 +12066,13 @@ async function loadSettingsFromNotion() {
     }
     if (clockifyVal) { saveLocal('fb_clockify_key', clockifyVal); OB.clockifyConnected = true; }
     if (claudeVal) { saveLocal('fb_claude_key', claudeVal); OB.kiConnected = true; }
+    // Sprint 3: Toggl + OpenAI Keys
+    let togglVal = s.toggl || '';
+    if (lk && togglVal) { const dec = await fbDecrypt(togglVal, lk); if (dec) togglVal = dec; }
+    if (togglVal) saveLocal('fb_toggl_key', togglVal);
+    let openaiVal = s.openai || '';
+    if (lk && openaiVal) { const dec = await fbDecrypt(openaiVal, lk); if (dec) openaiVal = dec; }
+    if (openaiVal) saveLocal('fb_openai_key', openaiVal);
     // BUG-071: Sync cockpit layout from Notion (Notion = source of truth)
     try {
       const layoutJson = await db.loadSetting('cockpit_layout');
@@ -12521,17 +12866,157 @@ function obUpdateAccountsUI() {
 /* ── Integrationen ── */
 
 function obUpdateIntTiles() {
+  const p = AppState.providers || {};
   const notion = document.getElementById('obTileNotion');
   const drive  = document.getElementById('obTileDrive');
   const clock  = document.getElementById('obTileClock');
   const ki     = document.getElementById('obTileKi');
   if (notion) { notion.className = 'onboard-tile' + (OB.notionConnected ? ' connected' : ' required'); }
   if (drive)  { drive.className  = 'onboard-tile' + (OB.driveConnected  ? ' connected' : ''); }
-  if (clock)  { clock.className  = 'onboard-tile' + (OB.clockifyConnected ? ' connected' : ''); }
-  if (ki)     { ki.className     = 'onboard-tile' + (OB.kiConnected     ? ' connected' : ''); }
-  // Button label
+  if (clock)  {
+    const timeKey = p.time ? loadLocal('fb_' + p.time + '_key', '') : '';
+    OB.clockifyConnected = !!timeKey;
+    clock.className  = 'onboard-tile' + (OB.clockifyConnected ? ' connected' : '');
+    const sub = clock.querySelector('.tile-sub');
+    if (sub && p.time) sub.textContent = (PROVIDER_REGISTRY.time[p.time]?.getProviderName?.() || p.time) + ' verbunden';
+  }
+  if (ki) {
+    const visionKey = p.vision ? loadLocal('fb_' + p.vision + '_key', '') : '';
+    OB.kiConnected = !!visionKey;
+    ki.className = 'onboard-tile' + (OB.kiConnected ? ' connected' : '');
+    const sub = ki.querySelector('.tile-sub');
+    if (sub && OB.kiConnected) sub.textContent = (PROVIDER_REGISTRY.vision[p.vision]?.getProviderName?.() || p.vision) + ' verbunden';
+  }
   const btn = document.getElementById('obIntNextBtn');
   if (btn) btn.textContent = OB.notionConnected ? 'Weiter →' : 'Notion verbinden';
+}
+
+/** Sprint 3: Provider-Auswahl Overlay im Onboarding */
+function obSelectProvider(category) {
+  const configs = {
+    time: {
+      title: 'Zeiterfassung wählen',
+      options: [
+        { id: 'clockify', label: '⏱ Clockify', sub: 'Kostenlos' },
+        { id: 'toggl', label: '⏱ Toggl Track', sub: 'Kostenlos & Pro' },
+        { id: null, label: '⏭ Überspringen', sub: 'Später einrichten' },
+      ],
+      wrapId: 'obIntClockifyWrap',
+      keyPrefix: 'fb_',
+      keySuffix: '_key',
+    },
+    storage: {
+      title: 'Belege-Ablage wählen',
+      options: [
+        { id: 'gdrive', label: '📁 Google Drive', sub: 'Empfohlen' },
+        { id: null, label: '⏭ Überspringen', sub: 'Später einrichten' },
+      ],
+      wrapId: null,
+    },
+    vision: {
+      title: 'KI-Provider wählen',
+      options: [
+        { id: 'claude', label: '🤖 Claude (Anthropic)', sub: 'Empfohlen' },
+        { id: 'openai', label: '🤖 OpenAI', sub: 'GPT-4o' },
+        { id: null, label: '⏭ Überspringen', sub: 'Später einrichten' },
+      ],
+      wrapId: 'obIntKiWrap',
+      keyPrefix: 'fb_',
+      keySuffix: '_key',
+    },
+  };
+  const cfg = configs[category];
+  if (!cfg) return;
+
+  // Storage special case: direct connect (GDrive OAuth flow)
+  if (category === 'storage') {
+    obConnectDrive();
+    return;
+  }
+
+  // Build selection UI in the existing wrap area
+  const wrapId = cfg.wrapId;
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+
+  wrap.style.display = '';
+  wrap.innerHTML = `
+    <div style="font-family:'Courier Prime',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">${esc(cfg.title)}</div>
+    ${cfg.options.map(opt => `
+      <button class="btn btn-outline" style="width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center${opt.id === null ? ';opacity:.7' : ''}"
+        onclick="obProviderSelected('${category}', ${opt.id ? "'" + opt.id + "'" : 'null'})">
+        <span style="font-weight:600">${esc(opt.label)}</span>
+        <span style="font-size:11px;color:var(--muted)">${esc(opt.sub)}</span>
+      </button>
+    `).join('')}
+  `;
+}
+
+/** Handler after provider option is selected in onboarding */
+function obProviderSelected(category, providerId) {
+  if (!AppState.providers) AppState.providers = {};
+  AppState.providers[category] = providerId;
+  saveAppState();
+
+  if (!providerId) {
+    // Überspringen
+    const wraps = { time: 'obIntClockifyWrap', vision: 'obIntKiWrap' };
+    const w = document.getElementById(wraps[category]);
+    if (w) w.style.display = 'none';
+    obUpdateIntTiles();
+    return;
+  }
+
+  // Show key input
+  const keyLabels = {
+    'clockify': { label: 'Clockify API Key', placeholder: 'API Key', hint: 'clockify.me/user/settings → API' },
+    'toggl': { label: 'Toggl API Key', placeholder: 'API Key', hint: 'track.toggl.com/profile → API Token' },
+    'claude': { label: 'Claude API Key', placeholder: 'sk-ant-…', hint: 'console.anthropic.com/settings/keys' },
+    'openai': { label: 'OpenAI API Key', placeholder: 'sk-…', hint: 'platform.openai.com/api-keys' },
+  };
+  const kl = keyLabels[providerId] || { label: 'API Key', placeholder: 'Key', hint: '' };
+  const wraps = { time: 'obIntClockifyWrap', vision: 'obIntKiWrap' };
+  const wrap = document.getElementById(wraps[category]);
+  if (!wrap) return;
+
+  wrap.innerHTML = `
+    <div style="font-family:'Courier Prime',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Erweiterung</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(kl.hint)}</div>
+    <label class="form-label" style="font-size:12px">${esc(kl.label)}</label>
+    <input type="password" id="obProviderKeyInput" class="form-input" placeholder="${esc(kl.placeholder)}" style="margin-bottom:6px">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" onclick="obSaveProviderKey('${category}','${providerId}')" style="flex:1">Speichern</button>
+      <button class="btn btn-outline btn-sm" onclick="obProviderSelected('${category}', null)" style="font-size:12px">Überspringen</button>
+    </div>
+  `;
+}
+
+/** Save key from provider selection in onboarding — with inline validation (BL-082) */
+async function obSaveProviderKey(category, providerId) {
+  const key = document.getElementById('obProviderKeyInput')?.value?.trim();
+  if (!key) return;
+  // Inline-Validierung
+  const statusEl = document.getElementById('obProviderKeyStatus');
+  if (!statusEl) {
+    // Status-Element dynamisch einfügen
+    const input = document.getElementById('obProviderKeyInput');
+    if (input) {
+      const s = document.createElement('div');
+      s.id = 'obProviderKeyStatus';
+      s.style.cssText = 'font-size:12px;min-height:18px;margin-top:4px';
+      input.parentNode.insertBefore(s, input.nextSibling);
+    }
+  }
+  const valid = await validateKeyInline(providerId, key, 'obProviderKeyStatus');
+  if (!valid) return; // Status-Element zeigt Fehler, Key wird NICHT gespeichert
+
+  saveLocal('fb_' + providerId + '_key', key);
+  const wraps = { time: 'obIntClockifyWrap', vision: 'obIntKiWrap' };
+  const w = document.getElementById(wraps[category]);
+  if (w) w.style.display = 'none';
+  const names = { clockify: 'Clockify', toggl: 'Toggl', claude: 'Claude', openai: 'OpenAI' };
+  showToast('success', '✅', (names[providerId] || providerId) + ' verbunden', '');
+  obUpdateIntTiles();
 }
 
 function obConnectNotion() {
@@ -12945,21 +13430,85 @@ function setLang(lang) {
   showToast('success', '✅', 'Sprache geändert', lang === 'de' ? 'Deutsch' : 'English');
 }
 
-function changeClockifyKey() {
-  const k = prompt('Clockify API Key (Profile Settings → API):');
+function changeTimeTrackerKey() {
+  const providerId = AppState.providers?.time || 'clockify';
+  const name = providerId === 'toggl' ? 'Toggl' : 'Clockify';
+  const k = prompt(name + ' API Key:');
   if (!k) return;
-  saveLocal('fb_clockify_key', k.trim());
+  saveLocal('fb_' + providerId + '_key', k.trim());
   renderEinstellungen();
 }
-function clearClockifyKey() { localStorage.removeItem('fb_clockify_key'); renderEinstellungen(); }
+function clearTimeTrackerKey() {
+  const providerId = AppState.providers?.time || 'clockify';
+  localStorage.removeItem('fb_' + providerId + '_key');
+  renderEinstellungen();
+}
 
-function changeClaudeKey() {
-  const k = prompt('Claude API Key (console.anthropic.com):');
+function changeVisionKey() {
+  const providerId = AppState.providers?.vision || 'claude';
+  const name = providerId === 'openai' ? 'OpenAI' : 'Claude';
+  const hint = providerId === 'openai' ? 'api.openai.com' : 'console.anthropic.com';
+  const k = prompt(name + ' API Key (' + hint + '):');
   if (!k) return;
-  saveLocal('fb_claude_key', k.trim());
+  saveLocal('fb_' + providerId + '_key', k.trim());
   renderEinstellungen();
 }
-function clearClaudeKey() { localStorage.removeItem('fb_claude_key'); renderEinstellungen(); }
+function clearVisionKey() {
+  const providerId = AppState.providers?.vision || 'claude';
+  localStorage.removeItem('fb_' + providerId + '_key');
+  renderEinstellungen();
+}
+
+/** Sprint 4 BL-082: Inline Key-Validierung */
+async function validateKeyInline(provider, key, statusElId) {
+  const el = document.getElementById(statusElId);
+  if (el) { el.textContent = '⏳ Prüfe…'; el.style.color = 'var(--muted)'; }
+  let valid = false;
+  try {
+    if (provider === 'clockify') {
+      const resp = await fetch('https://api.clockify.me/api/v1/user', {
+        headers: { 'X-Api-Key': key }, signal: AbortSignal.timeout(5000),
+      });
+      valid = resp.ok;
+    } else if (provider === 'toggl') {
+      const resp = await fetch('https://api.track.toggl.com/api/v9/me', {
+        headers: { 'Authorization': 'Basic ' + btoa(key + ':api_token') }, signal: AbortSignal.timeout(5000),
+      });
+      valid = resp.ok;
+    } else if (provider === 'claude') {
+      saveLocal('fb_claude_key', key);
+      valid = await ClaudeAdapter.validateKey();
+    } else if (provider === 'openai') {
+      const resp = await fetch('https://api.openai.com/v1/models', {
+        headers: { 'Authorization': 'Bearer ' + key }, signal: AbortSignal.timeout(5000),
+      });
+      valid = resp.ok;
+    }
+  } catch { valid = false; }
+  if (el) {
+    el.textContent = valid ? '✅ Key gültig' : '❌ Key ungültig — bitte prüfen';
+    el.style.color = valid ? 'var(--green)' : 'var(--red)';
+  }
+  return valid;
+}
+
+/** Sprint 4 BL-007: Healing — führt passende Aktion für ein Health-Issue aus */
+function healIssue(action) {
+  switch (action) {
+    case 'key_input': onboardNext(null, 'license'); break;
+    case 'notion_reauth': Auth.startOAuth(); break;
+    case 'db_repair':
+      showLoading('Datenbanken reparieren…');
+      discoverAndCreateDatabases().then(() => { hideLoading(); showToast('success', '✅', 'Datenbanken repariert', ''); manualSync(); })
+        .catch(e => { hideLoading(); showToast('error', '❌', 'Reparatur fehlgeschlagen', e.message); });
+      break;
+    case 'clockify_rekey': case 'toggl_rekey': case 'time_rekey':
+    case 'claude_rekey': case 'openai_rekey': case 'vision_rekey':
+      nav('einstellungen'); break;
+    case 'gdrive_reauth': settingsConnectGDrive(); break;
+    default: nav('einstellungen');
+  }
+}
 
 function clearAllLocal() {
   if (!confirm('Wirklich ALLE lokalen Daten löschen? Notion-Daten bleiben erhalten.')) return;
@@ -12972,14 +13521,12 @@ function clearAllLocal() {
 /** Session 3: Set country and update MWST defaults */
 function setCountry(country) {
   AppState.country = country;
-  if (country === 'CH') AppState.currency = 'CHF';
-  else if (country === 'DE' || country === 'AT') AppState.currency = 'EUR';
+  AppState.currency = getRegion().currency;
   saveAppState();
-  // Reload merchant rules for new country
   merchantRules = getDefaultRules(country);
   saveMerchantRules().catch(() => {});
   renderEinstellungen();
-  showToast('success', '✅', 'Land geändert', country);
+  showToast('success', '✅', 'Land geändert', getRegion().label);
 }
 
 /** Session 3: Logout with confirmation */
@@ -13967,7 +14514,7 @@ function csvCheckMappingComplete() {
 /* ── Parse mapped rows → import candidates ── */
 function csvBuildParsedRows() {
   const m    = CSV.mapping;
-  const tm   = loadLocal('fb_tax_mapping', DEFAULT_TAX_MAPPING);
+  const tm   = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
   const cats = [...getActiveCatsBiz(), ...getActiveCatsPriv()];
 
   CSV.parsed = CSV.raw.map((row, idx) => {
@@ -14081,9 +14628,4 @@ async function csvExecuteImport() {
   document.getElementById('csvResultBody').innerHTML    =
     `<strong style="color:var(--green)">${done} Buchungen</strong> erfolgreich importiert.` +
     (failed ? `<br><span style="color:var(--amber)">${failed} konnten nicht importiert werden.</span>` : '') +
-    '<br><br>Tipp: Prüfe importierte Buchungen und ergänze fehlende Kategorien in der Buchhaltung.';
-}
-
-</script>
-</body>
-</html>
+    '<br><br>Tipp: Prüfe importierte Buchungen und ergänze fehlende Katego
