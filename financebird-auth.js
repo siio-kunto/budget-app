@@ -22,7 +22,7 @@
  * Deploy: https://financebird-auth.holy-forest-0174.workers.dev
  */
 
-const WORKER_VERSION = '1.1.0'; // Major.Minor.Patch — bei jedem Deploy hochzählen
+const WORKER_VERSION = '1.4.0'; // Major.Minor.Patch — bei jedem Deploy hochzählen
 
 export default {
   async fetch(request, env) {
@@ -31,7 +31,7 @@ export default {
 
     // CORS preflight
     if (request.method === 'OPTIONS') {
-      return resp(null, 204, corsHeaders());
+      return resp(null, 204, corsHeaders(request));
     }
 
     // Shared Secret prüfen (ausser OAuth-Endpoints + Health — werden vom Browser direkt aufgerufen)
@@ -42,15 +42,46 @@ export default {
       }
     }
 
-    // Router
+    // Router (S12 BL-053: Rate-Limiting auf kritische Endpoints)
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+
     if (path === '/oauth/start'    && request.method === 'GET')  return oauthStart(request, env, url);
     if (path === '/oauth/callback' && request.method === 'GET')  return oauthCallback(request, env, url);
-    if (path === '/oauth/poll'     && request.method === 'GET')  return oauthPoll(request, env, url);
-    if (path === '/license/verify' && request.method === 'POST') return licenseVerify(request, env);
-    if (path === '/device/setup'   && request.method === 'POST') return deviceSetup(request, env);
-    if (path === '/device/claim'   && request.method === 'POST') return deviceClaim(request, env);
-    if (path === '/feedback'       && request.method === 'POST') return feedbackPost(request, env);
+    if (path === '/oauth/poll'     && request.method === 'GET') {
+      if (!await checkRateLimit(env, `poll:${ip}`, 60))  return json({ error: 'Too many requests' }, 429);
+      return oauthPoll(request, env, url);
+    }
+    // Device-Token Registration (kein Device-Check nötig — hier WIRD der Token erstellt)
+    if (path === '/device/register' && request.method === 'POST') {
+      if (!await checkRateLimit(env, `devreg:${ip}`, 5)) return json({ error: 'Too many requests' }, 429);
+      return deviceRegister(request, env);
+    }
+
+    // Bootstrap-Endpoints: kein Device-Check (neues Gerät hat noch keinen Token)
+    if (path === '/license/verify' && request.method === 'POST') {
+      if (!await checkRateLimit(env, `verify:${ip}`, 10)) return json({ error: 'Too many requests' }, 429);
+      return licenseVerify(request, env);
+    }
+    if (path === '/device/claim'   && request.method === 'POST') {
+      if (!await checkRateLimit(env, `claim:${ip}`, 5))  return json({ error: 'Too many requests' }, 429);
+      return deviceClaim(request, env);
+    }
+
+    // Health (kein Device-Check nötig)
     if (path === '/health'         && request.method === 'GET')  return healthCheck(request, env);
+
+    // Device-Token Check für alle folgenden Endpoints
+    const deviceErr = await checkDeviceToken(request, env);
+    if (deviceErr) return deviceErr;
+
+    if (path === '/device/setup'   && request.method === 'POST') {
+      if (!await checkRateLimit(env, `setup:${ip}`, 5))  return json({ error: 'Too many requests' }, 429);
+      return deviceSetup(request, env);
+    }
+    if (path === '/feedback'       && request.method === 'POST') {
+      if (!await checkRateLimit(env, `feedback:${ip}`, 3)) return json({ error: 'Too many requests' }, 429);
+      return feedbackPost(request, env);
+    }
 
     // Admin-Endpoints (gesondert geschützt)
     if (path.startsWith('/admin/')) {
@@ -85,6 +116,19 @@ async function oauthStart(request, env, url) {
     state:         state,
   });
 
+  // BUG-042 Fix (v1.2.3): Mobile mit Notion-App installiert -> iOS Universal Links
+  // fangen api.notion.com ab und oeffnen die Notion-App statt Safari.
+  // meta-refresh umgeht Universal Links zuverlaessig (Standard-Workaround fuer iOS).
+  const ua = request.headers.get('User-Agent') || '';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+
+  if (isMobile) {
+    return new Response(oauthBridgePage(authUrl), {
+      headers: { 'Content-Type': 'text/html;charset=utf-8' }
+    });
+  }
+
+  // Desktop: sofortiger 302-Redirect (unveraendert)
   return Response.redirect(authUrl, 302);
 }
 
@@ -121,7 +165,10 @@ async function oauthCallback(request, env, url) {
   const appUrl   = env.APP_URL;
   const fragment = 'fb_token=' + encodeURIComponent(payload) + '&fb_state=' + encodeURIComponent(state);
 
-  return new Response(callbackPage('Verbindung erfolgreich!', 'FinanceBird wurde mit deinem Notion verbunden.', fragment, appUrl, payload), {
+  const ua = request.headers.get('User-Agent') || '';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+
+  return new Response(callbackPage('Verbindung erfolgreich!', 'FinanceBird wurde mit deinem Notion verbunden.', fragment, appUrl, payload, isMobile), {
     headers: { 'Content-Type': 'text/html;charset=utf-8' }
   });
 }
@@ -160,6 +207,66 @@ async function licenseVerify(request, env) {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Device Registration (Sprint 1: Triple-Auth)
+───────────────────────────────────────────────────────────── */
+
+async function deviceRegister(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'invalid_request' }, 400); }
+
+  // Lizenz-Key aus Header (bereits durch Secret-Check gegangen)
+  const licenseKey = (request.headers.get('X-FB-License') || '').toUpperCase().trim();
+  if (!licenseKey || !licenseKey.startsWith('LK-')) {
+    return json({ error: 'license_required' }, 400);
+  }
+
+  // Lizenz muss gültig sein
+  const entry = await env.OAUTH_KV.get('license:' + licenseKey, { type: 'json' }).catch(() => null);
+  if (!entry || entry.active === false) {
+    return json({ error: 'invalid_license' }, 403);
+  }
+
+  // Device-Token generieren (32 hex chars)
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  const token = Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+
+  // In KV speichern: device:{licenseKey}:{token}
+  const deviceData = {
+    created: new Date().toISOString(),
+    userAgent: (body.userAgent || '').slice(0, 500),
+    lastSeen: new Date().toISOString(),
+  };
+  await env.OAUTH_KV.put(`device:${licenseKey}:${token}`, JSON.stringify(deviceData));
+
+  return json({ token });
+}
+
+async function checkDeviceToken(request, env) {
+  const deviceToken = (request.headers.get('X-FB-Device') || '').trim();
+  const licenseKey  = (request.headers.get('X-FB-License') || '').toUpperCase().trim();
+
+  if (!deviceToken || !licenseKey) {
+    return json({ error: 'device_not_registered', action: 'reauth' }, 401);
+  }
+
+  const kvKey = `device:${licenseKey}:${deviceToken}`;
+  const deviceData = await env.OAUTH_KV.get(kvKey, { type: 'json' }).catch(() => null);
+  if (!deviceData) {
+    return json({ error: 'device_not_registered', action: 'reauth' }, 401);
+  }
+
+  // lastSeen aktualisieren (max 1×/Stunde um KV-Writes zu sparen)
+  const now = new Date().toISOString();
+  if (!deviceData.lastSeen || deviceData.lastSeen.slice(0, 13) !== now.slice(0, 13)) {
+    deviceData.lastSeen = now;
+    env.OAUTH_KV.put(kvKey, JSON.stringify(deviceData)).catch(() => {});
+  }
+
+  return null; // kein Fehler — Token gültig
+}
+
+/* ─────────────────────────────────────────────────────────────
    Device Pairing
 ───────────────────────────────────────────────────────────── */
 
@@ -195,7 +302,17 @@ async function deviceClaim(request, env) {
   const stored = await env.OAUTH_KV.get('pair:' + code, { type: 'json' }).catch(() => null);
   if (!stored) return json({ error: 'expired' }, 410);
 
-  await env.OAUTH_KV.delete('pair:' + code);
+  // S14: Max 5 claims instead of one-shot delete (BL-059 / BUG-049)
+  const claims = (stored.claims || 0) + 1;
+  if (claims >= 5) {
+    await env.OAUTH_KV.delete('pair:' + code);
+    return json({ error: 'expired' }, 410);
+  }
+  // Increment counter, preserve remaining TTL
+  const remainingTtl = Math.max(1, Math.floor((new Date(stored.expiresAt) - Date.now()) / 1000));
+  await env.OAUTH_KV.put('pair:' + code, JSON.stringify({
+    ...stored, claims
+  }), { expirationTtl: remainingTtl });
 
   const licKey = (stored.licenseKey || '').toUpperCase();
   const entry  = await env.OAUTH_KV.get('license:' + licKey, { type: 'json' }).catch(() => null);
@@ -215,6 +332,8 @@ async function feedbackPost(request, env) {
   const { message, context } = body;
   if (!message) return json({ error: 'message required' }, 400);
 
+  const license = (request.headers.get('X-FB-License') || '').slice(0, 20);
+
   const notionResp = await fetch('https://api.notion.com/v1/pages', {
     method:  'POST',
     headers: {
@@ -226,8 +345,12 @@ async function feedbackPost(request, env) {
       parent:     { database_id: env.FEEDBACK_DB_ID },
       properties: {
         'Nachricht': { title: [{ text: { content: (message || '').slice(0, 2000) } }] },
-        'Kontext':   { rich_text: [{ text: { content: (context || '').slice(0, 500) } }] },
+        'Typ':       { select: { name: body.type || 'bug' } },
+        'Kontext':   { rich_text: [{ text: { content: (context || '').slice(0, 2000) } }] },
+        'Version':   { rich_text: [{ text: { content: (body.version || '').slice(0, 50) } }] },
+        'Lizenz':    { rich_text: [{ text: { content: license } }] },
         'Datum':     { date: { start: new Date().toISOString() } },
+        'Status':    { select: { name: 'Neu' } },
       },
     }),
   });
@@ -333,10 +456,13 @@ async function adminListFeedback(request, env) {
       return {
         id:      page.id,
         date:    page.created_time,
-        message: props['Name']?.title?.[0]?.plain_text || props['Message']?.title?.[0]?.plain_text || '',
-        context: props['Context']?.rich_text?.[0]?.plain_text || '',
-        email:   props['Email']?.email || '',
+        message: props['Nachricht']?.title?.[0]?.plain_text || props['Name']?.title?.[0]?.plain_text || props['Message']?.title?.[0]?.plain_text || '',
+        type:    props['Typ']?.select?.name || '',
+        context: props['Kontext']?.rich_text?.[0]?.plain_text || props['Context']?.rich_text?.[0]?.plain_text || '',
         version: props['Version']?.rich_text?.[0]?.plain_text || '',
+        license: props['Lizenz']?.rich_text?.[0]?.plain_text || '',
+        status:  props['Status']?.select?.name || '',
+        email:   props['Email']?.email || '',
       };
     });
     return json({ feedbacks, total: feedbacks.length });
@@ -349,7 +475,7 @@ async function adminListFeedback(request, env) {
    Callback-Page
 ───────────────────────────────────────────────────────────── */
 
-function callbackPage(title, message, fragment, appUrl, payload) {
+function callbackPage(title, message, fragment, appUrl, payload, isMobile) {
   const redirectUrl    = fragment ? appUrl + '#' + fragment : null;
   const escapedPayload = (payload || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   return `<!DOCTYPE html>
@@ -364,20 +490,32 @@ function callbackPage(title, message, fragment, appUrl, payload) {
   h1 { font-size:22px; margin-bottom:8px; }
   p  { font-size:14px; color:#7a6a5a; line-height:1.6; }
   .btn { display:inline-block; margin-top:20px; padding:12px 24px; background:#c4441a; color:white; border-radius:10px; text-decoration:none; font-weight:600; font-size:14px; }
+  .btn-subtle { display:inline-block; margin-top:12px; padding:10px 20px; background:none; color:#7a6a5a; border:1.5px solid #d5cdc2; border-radius:10px; text-decoration:none; font-size:13px; }
   code { background:#f4ede4; padding:8px 12px; border-radius:6px; font-family:monospace; font-size:11px; word-break:break-all; display:block; margin-top:12px; cursor:pointer; user-select:all; max-height:80px; overflow-y:auto; text-align:left; }
+  .fallback { display:none; margin-top:20px; padding-top:16px; border-top:1px solid #e8e0d6; }
 </style>
-${redirectUrl ? '<script>window.location.replace("' + redirectUrl + '");</script>' : ''}
+<script>
+${isMobile && redirectUrl
+  ? `// S12 BUG-037: Mobile auto-redirect nach 1.5s
+setTimeout(function() { window.location.href = "${redirectUrl.replace(/"/g, '\\"')}"; }, 1500);`
+  : `// Desktop: Tab schliessen nach 2s, Fallback nach 4s
+setTimeout(function() { try { window.close(); } catch(e) {} }, 2000);
+setTimeout(function() { var fb = document.getElementById('fallback'); if (fb) fb.style.display = 'block'; }, 4000);`
+}
+</script>
 </head>
 <body>
 <div class="card">
   <div style="font-size:48px;margin-bottom:12px">${title.includes('erfolgreich') ? '✅' : '❌'}</div>
   <h1>${title.replace(/</g,'&lt;')}</h1>
   <p>${message}</p>
-  ${redirectUrl
-    ? '<a href="' + redirectUrl + '" class="btn">Zurück zu FinanceBird →</a><p style="margin-top:16px;font-size:11px;color:#b0a090">Falls der Redirect nicht funktioniert, kopiere diesen Token und füge ihn in der App ein:</p><code onclick="navigator.clipboard.writeText(this.textContent).then(()=>this.style.background=\'#e8f3ea\')">' + escapedPayload + '</code>'
-    : (escapedPayload
-      ? '<p style="margin-top:16px;font-size:12px">Kein automatischer Redirect möglich. Kopiere diesen Token:</p><code onclick="navigator.clipboard.writeText(this.textContent).then(()=>this.style.background=\'#e8f3ea\')">' + escapedPayload + '</code>'
-      : '<p style="margin-top:16px;font-size:12px;color:#c4441a">Verbindung fehlgeschlagen. Bitte erneut versuchen.</p>')
+  ${isMobile && redirectUrl
+    ? '<p style="margin-top:16px;font-size:14px;color:#2c1f0e;font-weight:600">Du wirst automatisch zurückgeleitet…</p><p style="font-size:12px;color:#7a6a5a;margin-top:8px"><a href="' + redirectUrl + '" style="color:#c4441a">Falls nicht, hier tippen →</a></p>'
+    : (redirectUrl
+      ? '<p style="margin-top:16px;font-size:15px;color:#2c1f0e;font-weight:600">Du kannst dieses Fenster schliessen.</p><p style="font-size:13px;color:#7a6a5a;margin-top:6px">Die Verbindung wird im anderen Tab automatisch erkannt.</p><div id="fallback" class="fallback"><p style="font-size:12px;color:#b0a090;margin-bottom:8px">Tab hat sich nicht geschlossen?</p><a href="' + redirectUrl + '" class="btn-subtle">Manuell zurück zu FinanceBird →</a></div>'
+      : (escapedPayload
+        ? '<p style="margin-top:16px;font-size:12px">Kein automatischer Redirect möglich. Kopiere diesen Token:</p><code onclick="navigator.clipboard.writeText(this.textContent).then(()=>this.style.background=\'#e8f3ea\')">' + escapedPayload + '</code>'
+        : '<p style="margin-top:16px;font-size:12px;color:#c4441a">Verbindung fehlgeschlagen. Bitte erneut versuchen.</p>'))
   }
 </div>
 </body>
@@ -385,14 +523,77 @@ ${redirectUrl ? '<script>window.location.replace("' + redirectUrl + '");</script
 }
 
 /* ─────────────────────────────────────────────────────────────
+   OAuth Bridge Page (BUG-042, v1.2.3)
+───────────────────────────────────────────────────────────── */
+
+function oauthBridgePage(authUrl) {
+  const escaped = authUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="1;url=${escaped}">
+<title>FinanceBird — Verbindung</title>
+<style>
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#faf6f1; color:#2c1f0e; }
+  .card { text-align:center; padding:32px 28px; }
+  .spinner { width:32px; height:32px; border:3px solid #e8e0d6; border-top-color:#c4441a; border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="spinner"></div>
+  <div style="font-size:15px;font-weight:600;margin-bottom:6px">Verbindung mit Notion</div>
+  <div style="font-size:13px;color:#7a6a5a">Einen Moment…</div>
+</div>
+</body>
+</html>`;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Rate Limiting (S12 BL-053)
+───────────────────────────────────────────────────────────── */
+
+async function checkRateLimit(env, key, maxPerMinute = 10) {
+  const rlKey = 'rl:' + key;
+  try {
+    const entry = await env.OAUTH_KV.get(rlKey, { type: 'json' });
+    const now = Date.now();
+    if (entry && entry.count >= maxPerMinute && (now - entry.start) < 60000) {
+      return false; // rate limited
+    }
+    if (!entry || (now - entry.start) >= 60000) {
+      await env.OAUTH_KV.put(rlKey, JSON.stringify({ count: 1, start: now }), { expirationTtl: 120 });
+    } else {
+      entry.count++;
+      await env.OAUTH_KV.put(rlKey, JSON.stringify(entry), { expirationTtl: 120 });
+    }
+  } catch (e) {
+    // KV error — fail open
+    console.error('Rate limit check failed:', e);
+  }
+  return true;
+}
+
+/* ─────────────────────────────────────────────────────────────
    Helpers
 ───────────────────────────────────────────────────────────── */
 
-function corsHeaders() {
+function corsHeaders(request) {
+  const origin = request?.headers?.get('Origin') || '';
+  const allowed = [
+    'https://financebird.app',
+    'https://financebird.github.io',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+  ];
+  const allowOrigin = allowed.includes(origin) ? origin : allowed[0];
   return {
-    'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-FB-Key, X-FB-License, X-FB-Admin',
+    'Access-Control-Allow-Origin':  allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Notion-Version, X-FB-Key, X-FB-License, X-FB-Admin, X-FB-Device',
   };
 }
 

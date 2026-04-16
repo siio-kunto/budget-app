@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.24c.2026-04-15">
+<meta name="fb-version" content="2.25a.2026-04-16">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3374,7 +3374,10 @@ const TimeAdapterInterface = {
   },
   async getWorkspaceId() {
     throw new Error('Not implemented');
-  }
+  },
+  // BUG-074: Default damit optional chaining nicht false positives liefert
+  isConfigured() { return false; },
+  getProviderName() { return 'Unknown'; },
 };
 
 /* ══════════════════════════════════════════════════════
@@ -3583,7 +3586,7 @@ function gdriveUpdateConfig(keyPath, value) {
   renderEinstellungen(); // live preview update
 }
 
-/** Render Belege-Ablage card content for Einstellungen */
+/** Render Belege-Ablage card content for Einstellungen — Sprint 5 BUG-041: nur noch Konfiguration */
 function renderGDriveEinstellungenCard() {
   const cfg = getGDriveConfig();
   const yr = new Date().getFullYear();
@@ -3597,17 +3600,11 @@ function renderGDriveEinstellungenCard() {
   ];
   return `
     <div style="font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5">
-      FinanceBird speichert Belege in deinem Google Drive. Du kannst Ordnernamen anpassen — die App merkt sich die Folder-IDs, nicht die Namen.
+      ${gdriveConfigured
+        ? 'Belege landen in deinem Google Drive. Du kannst Ordnernamen anpassen — die App merkt sich die Folder-IDs, nicht die Namen.'
+        : 'Verbinde Google Drive in der Verbindungen-Karte oben, danach kannst du hier die Ordnerstruktur anpassen.'}
     </div>
-    <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:600;font-size:14px">Google Drive</div>
-      <div>
-        ${gdriveConfigured
-          ? '<span style="font-size:12px;color:var(--green)">✅ Verbunden</span>'
-          : '<button class="btn btn-primary btn-sm" onclick="settingsConnectGDrive()">Verbinden</button>'}
-      </div>
-    </div>
-    <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+    <div style="padding:14px 0;border-bottom:1px solid var(--border);${gdriveConfigured ? '' : 'opacity:0.5;pointer-events:none;'}">
       ${fields.map(f => `
       <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;align-items:center;margin-bottom:8px">
         <label style="font-size:13px;color:var(--ink2)">${esc(f.label)}${f.help ? helpBtn(f.help) : ''}</label>
@@ -3640,10 +3637,32 @@ async function settingsConnectGDrive() {
     await getGDriveToken();
     await getGDriveParent(); // S12 BUG-033: Ordner sofort erstellen
     showToast('success', '📎', 'Google Drive verbunden', 'Belege werden automatisch abgelegt.');
+    // Sprint 5 BUG-041: Provider-Selector-State aktualisieren
+    if (!AppState.providers) AppState.providers = {};
+    AppState.providers.storage = 'gdrive';
+    saveAppState();
     renderEinstellungen();
   } catch(e) {
-    showToast('error', '📎', 'Verbindung fehlgeschlagen', 'Versuche es nochmal.');
+    showToast('error', '📎', 'Verbindung fehlgeschlagen', 'Versuche es nochmal. Falls das Problem bleibt, melde dich via Feedback.');
   }
+}
+
+/** Sprint 5 BUG-041: Disconnect GDrive vom Einstellungen-Flow */
+function settingsDisconnectGDrive() {
+  if (!confirm('Google Drive trennen? Deine Belege bleiben in Google Drive — FinanceBird verliert nur die Verbindung.')) return;
+  saveLocal('fb_gdrive_parent', null);
+  saveLocal('fb_gdrive_tier_business_tier', null);
+  saveLocal('fb_gdrive_tier_private_tier', null);
+  sessionStorage.removeItem('fb_gdrive_token');
+  showToast('success', '✂️', 'Google Drive getrennt', 'Du kannst jederzeit wieder verbinden.');
+  renderEinstellungen();
+}
+
+/** Sprint 5 BUG-041: Ordner in Google Drive öffnen */
+function openGDriveFolder() {
+  const parent = loadLocal('fb_gdrive_parent', null);
+  if (!parent) { showToast('info', '📁', 'Kein Ordner gesetzt', 'Bitte zuerst Google Drive verbinden.'); return; }
+  window.open('https://drive.google.com/drive/folders/' + parent, '_blank', 'noopener');
 }
 
 /** Save folder ID after first creation (Folder Targets Architecture) */
@@ -4646,6 +4665,38 @@ NotionAdapter.flushQueue = async function() {
   for (const entry of pending) {
     queueSetStatus(entry.id, 'sending');
     try {
+      // Sprint 5 BL-074-Item: upload_receipt → GDrive-Upload + Booking-Update
+      if (entry.op === 'upload_receipt') {
+        const storage = getActiveStorageAdapter();
+        if (!storage || !storage.isConnected()) throw new Error('Storage-Adapter nicht verbunden');
+        const b = Store.buchungen.find(x => x._id === entry.bookingId);
+        if (!b) throw new Error('Buchung nicht mehr vorhanden');
+        // base64 → Blob
+        const base64 = entry.fileBase64.split(',')[1] || entry.fileBase64;
+        const byteChars = atob(base64);
+        const byteArray = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArray], { type: entry.mimeType || 'application/octet-stream' });
+        const year = (b.date || toDay()).slice(0, 4);
+        const bereich = b.bereich === 'Privat' ? 'private' : 'business';
+        const type = b.type === 'Einnahme' ? 'income' : 'expense';
+        // Filename from booking context
+        const isPDF = (entry.mimeType === 'application/pdf') || /\.pdf$/i.test(entry.filename);
+        const ext = isPDF ? 'pdf' : (entry.filename.split('.').pop() || 'jpg');
+        const fn = erfBuildFilename(ext, b.date || toDay(), b.amount || 0, b.cat || '', b.desc || 'beleg');
+        const up = await storage.uploadReceipt(blob, fn, { year, bereich, type });
+        // Booking updaten (direkter notionUpdate — wir sind ja schon im Notion-Adapter-Flush)
+        const props = bookingToProps({ receiptFile: up.filename, receiptLink: up.link });
+        const result = await notionUpdate(entry.bookingId, props);
+        if (result && result.object === 'error') throw new Error(result.message);
+        // Lokalen Store aktualisieren
+        b.receiptFile = up.filename;
+        b.receiptLink = up.link;
+        saveCache('buchungen');
+        queueRemove(entry.id);
+        sent++;
+        continue;
+      }
       // Sanitize: remove select properties with empty name (Notion rejects these)
       if (entry.props) {
         for (const [k, v] of Object.entries(entry.props)) {
@@ -5124,7 +5175,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.24c.2026-04-15';
+const APP_VERSION = '2.25a.2026-04-16';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5141,6 +5192,46 @@ function queueAdd(entry) {
 function queueRemove(id) {
   saveLocal(QUEUE_KEY, loadLocal(QUEUE_KEY, []).filter(e => e.id !== id));
   updateQueueBanner();
+}
+
+/* Sprint 5 BL-074-Item: Beleg-Upload in Queue aufnehmen (Retry bei Offline/Error)
+   Option A aus Briefing: File als base64 in localStorage, Limit 3MB, max 5 Entries.
+   Bei Overflow wird der älteste upload_receipt Entry verworfen + User informiert. */
+async function queueAddReceipt(bookingId, file) {
+  const MAX_SIZE = 3 * 1024 * 1024; // 3MB
+  const MAX_ENTRIES = 5;
+  if (file.size > MAX_SIZE) {
+    throw new Error('Datei zu gross für Retry-Queue (max 3MB). Bitte verkleinern oder mit Internet erneut versuchen.');
+  }
+  // Overflow-Policy: ältesten upload_receipt-Entry entfernen wenn schon 5 da
+  const q = loadLocal(QUEUE_KEY, []);
+  const receipts = q.filter(e => e.op === 'upload_receipt');
+  if (receipts.length >= MAX_ENTRIES) {
+    const oldest = receipts.sort((a, b) => a.ts.localeCompare(b.ts))[0];
+    queueRemove(oldest.id);
+    showToast('warning', '🗑', 'Beleg-Queue voll',
+      'Ein älterer Beleg-Upload wurde aus der Warteschlange entfernt. Er kann später erneut angehängt werden.');
+  }
+  // File → base64
+  const base64 = await _fileToBase64(file);
+  return queueAdd({
+    op: 'upload_receipt',
+    bookingId,
+    fileBase64: base64,
+    mimeType: file.type || 'application/octet-stream',
+    filename: file.name || 'beleg',
+    size: file.size,
+    meta: { desc: 'attach-receipt', type: 'upload_receipt' }
+  });
+}
+
+function _fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result); // dataURL incl. prefix
+    reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden'));
+    reader.readAsDataURL(file);
+  });
 }
 
 function queueSetStatus(id, status, error = null) {
@@ -5256,12 +5347,20 @@ async function writeWithQueue(dbId, props, meta = {}) {
 }
 
 function updateQueueBanner() {
-  const q = loadLocal(QUEUE_KEY, []).filter(e => e.status === 'pending' || e.status === 'error');
+  const all = loadLocal(QUEUE_KEY, []).filter(e => e.status === 'pending' || e.status === 'error');
   const banner   = document.getElementById('queueBanner');
   const countEl  = document.getElementById('queueCount');
   if (!banner || !countEl) return;
-  countEl.textContent = q.length;
-  banner.classList.toggle('show', q.length > 0);
+  // Sprint 5 BL-074-Item: Belege separat zählen im Banner-Text
+  const receipts = all.filter(e => e.op === 'upload_receipt').length;
+  if (receipts > 0 && receipts !== all.length) {
+    countEl.textContent = all.length + ' (davon ' + receipts + ' Beleg' + (receipts > 1 ? 'e' : '') + ')';
+  } else if (receipts > 0 && receipts === all.length) {
+    countEl.textContent = receipts + ' Beleg' + (receipts > 1 ? 'e' : '');
+  } else {
+    countEl.textContent = all.length;
+  }
+  banner.classList.toggle('show', all.length > 0);
 }
 
 
@@ -5904,6 +6003,10 @@ const InboxEngine = {
 const CLOCKIFY_API = 'https://api.clockify.me/api/v1';
 
 const ClockifyAdapter = Object.create(TimeAdapterInterface);
+
+// BUG-074: Adapter braucht isConfigured, sonst liefert optional chaining undefined → false positive in healthSummary
+ClockifyAdapter.isConfigured = function() { return !!loadLocal('fb_clockify_key', ''); };
+ClockifyAdapter.getProviderName = function() { return 'Clockify'; };
 
 ClockifyAdapter._fetch = async function(path) {
   const key = loadLocal('fb_clockify_key', '');
@@ -7872,6 +7975,86 @@ async function erfUploadReceipt(filename) {
   });
 }
 
+/* ══ Sprint 5 BL-072: Beleg nachträglich an Buchung anhängen ══ */
+
+/**
+ * Hängt eine Datei (File/Blob) als Beleg an eine bestehende Buchung.
+ * Nutzt den aktiven StorageAdapter und aktualisiert die Buchung via DataAdapter.
+ * Bei Fehler: Fallback auf Queue (BL-074-Item).
+ */
+async function attachReceiptToBooking(bookingId, file) {
+  const b = Store.buchungen.find(x => x._id === bookingId);
+  if (!b) { showToast('error', '❌', 'Buchung nicht gefunden', 'Aktualisiere die Liste und versuch es erneut.'); return; }
+  if (!file) return;
+
+  const storage = getActiveStorageAdapter();
+  if (!storage || !storage.isConnected()) {
+    showToast('warning', '📂', 'Google Drive nicht verbunden',
+      'Verbinde GDrive in den Einstellungen, dann erneut versuchen.',
+      [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 8000);
+    return;
+  }
+
+  // Map Store-Werte ('Geschäftlich'/'Privat', 'Einnahme'/'Ausgabe') auf Adapter-API ('business'/'private', 'income'/'expense')
+  const bereich = b.bereich === 'Privat' ? 'private' : 'business';
+  const type    = b.type    === 'Einnahme' ? 'income' : 'expense';
+  const year    = (b.date || toDay()).slice(0, 4);
+  const filename = file.name || ('Beleg_' + bookingId.slice(0, 8) + '.jpg');
+
+  showToast('info', '⏳', 'Beleg wird hochgeladen…', filename);
+
+  try {
+    const result = await storage.uploadReceipt(file, filename, { year, bereich, type });
+    // Buchung updaten
+    const db = getActiveDataAdapter();
+    await db.updateBooking(bookingId, { receiptLink: result.link, receiptFile: result.filename });
+    // Store lokal aktualisieren
+    b.receiptLink = result.link;
+    b.receiptFile = result.filename;
+    saveCache('buchungen');
+    renderBuchSubtab();
+    showToast('success', '📎', 'Beleg angehängt', result.filename);
+  } catch (e) {
+    console.error('[attachReceiptToBooking] Upload failed:', e);
+    // BL-074-Item: Queue-Eintrag für späteren Retry (Implementation folgt)
+    try {
+      if (typeof queueAddReceipt === 'function') {
+        await queueAddReceipt(bookingId, file);
+        showToast('warning', '📥', 'Upload fehlgeschlagen',
+          'In Warteschlange gestellt — wird bei nächstem Sync erneut versucht.');
+      } else {
+        showToast('error', '❌', 'Upload fehlgeschlagen',
+          (e.message || 'Unbekannter Fehler') + ' — erneut versuchen?');
+      }
+    } catch (qErr) {
+      showToast('error', '❌', 'Upload fehlgeschlagen',
+        'Kein Retry möglich: ' + (qErr.message || e.message || 'Unbekannt'));
+    }
+  }
+}
+
+/** Trigger für "Beleg hinzufügen"-Button in Buchungs-Detail: öffnet Datei-Picker */
+function triggerAttachReceipt(bookingId) {
+  window._lastAttachBookingId = bookingId; // A7: kein JSON.stringify im inline-onclick
+  let inp = document.getElementById('attachReceiptInput');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file';
+    inp.id   = 'attachReceiptInput';
+    inp.accept = 'image/*,application/pdf';
+    inp.style.display = 'none';
+    inp.addEventListener('change', async (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if (f && window._lastAttachBookingId) {
+        await attachReceiptToBooking(window._lastAttachBookingId, f);
+      }
+      inp.value = ''; // reset für nächsten Upload
+    });
+    document.body.appendChild(inp);
+  }
+  inp.click();
+}
+
 /* ── Public helpers for external callers ── */
 
 /** Open Erfassen directly in Buchung mode (e.g. from Cockpit FAB) */
@@ -9647,8 +9830,17 @@ function buchungRowHTML(b) {
           ${b.categoryStatus ? `<div><span style="color:var(--muted)">Status:</span> ${esc(b.categoryStatus)}</div>` : ''}
           ${b.teilabzug ? `<div><span style="color:var(--muted)">Teilabzug:</span> ${(b.teilabzug*100).toFixed(0)}%</div>` : ''}
           ${b.korrekturKat ? `<div style="color:var(--amber)"><span style="color:var(--muted)">Korrektur:</span> ${esc(b.korrekturKat)} (${esc(b.korrekturVon||'?')})</div>` : ''}
-          ${b.receiptLink ? `<div><span style="color:var(--muted)">Beleg:</span> <a href="${b.receiptLink}" target="_blank" style="color:var(--accent)">Öffnen ↗</a></div>` : ''}
           <div><span style="color:var(--muted)">Geändert:</span> ${b._edited ? new Date(b._edited).toLocaleDateString('de-CH') : '—'}</div>
+        </div>
+        <!-- Sprint 5 BL-072: Beleg-Block (Upload / Ersetzen / Öffnen) -->
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="color:var(--muted);font-weight:600">Beleg:</span>
+          ${b.receiptLink
+            ? `<a href="${b.receiptLink}" target="_blank" style="color:var(--accent);text-decoration:none">${esc(b.receiptFile || 'Öffnen')} ↗</a>
+               <button class="btn btn-outline btn-sm" onclick="triggerAttachReceipt('${b._id}')" style="font-size:11px;padding:4px 10px">Ersetzen</button>`
+            : `<span style="color:var(--muted)">Noch kein Beleg angehängt</span>
+               <button class="btn btn-outline btn-sm" onclick="triggerAttachReceipt('${b._id}')" style="font-size:11px;padding:4px 10px">📎 Beleg hinzufügen</button>`}
+          <span id="attachStatus_${b._id}" style="font-size:11px"></span>
         </div>
       </td>
     </tr>`;
@@ -10896,6 +11088,20 @@ function renderEinstellungen() {
               : '<button class="btn btn-primary btn-sm" onclick="changeTimeTrackerKey()">Verbinden</button>'}
           </div>
         </div>
+        <!-- Sprint 5 BUG-041: GDrive als 4. Provider in der Verbindungen-Card -->
+        <div style="padding:12px 0;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;font-size:14px">Google Drive (Belege) ${helpBtn('gdrive-root')}</div>
+            <div style="font-size:12px;color:var(--muted)">
+              ${GDriveAdapter.isConnected() ? '✅ Verbunden — Belege werden automatisch abgelegt' : '❌ Nicht verbunden'}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            ${GDriveAdapter.isConnected()
+              ? '<button class="btn btn-outline btn-sm" onclick="openGDriveFolder()">📁 Öffnen</button><button class="btn btn-danger btn-sm" onclick="settingsDisconnectGDrive()">✕</button>'
+              : '<button class="btn btn-primary btn-sm" onclick="settingsConnectGDrive()">Verbinden</button>'}
+          </div>
+        </div>
         <div style="padding:12px 0;display:flex;justify-content:space-between;align-items:center">
           <div>
             <div style="font-weight:600;font-size:14px">${esc(_visionName)} (Beleganalyse) ${helpBtn('claude-key')}</div>
@@ -11973,24 +12179,26 @@ async function healthCheck(level = 'instant') {
 
 function healthSummary(hc) {
   const issues = [];
-  if (!hc.license.key_present)  issues.push({ key: 'license_missing', label: 'Lizenz-Key fehlt', action: 'key_input' });
-  if (hc.license.key_valid === false) issues.push({ key: 'license_invalid', label: 'Lizenz-Key ungültig', action: 'key_input' });
-  if (!hc.notion.token_present) issues.push({ key: 'notion_missing', label: 'Notion nicht verbunden', action: 'notion_reauth' });
-  if (hc.notion.token_valid === false) issues.push({ key: 'notion_invalid', label: 'Notion-Verbindung abgelaufen', action: 'notion_reauth' });
-  if (hc.notion.dbs_found === false)  issues.push({ key: 'dbs_missing', label: 'Datenbanken fehlen', action: 'db_repair' });
-  // Sprint 4: Provider-aware Issues
+  if (!hc.license.key_present)  issues.push({ key: 'license_missing', label: 'Lizenz-Key fehlt', action: 'key_input', blocking: true });
+  if (hc.license.key_valid === false) issues.push({ key: 'license_invalid', label: 'Lizenz-Key ungültig', action: 'key_input', blocking: true });
+  if (!hc.notion.token_present) issues.push({ key: 'notion_missing', label: 'Notion nicht verbunden', action: 'notion_reauth', blocking: true });
+  if (hc.notion.token_valid === false) issues.push({ key: 'notion_invalid', label: 'Notion-Verbindung abgelaufen', action: 'notion_reauth', blocking: true });
+  if (hc.notion.dbs_found === false)  issues.push({ key: 'dbs_missing', label: 'Datenbanken fehlen', action: 'db_repair', blocking: true });
+  // Sprint 4 + BUG-074: Provider-aware Issues als ADVISORY (nicht blockend).
+  // Default providers sind clockify/claude — diese dürfen beim App-Start nicht blocken wenn kein Key.
   const _tp = AppState.providers || {};
   const _timeAdapter = getActiveTimeAdapter();
   if (_timeAdapter && !_timeAdapter.isConfigured?.()) {
     const _tn = _timeAdapter.getProviderName?.() || _tp.time;
-    issues.push({ key: 'time_not_configured', label: _tn + ' nicht konfiguriert', action: 'time_rekey' });
+    issues.push({ key: 'time_not_configured', label: _tn + ' nicht konfiguriert', action: 'time_rekey', blocking: false });
   }
   const _visionAdapter = getActiveVisionAdapter();
   if (_visionAdapter && !_visionAdapter.isConfigured?.()) {
     const _vn = _visionAdapter.getProviderName?.() || _tp.vision;
-    issues.push({ key: 'vision_not_configured', label: _vn + ' nicht konfiguriert', action: 'vision_rekey' });
+    issues.push({ key: 'vision_not_configured', label: _vn + ' nicht konfiguriert', action: 'vision_rekey', blocking: false });
   }
-  return { ok: issues.length === 0, issues };
+  const blocking = issues.filter(i => i.blocking);
+  return { ok: blocking.length === 0, issues, blockingIssues: blocking };
 }
 
 /* ── Settings Sync: Notion ↔ localStorage ── */
@@ -12228,9 +12436,25 @@ function v3RenderRepair(hc) {
   const container = document.getElementById('repairChecks');
   if (!container) return;
   const items = [];
+  // Primäre Blocker (wie bisher)
   if (!hc.license.key_present) items.push({ icon: '🗝', label: 'Lizenz-Key fehlt', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairLicense()">Key eingeben</button>' });
+  if (hc.license.key_valid === false) items.push({ icon: '🗝', label: 'Lizenz-Key ungültig oder abgelaufen', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairLicense()">Key eingeben</button>' });
   if (!hc.notion.token_present) items.push({ icon: '📊', label: 'Notion nicht verbunden', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Notion verbinden</button>' });
-  if (items.length === 0) items.push({ icon: '⚠️', label: 'Unbekanntes Problem', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Notion verbinden</button>' });
+  if (hc.notion.token_valid === false) items.push({ icon: '📊', label: 'Notion-Verbindung abgelaufen', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Neu verbinden</button>' });
+  if (hc.notion.dbs_found === false) items.push({ icon: '📁', label: 'Notion-Datenbanken fehlen', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Reparieren</button>' });
+  // BUG-074: Wenn nichts passt, Debug-Info statt "Unbekanntes Problem".
+  // Der Repair-Screen sollte gar nicht erreicht werden wenn nur advisory Issues da sind
+  // (healthSummary.ok prüft nur blocking). Dieser Branch ist ein Fallback für echte Edge-Cases.
+  if (items.length === 0) {
+    const summary = healthSummary(hc);
+    const diag = summary.issues.map(i => i.key).join(', ') || 'keine Issues';
+    items.push({
+      icon: '⚠️',
+      label: 'Status prüfen (' + diag + ')',
+      action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Notion neu verbinden</button>'
+    });
+    console.warn('[BUG-074] v3RenderRepair Fallback — Issues:', summary.issues, 'hc:', hc);
+  }
   container.innerHTML = items.map(i => '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)"><span style="font-size:20px">' + i.icon + '</span><div style="flex:1;font-size:14px;color:var(--ink)">' + i.label + '</div>' + i.action + '</div>').join('');
 }
 
@@ -12872,7 +13096,13 @@ function obUpdateIntTiles() {
   const clock  = document.getElementById('obTileClock');
   const ki     = document.getElementById('obTileKi');
   if (notion) { notion.className = 'onboard-tile' + (OB.notionConnected ? ' connected' : ' required'); }
-  if (drive)  { drive.className  = 'onboard-tile' + (OB.driveConnected  ? ' connected' : ''); }
+  if (drive)  {
+    // Sprint 5 BL-073: Sync OB-Flag mit Adapter-Status (bei Reopen)
+    OB.driveConnected = GDriveAdapter.isConnected();
+    drive.className  = 'onboard-tile' + (OB.driveConnected  ? ' connected' : '');
+    const sub = drive.querySelector('.tile-sub');
+    if (sub && OB.driveConnected) sub.textContent = 'Google Drive verbunden';
+  }
   if (clock)  {
     const timeKey = p.time ? loadLocal('fb_' + p.time + '_key', '') : '';
     OB.clockifyConnected = !!timeKey;
@@ -13051,11 +13281,16 @@ async function obConnectDrive() {
     await getGDriveToken(); // triggers Google Consent Screen
     await getGDriveParent(); // S12 BUG-033: Ordner sofort erstellen
     OB.driveConnected = true;
+    // Sprint 5 BL-073: Provider-Selector-State persistieren
+    if (!AppState.providers) AppState.providers = {};
+    AppState.providers.storage = 'gdrive';
+    saveAppState();
     obUpdateIntTiles();
     if (wrap) wrap.style.display = 'none';
     showToast('success', '📎', 'Google Drive verbunden', 'Ein Ordner «FinanceBird» wurde in deiner Ablage erstellt. Du kannst ihn frei verschieben — über die Folder-ID findet FinanceBird ihn trotzdem.');
   } catch(e) {
-    showToast('error', '📎', 'Verbindung fehlgeschlagen', 'Versuche es nochmal oder überspringe diesen Schritt.');
+    // Sprint 5 BL-073: Fehlermeldung mit Lösungsweg (Design-Prinzip 8)
+    showToast('error', '📎', 'Verbindung fehlgeschlagen', 'Schritt erneut versuchen oder via "Überspringen" später in den Einstellungen verbinden.');
   } finally {
     if (tile) tile.style.opacity = '';
   }
