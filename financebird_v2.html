@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.25a.2026-04-16">
+<meta name="fb-version" content="2.26a.2026-04-17">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2707,6 +2707,10 @@ const I18N = {
     /* Setup */
     'setup.connect':     'Mit Notion verbinden',
     'setup.token_label': 'Notion Integration Token',
+    /* Settings · Sprache */
+    'settings.lang.changed': 'Sprache geändert',
+    'settings.lang.de':      'Deutsch',
+    'settings.lang.en':      'English',
   },
   en: {
     'nav.cockpit':       'Cockpit',
@@ -2742,14 +2746,47 @@ const I18N = {
     'feedback.deleted':  'Deleted',
     'setup.connect':     'Connect to Notion',
     'setup.token_label': 'Notion Integration Token',
+    'settings.lang.changed': 'Language changed',
+    'settings.lang.de':      'Deutsch',
+    'settings.lang.en':      'English',
   }
 };
 
-/** Translate key to current locale */
-function t(key) {
+/** Translate key to current locale.
+ *  Supports variable interpolation: t('queue.items_pending', { count: 3 })
+ *  Fallback chain: current lang → de → key itself.
+ *  Signatur abwärtskompatibel zu t(key) (vars optional). */
+function t(key, vars) {
   const lang = AppState.lang || 'de';
-  return (I18N[lang] && I18N[lang][key]) || I18N['de'][key] || key;
+  const str = (I18N[lang] && I18N[lang][key]) || (I18N.de && I18N.de[key]) || key;
+  if (!vars) return str;
+  return str.replace(/\{(\w+)\}/g, function(m, k) {
+    return vars[k] != null ? vars[k] : m;
+  });
 }
+
+/** Developer-Tool: prüft i18n-Coverage.
+ *  Aufruf in Browser-Console: fbI18nAudit()
+ *  Zeigt: DE/EN Key-Counts, Missing EN (DE-Key ohne EN), Orphan EN (EN-Key ohne DE),
+ *         Empty EN (EN-Wert leer string) — Empty ist gewollt während Migration. */
+window.fbI18nAudit = function() {
+  const deKeys = Object.keys(I18N.de || {});
+  const enKeys = Object.keys(I18N.en || {});
+  const missing = deKeys.filter(function(k) { return !(k in I18N.en); });
+  const orphans = enKeys.filter(function(k) { return !(k in I18N.de); });
+  const empty   = enKeys.filter(function(k) { return I18N.en[k] === ''; });
+  console.table({
+    'DE keys':     deKeys.length,
+    'EN keys':     enKeys.length,
+    'Missing EN':  missing.length,
+    'Orphan EN':   orphans.length,
+    'Empty EN':    empty.length
+  });
+  if (missing.length) console.warn('Missing EN translations:', missing);
+  if (orphans.length) console.warn('Orphan EN keys (not in DE):', orphans);
+  if (empty.length)   console.info('Empty EN translations (migration in progress):', empty);
+  return { de: deKeys.length, en: enKeys.length, missing: missing, orphans: orphans, empty: empty };
+};
 
 
 /* ══════════════════════════════════════════════════════
@@ -5175,7 +5212,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.25a.2026-04-16';
+const APP_VERSION = '2.26a.2026-04-17';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -13660,9 +13697,13 @@ function logout() {
    ══════════════════════════════════════════════════════ */
 
 function setLang(lang) {
+  if (lang === AppState.lang) return;
   AppState.lang = lang;
   saveAppState();
-  showToast('success', '✅', 'Sprache geändert', lang === 'de' ? 'Deutsch' : 'English');
+  // Re-render alle sichtbaren Views, damit UI-Strings sofort in neuer Sprache erscheinen.
+  try { if (typeof renderAll === 'function') renderAll(); } catch(e) { console.error('[setLang] renderAll failed:', e); }
+  // Toast selbst in Zielsprache (nach AppState-Update, damit t() die neue Sprache benutzt).
+  showToast('success', '✅', t('settings.lang.changed'), t('settings.lang.' + lang));
 }
 
 function changeTimeTrackerKey() {
