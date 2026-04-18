@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.26a.2026-04-17">
+<meta name="fb-version" content="2.26a.2026-04-18">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1517,7 +1517,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div style="display:flex;align-items:flex-start;gap:10px;background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:28px;font-size:12px;color:var(--muted);line-height:1.6">
         <span style="font-size:16px;flex-shrink:0">🔒</span>
         <div>Du bekommst nicht einen Account auf unserem Server — du bekommst ein Werkzeug.<br>
-        <strong style="color:var(--ink2)">Deine Daten gehören dir, leben bei dir, und wir sehen sie nie.</strong></div>
+        <strong style="color:var(--ink2)">Deine Daten gehören dir, leben bei dir, und wir sehen sie nie.</strong><br>
+        <span style="font-size:11.5px">Deine Einstellungen und API-Keys werden verschlüsselt in deinem Notion gespeichert, damit du FinanceBird auf mehreren Geräten nutzen kannst.</span></div>
       </div>
 
       <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="onboardNext('welcome','license')">
@@ -1820,6 +1821,10 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div id="pairingError" style="color:var(--red);font-size:12px;min-height:18px;margin-bottom:16px"></div>
       <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" id="pairingBtn" onclick="v3SubmitPairingCode()">Verbinden</button>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">Keinen Code? <a href="#" onclick="v3PairingFallback();return false" style="color:var(--accent);text-decoration:none">Lizenz-Key direkt eingeben →</a></div>
+      <!-- BL-106: Klare Kommunikation dass GDrive gerätelokal ist -->
+      <div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:11.5px;color:var(--muted);line-height:1.5;text-align:left">
+        <strong style="color:var(--ink2)">Hinweis:</strong> Google Drive wird aus Sicherheitsgründen auf jedem Gerät neu verbunden.
+      </div>
     </div>
   </div>
 
@@ -3679,8 +3684,38 @@ async function settingsConnectGDrive() {
     AppState.providers.storage = 'gdrive';
     saveAppState();
     renderEinstellungen();
+    // BL-107: Auto-Flush pending Beleg-Queue nach erfolgreicher Re-Auth
+    await flushReceiptQueueAfterReauth();
   } catch(e) {
     showToast('error', '📎', 'Verbindung fehlgeschlagen', 'Versuche es nochmal. Falls das Problem bleibt, melde dich via Feedback.');
+  }
+}
+
+/**
+ * BL-107: Flushed pending upload_receipt-Einträge nach erfolgreicher GDrive-Re-Auth.
+ * Pre-/Post-Count-Workaround: flushQueue() selbst liefert keinen strukturierten Return.
+ * Zeigt Aggregat-Toast wenn Belege nachgeliefert wurden.
+ * Silent bei 0 pending Belegen (A10: Null-Path).
+ */
+async function flushReceiptQueueAfterReauth() {
+  try {
+    const before = countQueuedReceipts();
+    if (before === 0) return; // nichts zu tun
+    if (typeof flushQueue !== 'function') return;
+    await flushQueue();
+    const after = countQueuedReceipts();
+    const uploaded = before - after;
+    if (uploaded > 0) {
+      const msg = uploaded === 1
+        ? '1 Beleg nachgeliefert'
+        : uploaded + ' Belege nachgeliefert';
+      showToast('success', '✅', msg,
+        'Zwischengespeicherte Belege wurden hochgeladen.', [], null, 6000);
+    }
+    try { updateQueueBanner(); } catch(_) {}
+  } catch (e) {
+    console.warn('[flushReceiptQueueAfterReauth] flush failed:', e);
+    // Silent fail — nächster manueller Sync wird's erneut versuchen
   }
 }
 
@@ -5212,7 +5247,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.26a.2026-04-17';
+const APP_VERSION = '2.26a.2026-04-18';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5269,6 +5304,28 @@ function _fileToBase64(file) {
     reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden'));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * BL-107: Prüft ob in der Queue ein pending upload_receipt für diese bookingId existiert.
+ * Genutzt vom Detail-Overlay um "wartet auf Upload"-Hinweis zu zeigen.
+ * @param {string} bookingId
+ * @returns {object|null} Queue-Eintrag oder null (A10: Null-Path)
+ */
+function getQueuedReceiptFor(bookingId) {
+  if (!bookingId) return null;
+  const q = loadLocal(QUEUE_KEY, []);
+  return q.find(e => e.op === 'upload_receipt' && e.bookingId === bookingId) || null;
+}
+
+/**
+ * BL-107: Zählt pending upload_receipt-Einträge in der Queue.
+ * Genutzt für Pre-/Post-Flush-Differenz, da flushQueue() keinen strukturierten Return hat.
+ * @returns {number}
+ */
+function countQueuedReceipts() {
+  const q = loadLocal(QUEUE_KEY, []);
+  return q.filter(e => e.op === 'upload_receipt').length;
 }
 
 function queueSetStatus(id, status, error = null) {
@@ -8026,9 +8083,27 @@ async function attachReceiptToBooking(bookingId, file) {
 
   const storage = getActiveStorageAdapter();
   if (!storage || !storage.isConnected()) {
-    showToast('warning', '📂', 'Google Drive nicht verbunden',
-      'Verbinde GDrive in den Einstellungen, dann erneut versuchen.',
-      [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 8000);
+    // BL-107: Queue den Upload statt silent fail / Early Return
+    if (typeof queueAddReceipt === 'function') {
+      try {
+        await queueAddReceipt(bookingId, file);
+        showToast('info', '📂', 'Beleg zwischengespeichert',
+          'Google Drive neu verbinden — Beleg wird automatisch hochgeladen.',
+          [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 10000);
+        try { updateQueueBanner(); } catch(_) {}
+      } catch (queueErr) {
+        // Queue voll oder File zu gross — ehrliche Fehlermeldung mit Lösungsweg (Prinzip 8)
+        console.error('[attachReceipt] Queue-Add fehlgeschlagen', queueErr);
+        showToast('error', '⚠️', 'Beleg konnte nicht zwischengespeichert werden',
+          queueErr.message || 'Bitte Google Drive verbinden und erneut versuchen.',
+          [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 10000);
+      }
+    } else {
+      // Defensiver Fallback (sollte in v2.26+ nie eintreten)
+      showToast('warning', '📂', 'Google Drive nicht verbunden',
+        'Verbinde GDrive in den Einstellungen, dann erneut versuchen.',
+        [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 8000);
+    }
     return;
   }
 
@@ -9870,6 +9945,14 @@ function buchungRowHTML(b) {
           <div><span style="color:var(--muted)">Geändert:</span> ${b._edited ? new Date(b._edited).toLocaleDateString('de-CH') : '—'}</div>
         </div>
         <!-- Sprint 5 BL-072: Beleg-Block (Upload / Ersetzen / Öffnen) -->
+        <!-- BL-107: Wenn Queue-Eintrag existiert → pending Upload anzeigen -->
+        ${(() => {
+          const pending = getQueuedReceiptFor(b._id);
+          if (!pending) return '';
+          return `<div style="margin-top:10px;padding:8px 12px;background:var(--bg2);border-left:3px solid var(--amber);border-radius:6px;font-size:12px;color:var(--muted);line-height:1.5">
+            📂 Beleg <strong style="color:var(--ink2)">${esc(pending.filename || 'beleg')}</strong> wartet auf Upload — wird nachgeliefert sobald Google Drive verbunden ist.
+          </div>`;
+        })()}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="color:var(--muted);font-weight:600">Beleg:</span>
           ${b.receiptLink
@@ -11094,6 +11177,9 @@ function renderEinstellungen() {
     <div style="padding:0 0 20px">
       <!-- Notion & Auth -->
       <div class="section-head"><h3>Verbindungen</h3></div>
+      <div style="font-size:11px;color:var(--muted);margin:-8px 0 10px 0;font-family:'Courier Prime',monospace;letter-spacing:.02em">
+        🔒 Verschlüsselt synchronisiert via Notion
+      </div>
       <div class="card" style="margin-bottom:14px">
         <div class="card-title">Notion</div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
@@ -11118,6 +11204,9 @@ function renderEinstellungen() {
             <div style="font-size:12px;color:var(--muted)">
               ${cfKey ? '✅ Verbunden' + (cfLastSync ? ' · Sync: '+cfLastSync : ' · noch nie sync') : '❌ Nicht verbunden'}
             </div>
+            ${(AppState._decryptFailed && AppState._decryptFailed.includes(_timeId))
+              ? '<div style="font-size:11.5px;color:var(--red);margin-top:3px">🔑 Key konnte nicht entschlüsselt werden — bitte neu eingeben</div>'
+              : ''}
           </div>
           <div style="display:flex;gap:8px">
             ${cfKey
@@ -11143,6 +11232,9 @@ function renderEinstellungen() {
           <div>
             <div style="font-weight:600;font-size:14px">${esc(_visionName)} (Beleganalyse) ${helpBtn('claude-key')}</div>
             <div style="font-size:12px;color:var(--muted)">${claudeKey ? '✅ API Key gesetzt' : '❌ Nicht gesetzt'}</div>
+            ${(AppState._decryptFailed && AppState._decryptFailed.includes(_visionId))
+              ? '<div style="font-size:11.5px;color:var(--red);margin-top:3px">🔑 Key konnte nicht entschlüsselt werden — bitte neu eingeben</div>'
+              : ''}
           </div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-outline btn-sm" onclick="changeVisionKey()">✏️</button>
@@ -12240,6 +12332,40 @@ function healthSummary(hc) {
 
 /* ── Settings Sync: Notion ↔ localStorage ── */
 
+/**
+ * BL-106: Persistiert einen Provider-Key lokal UND (wenn möglich) verschlüsselt in Notion.
+ * Fallback-sicher: bei Notion-Fehler wird lokal trotzdem gespeichert, User-Feedback via Toast.
+ * Onboarding-Phase (noch keine Notion-Verbindung): reiner localStorage-Write, kein Error.
+ *
+ * @param {string} providerId — 'clockify' | 'claude' | 'toggl' | 'openai'
+ * @param {string|null} key — Klartext-Key oder '' / null zum Löschen
+ */
+async function persistProviderKey(providerId, key) {
+  const lsKey = 'fb_' + providerId + '_key';
+
+  // 1. Lokal IMMER zuerst (Fail-Safe)
+  if (key) {
+    saveLocal(lsKey, key);
+  } else {
+    try { localStorage.removeItem(lsKey); } catch(_) {}
+  }
+
+  // 2. Notion-Sync nur wenn Notion-Settings-DB und Auth verfügbar
+  //    (entspricht saveSettingsToNotion's eigenem Gate — A9: Code-verifiziert)
+  if (!DB.EINSTELLUNGEN || !Auth.isAuthenticated) {
+    return; // Onboarding-Phase oder Notion noch nicht connected — kein Error, lokal reicht
+  }
+
+  try {
+    await saveSettingsToNotion();
+  } catch (e) {
+    console.error('[persistProviderKey] Notion-Sync fehlgeschlagen', providerId, e);
+    showToast('warning', '⚠️', 'Notion-Sync',
+      'Key lokal gespeichert. Sync mit Notion später erneut versucht.');
+    // Silent fail auf Notion-Ebene — localStorage hat den Key, App funktioniert weiter.
+  }
+}
+
 async function saveSettingsToNotion() {
   if (!DB.EINSTELLUNGEN || !Auth.isAuthenticated) return;
   // Sprint 1 L6: API-Keys verschlüsselt in Notion speichern
@@ -12283,7 +12409,9 @@ async function loadSettingsFromNotion() {
     saveAppState();
     if (s.konten) { try { const k = JSON.parse(s.konten); if (Array.isArray(k)) { OB.accounts = k; saveLocal('fb_ob_accounts', k); } } catch {} }
     // Sprint 1 L6: API-Keys aus Notion entschlüsseln
+    // BL-106/S3: Fehlschläge sammeln, User aktiv informieren
     const lk = Auth.licenseKey;
+    AppState._decryptFailed = []; // bei jedem Load-Call frisch initialisieren (A10)
     let clockifyVal = s.clockify || '';
     let claudeVal   = s.claude || '';
     if (lk && clockifyVal) {
@@ -12294,6 +12422,7 @@ async function loadSettingsFromNotion() {
         // Heuristik: verschlüsselte Werte sind base64 und > 30 Zeichen
         if (clockifyVal.length > 30 && /^[A-Za-z0-9+/=]+$/.test(clockifyVal)) {
           console.warn('[Settings] Clockify-Key Entschlüsselung fehlgeschlagen');
+          AppState._decryptFailed.push('clockify');
           clockifyVal = '';
         }
         // Sonst: noch Klartext (pre-Encryption), behalten
@@ -12305,6 +12434,7 @@ async function loadSettingsFromNotion() {
       else if (claudeVal.length > 0) {
         if (claudeVal.length > 30 && /^[A-Za-z0-9+/=]+$/.test(claudeVal)) {
           console.warn('[Settings] Claude-Key Entschlüsselung fehlgeschlagen');
+          AppState._decryptFailed.push('claude');
           claudeVal = '';
         }
       }
@@ -12313,11 +12443,37 @@ async function loadSettingsFromNotion() {
     if (claudeVal) { saveLocal('fb_claude_key', claudeVal); OB.kiConnected = true; }
     // Sprint 3: Toggl + OpenAI Keys
     let togglVal = s.toggl || '';
-    if (lk && togglVal) { const dec = await fbDecrypt(togglVal, lk); if (dec) togglVal = dec; }
+    if (lk && togglVal) {
+      const dec = await fbDecrypt(togglVal, lk);
+      if (dec) { togglVal = dec; }
+      else if (togglVal.length > 30 && /^[A-Za-z0-9+/=]+$/.test(togglVal)) {
+        console.warn('[Settings] Toggl-Key Entschlüsselung fehlgeschlagen');
+        AppState._decryptFailed.push('toggl');
+        togglVal = '';
+      }
+    }
     if (togglVal) saveLocal('fb_toggl_key', togglVal);
     let openaiVal = s.openai || '';
-    if (lk && openaiVal) { const dec = await fbDecrypt(openaiVal, lk); if (dec) openaiVal = dec; }
+    if (lk && openaiVal) {
+      const dec = await fbDecrypt(openaiVal, lk);
+      if (dec) { openaiVal = dec; }
+      else if (openaiVal.length > 30 && /^[A-Za-z0-9+/=]+$/.test(openaiVal)) {
+        console.warn('[Settings] OpenAI-Key Entschlüsselung fehlgeschlagen');
+        AppState._decryptFailed.push('openai');
+        openaiVal = '';
+      }
+    }
     if (openaiVal) saveLocal('fb_openai_key', openaiVal);
+    // BL-106/S3: User informieren wenn Keys un-entschlüsselbar waren
+    if (AppState._decryptFailed.length > 0) {
+      const providerNames = AppState._decryptFailed.map(p =>
+        p === 'clockify' ? 'Clockify' : p === 'claude' ? 'Claude' : p === 'toggl' ? 'Toggl' : 'OpenAI'
+      ).join(', ');
+      setTimeout(() => {
+        showToast('warning', '🔑', 'Keys nicht entschlüsselbar',
+          providerNames + ': bitte einmal neu eingeben. Danach wieder auf allen Geräten verfügbar.', [], null, 0);
+      }, 800); // kleiner Delay, damit der Toast nach App-Start sichtbar ist
+    }
     // BUG-071: Sync cockpit layout from Notion (Notion = source of truth)
     try {
       const layoutJson = await db.loadSetting('cockpit_layout');
@@ -13325,6 +13481,8 @@ async function obConnectDrive() {
     obUpdateIntTiles();
     if (wrap) wrap.style.display = 'none';
     showToast('success', '📎', 'Google Drive verbunden', 'Ein Ordner «FinanceBird» wurde in deiner Ablage erstellt. Du kannst ihn frei verschieben — über die Folder-ID findet FinanceBird ihn trotzdem.');
+    // BL-107: Auto-Flush pending Beleg-Queue (falls Pairing-Szenario schon Belege gequeued hat)
+    await flushReceiptQueueAfterReauth();
   } catch(e) {
     // Sprint 5 BL-073: Fehlermeldung mit Lösungsweg (Design-Prinzip 8)
     showToast('error', '📎', 'Verbindung fehlgeschlagen', 'Schritt erneut versuchen oder via "Überspringen" später in den Einstellungen verbinden.');
@@ -13338,10 +13496,10 @@ function obConnectClockify() {
   if (wrap) wrap.style.display = wrap.style.display === 'none' ? '' : 'none';
 }
 
-function obSaveClockify() {
+async function obSaveClockify() {
   const key = document.getElementById('obClockifyKey')?.value?.trim();
   if (key) {
-    saveLocal('fb_clockify_key', key);
+    await persistProviderKey('clockify', key);  // BL-106: lokal + Notion-Sync
     OB.clockifyConnected = true;
     document.getElementById('obIntClockifyWrap').style.display = 'none';
     obUpdateIntTiles();
@@ -13354,10 +13512,10 @@ function obConnectKi() {
   if (wrap) wrap.style.display = wrap.style.display === 'none' ? '' : 'none';
 }
 
-function obSaveKi() {
+async function obSaveKi() {
   const key = document.getElementById('obKiKey')?.value?.trim();
   if (key) {
-    saveLocal('fb_claude_key', key);
+    await persistProviderKey('claude', key);  // BL-106: lokal + Notion-Sync
     OB.kiConnected = true;
     document.getElementById('obIntKiWrap').style.display = 'none';
     obUpdateIntTiles();
@@ -13706,32 +13864,32 @@ function setLang(lang) {
   showToast('success', '✅', t('settings.lang.changed'), t('settings.lang.' + lang));
 }
 
-function changeTimeTrackerKey() {
+async function changeTimeTrackerKey() {
   const providerId = AppState.providers?.time || 'clockify';
   const name = providerId === 'toggl' ? 'Toggl' : 'Clockify';
   const k = prompt(name + ' API Key:');
   if (!k) return;
-  saveLocal('fb_' + providerId + '_key', k.trim());
+  await persistProviderKey(providerId, k.trim());  // BL-106: lokal + Notion-Sync
   renderEinstellungen();
 }
-function clearTimeTrackerKey() {
+async function clearTimeTrackerKey() {
   const providerId = AppState.providers?.time || 'clockify';
-  localStorage.removeItem('fb_' + providerId + '_key');
+  await persistProviderKey(providerId, null);  // BL-106: lokal löschen + Notion-Sync
   renderEinstellungen();
 }
 
-function changeVisionKey() {
+async function changeVisionKey() {
   const providerId = AppState.providers?.vision || 'claude';
   const name = providerId === 'openai' ? 'OpenAI' : 'Claude';
   const hint = providerId === 'openai' ? 'api.openai.com' : 'console.anthropic.com';
   const k = prompt(name + ' API Key (' + hint + '):');
   if (!k) return;
-  saveLocal('fb_' + providerId + '_key', k.trim());
+  await persistProviderKey(providerId, k.trim());  // BL-106: lokal + Notion-Sync
   renderEinstellungen();
 }
-function clearVisionKey() {
+async function clearVisionKey() {
   const providerId = AppState.providers?.vision || 'claude';
-  localStorage.removeItem('fb_' + providerId + '_key');
+  await persistProviderKey(providerId, null);  // BL-106: lokal löschen + Notion-Sync
   renderEinstellungen();
 }
 
