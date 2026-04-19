@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.26a.2026-04-18">
+<meta name="fb-version" content="2.26c.2026-04-18">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1935,15 +1935,8 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div class="sidebar-logo">Finance<em>Bird</em></div>
       <button class="sidebar-close" onclick="closeSidebar()">×</button>
     </div>
-    <nav class="sidebar-nav" id="sidebarNav">
-      <div class="sidebar-item" data-tab="cockpit"      onclick="nav('cockpit')">      <span class="nav-icon">🦅</span> Cockpit</div>
-      <div class="sidebar-item" data-tab="buchhaltung"  onclick="nav('buchhaltung')">  <span class="nav-icon">🦩</span> Buchhaltung</div>
-      <div class="sidebar-item" data-tab="ziele"        onclick="nav('ziele')">        <span class="nav-icon">🐣</span> Ziele</div>
-      <div class="sidebar-item" data-tab="aktivitaeten" onclick="nav('aktivitaeten')"> <span class="nav-icon">🦚</span> Aktivitäten</div>
-      <div class="sidebar-item" data-tab="kompass"      onclick="nav('kompass')">      <span class="nav-icon">🦉</span> Kompass</div>
-      <div class="sidebar-item" data-tab="einstellungen" onclick="nav('einstellungen')"><span class="nav-icon">🦤</span> Einstellungen</div>
-      <div class="sidebar-item" onclick="closeSidebar();showFeedbackForm()"><span class="nav-icon">💬</span> Feedback</div>
-    </nav>
+    <!-- S28: Items via renderSidebar() — Labels aus I18N -->
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
     <div class="sidebar-footer">
       <a class="sidebar-contact" href="/cdn-cgi/l/email-protection#bfd7dad3d3d0ffd0ccc8ded3dbd4d0dad1d6d891dcd7">
         <span>✉</span> Kontakt
@@ -2716,6 +2709,102 @@ const I18N = {
     'settings.lang.changed': 'Sprache geändert',
     'settings.lang.de':      'Deutsch',
     'settings.lang.en':      'English',
+    /* Sidebar (S28 Sprint 6 Block 2 Teil 1) */
+    'sidebar.feedback':  'Feedback',
+    'sidebar.contact':   'Kontakt',
+    /* Banner + FAB (S28 Sprint 6 Block 2 Teil 1) */
+    'banner.offline':              'Offline — letzte Sync:',
+    'banner.offline_unknown':      'unbekannt',
+    'banner.offline_cache':        'Daten aus Cache',
+    'banner.queue_pending':        'Einträge ausstehend — tippen zum Senden',
+    'banner.queue_reason':         'Offline oder Fehler',
+    'fab.capture':                 'Erfassen',
+    /* Toasts Generic (S28 Sprint 6 Block 2 Teil 2) */
+    'toast.saved':                 'Gespeichert',
+    'toast.saved_sub':             'Änderungen übernommen.',
+    'toast.updated':               'Aktualisiert',
+    'toast.deleted':               'Gelöscht',
+    'toast.error_title':           'Fehler',
+    'toast.error_save':            'Speichern fehlgeschlagen',
+    'toast.error_delete':          'Löschen fehlgeschlagen',
+    'toast.error_update':          'Aktualisieren fehlgeschlagen',
+    'toast.error_network':         'Netzwerkfehler',
+    'toast.error_generic_sub':     'Bitte erneut versuchen.',
+    /* Toasts Sync (S28) */
+    'toast.sync_done':             'Synchronisiert',
+    'toast.sync_failed':           'Sync fehlgeschlagen',
+    'toast.sync_offline':          'Offline — später erneut versuchen',
+    'toast.reauth_needed':         'Notion neu verbinden',
+    /* Toasts Queue (S28) */
+    'toast.queue_flushed':         'Queue geleert',
+    'toast.queue_flushed_sub':     '{count} Einträge verarbeitet.',
+    'toast.queue_full':            'Queue voll',
+    'toast.queue_full_sub':        'Ein älterer Eintrag wurde entfernt.',
+    /* Toasts BUG-076 Beleg-Queue (S28) */
+    'toast.booking_income_saved':  'Einnahme gespeichert',
+    'toast.booking_expense_saved': 'Ausgabe gespeichert',
+    'toast.booking_updated':       'Buchung aktualisiert',
+    'toast.transfer_saved':        'Transfer gespeichert',
+    'toast.receipt_waiting':       'Beleg wartet',
+    'toast.receipt_reason_nogdrive': 'Google Drive nicht verbunden',
+    'toast.receipt_reason_failed':   'Upload fehlgeschlagen',
+    'toast.receipt_auto_hint':     'Beleg wird automatisch hochgeladen sobald verbunden.',
+    'toast.receipt_too_large':     'Beleg konnte nicht zwischengespeichert werden',
+    'toast.receipt_too_large_sub': 'Vermutlich zu gross. Bitte nachträglich anhängen.',
+    'toast.receipt_attach_queued': 'Beleg zwischengespeichert',
+    'toast.receipt_attach_queued_sub': 'Google Drive neu verbinden — Beleg wird automatisch hochgeladen.',
+    /* Toasts CRUD Entities (S28) */
+    'toast.booking_deleted':       'Buchung gelöscht',
+    'toast.invoice_saved':         'Rechnung gespeichert',
+    'toast.invoice_updated':       'Rechnung aktualisiert',
+    'toast.invoice_deleted':       'Rechnung gelöscht',
+    'toast.account_saved':         'Konto gespeichert',
+    'toast.account_deleted':       'Konto gelöscht',
+    'toast.goal_saved':            'Ziel gespeichert',
+    'toast.goal_deleted':          'Ziel gelöscht',
+    /* Actions — gemeinsame Button-Labels */
+    'action.settings_link':        'Einstellungen →',
+    'action.retry':                'Erneut versuchen',
+    'action.details':              'Details',
+    /* Toasts Hot-Zone Ergänzungen (S28 Sprint 6 Block 2 Teil 2a) */
+    'toast.booking_created':       'Buchung erstellt',
+    'toast.booking_created_from_invoice': 'Einnahme {amt} aus Rechnung {nr}',
+    'toast.booking_restored':      'Buchung wiederhergestellt',
+    'toast.receipt_attached':      'Beleg angehängt',
+    'toast.notion_connected':      'Notion verbunden',
+    'toast.notion_connected_fallback': 'OAuth erfolgreich',
+    'toast.gdrive_connected':      'Google Drive verbunden',
+    'toast.gdrive_connected_sub':  'Ein Ordner «FinanceBird» wurde in deiner Ablage erstellt. Du kannst ihn frei verschieben — über die Folder-ID findet FinanceBird ihn trotzdem.',
+    'toast.clockify_key_saved':    'Clockify Key erfasst',
+    'toast.clockify_key_saved_sub':'Wird beim Systemcheck geprüft.',
+    'toast.claude_key_saved':      'Claude Key erfasst',
+    'toast.claude_key_saved_sub':  'Wird beim Systemcheck geprüft.',
+    'toast.feedback_sent':         'Feedback gesendet',
+    'toast.feedback_sent_sub':     'Danke! Wir schauen uns das an.',
+    'toast.not_ready':             'Nicht bereit',
+    'toast.not_ready_sub':         'Bitte zuerst das Setup abschliessen (Notion verbinden).',
+    'toast.not_ready_action':      'Setup',
+    /* Toasts Gruppe A · Sync + DBs + Notion-Fehler (S28 Teil 2a) */
+    'toast.dbs_count_ready':       '{n} Datenbanken bereit',
+    'toast.dbs_ready':             'Alle Datenbanken bereit',
+    'toast.dbs_ready_sub':         'Deine Notion-Datenbanken sind vollständig eingerichtet.',
+    'toast.notion_error':          'Notion-Fehler',
+    'toast.recurrings_migrated':   '{n} Recurrings migriert',
+    'toast.recurrings_migrated_sub':'Von localStorage nach Notion',
+    'toast.n_failed':              '{n} fehlgeschlagen',
+    'toast.n_failed_check_notion': 'Bitte manuell in Notion prüfen',
+    'toast.sync_sent':             '{n} Einträge gesendet',
+    'toast.sync_sent_sub':         'Notion ist synchronisiert',
+    /* Toasts Gruppe B · CRUD Entities (S28 Teil 2a) */
+    'toast.fully_paid':            'Vollständig bezahlt',
+    'toast.partial_payment':       'Teilzahlung erfasst',
+    'toast.partial_payment_done':  'Abgeschlossen',
+    'toast.partial_payment_open':  '{amt} offen',
+    'toast.partial_received':      '{amt} erhalten',
+    'toast.account_created':       'Konto erstellt',
+    'toast.recurring_saved':       'Recurring erstellt',
+    'toast.recurring_updated':     'Recurring aktualisiert',
+    'toast.opening_balance_saved': 'Startsaldo gespeichert',
   },
   en: {
     'nav.cockpit':       'Cockpit',
@@ -2754,6 +2843,91 @@ const I18N = {
     'settings.lang.changed': 'Language changed',
     'settings.lang.de':      'Deutsch',
     'settings.lang.en':      'English',
+    'sidebar.feedback':  'Feedback',
+    'sidebar.contact':   'Contact',
+    'banner.offline':              'Offline — last sync:',
+    'banner.offline_unknown':      'unknown',
+    'banner.offline_cache':        'data from cache',
+    'banner.queue_pending':        'entries pending — tap to send',
+    'banner.queue_reason':         'Offline or error',
+    'fab.capture':                 'Capture',
+    'toast.saved':                 'Saved',
+    'toast.saved_sub':             'Changes applied.',
+    'toast.updated':               'Updated',
+    'toast.deleted':               'Deleted',
+    'toast.error_title':           'Error',
+    'toast.error_save':            'Save failed',
+    'toast.error_delete':          'Delete failed',
+    'toast.error_update':          'Update failed',
+    'toast.error_network':         'Network error',
+    'toast.error_generic_sub':     'Please try again.',
+    'toast.sync_done':             'Synced',
+    'toast.sync_failed':           'Sync failed',
+    'toast.sync_offline':          'Offline — retry later',
+    'toast.reauth_needed':         'Reconnect Notion',
+    'toast.queue_flushed':         'Queue cleared',
+    'toast.queue_flushed_sub':     '{count} entries processed.',
+    'toast.queue_full':            'Queue full',
+    'toast.queue_full_sub':        'An older entry was removed.',
+    'toast.booking_income_saved':  'Income saved',
+    'toast.booking_expense_saved': 'Expense saved',
+    'toast.booking_updated':       'Booking updated',
+    'toast.transfer_saved':        'Transfer saved',
+    'toast.receipt_waiting':       'Receipt pending',
+    'toast.receipt_reason_nogdrive': 'Google Drive not connected',
+    'toast.receipt_reason_failed':   'Upload failed',
+    'toast.receipt_auto_hint':     'Receipt will upload automatically once connected.',
+    'toast.receipt_too_large':     'Receipt could not be cached',
+    'toast.receipt_too_large_sub': 'Probably too large. Please attach later.',
+    'toast.receipt_attach_queued': 'Receipt cached',
+    'toast.receipt_attach_queued_sub': 'Reconnect Google Drive — receipt will upload automatically.',
+    'toast.booking_deleted':       'Booking deleted',
+    'toast.invoice_saved':         'Invoice saved',
+    'toast.invoice_updated':       'Invoice updated',
+    'toast.invoice_deleted':       'Invoice deleted',
+    'toast.account_saved':         'Account saved',
+    'toast.account_deleted':       'Account deleted',
+    'toast.goal_saved':            'Goal saved',
+    'toast.goal_deleted':          'Goal deleted',
+    'action.settings_link':        'Settings →',
+    'action.retry':                'Retry',
+    'action.details':              'Details',
+    'toast.booking_created':       'Booking created',
+    'toast.booking_created_from_invoice': 'Income {amt} from invoice {nr}',
+    'toast.booking_restored':      'Booking restored',
+    'toast.receipt_attached':      'Receipt attached',
+    'toast.notion_connected':      'Notion connected',
+    'toast.notion_connected_fallback': 'OAuth successful',
+    'toast.gdrive_connected':      'Google Drive connected',
+    'toast.gdrive_connected_sub':  'A folder «FinanceBird» was created in your drive. You can freely move it — FinanceBird locates it via Folder-ID.',
+    'toast.clockify_key_saved':    'Clockify key saved',
+    'toast.clockify_key_saved_sub':'Will be checked on system check.',
+    'toast.claude_key_saved':      'Claude key saved',
+    'toast.claude_key_saved_sub':  'Will be checked on system check.',
+    'toast.feedback_sent':         'Feedback sent',
+    'toast.feedback_sent_sub':     'Thanks! We\u2019ll look into it.',
+    'toast.not_ready':             'Not ready',
+    'toast.not_ready_sub':         'Please finish setup first (connect Notion).',
+    'toast.not_ready_action':      'Setup',
+    'toast.dbs_count_ready':       '{n} databases ready',
+    'toast.dbs_ready':             'All databases ready',
+    'toast.dbs_ready_sub':         'Your Notion databases are fully set up.',
+    'toast.notion_error':          'Notion error',
+    'toast.recurrings_migrated':   '{n} recurrings migrated',
+    'toast.recurrings_migrated_sub':'From localStorage to Notion',
+    'toast.n_failed':              '{n} failed',
+    'toast.n_failed_check_notion': 'Please check manually in Notion',
+    'toast.sync_sent':             '{n} entries sent',
+    'toast.sync_sent_sub':         'Notion is synced',
+    'toast.fully_paid':            'Fully paid',
+    'toast.partial_payment':       'Partial payment recorded',
+    'toast.partial_payment_done':  'Completed',
+    'toast.partial_payment_open':  '{amt} open',
+    'toast.partial_received':      '{amt} received',
+    'toast.account_created':       'Account created',
+    'toast.recurring_saved':       'Recurring created',
+    'toast.recurring_updated':     'Recurring updated',
+    'toast.opening_balance_saved': 'Opening balance saved',
   }
 };
 
@@ -3214,7 +3388,7 @@ const Auth = {
     localStorage.removeItem('fb_oauth_state');
     localStorage.removeItem('fb_oauth_worker');
 
-    showToast('success', '✅', 'Notion verbunden', tokenData.workspace_name || 'OAuth erfolgreich');
+    showToast('success', '✅', t('toast.notion_connected'), tokenData.workspace_name || t('toast.notion_connected_fallback'));
 
     // Sprint 1: Device-Token registrieren (falls noch keiner vorhanden)
     if (!loadLocal('fb_device_token', null) && this.licenseKey) {
@@ -3261,7 +3435,7 @@ const Auth = {
         saveLocal('fb_db_ids', DB);
         console.log('[DB Setup] Final DB state:', JSON.stringify(DB));
         if (dbsConfigured()) {
-          showToast('success', '🗄️', `${Object.values(DB).filter(Boolean).length} Datenbanken bereit`, '');
+          showToast('success', '🗄️', t('toast.dbs_count_ready', { n: Object.values(DB).filter(Boolean).length }), '');
         }
       } catch (e) {
         console.error('DB setup failed:', e);
@@ -4034,7 +4208,7 @@ async function createMissingDatabases(parentPageId, missingKeys) {
         // Re-discover to get IDs of already-created DBs
         const { missing } = await discoverDatabases(); // PATCH B9b: single call
         if (missing.length === 0) {
-          showToast('success', '✅', 'Alle Datenbanken bereit', 'Deine Notion-Datenbanken sind vollständig eingerichtet.', [], null, 4000);
+          showToast('success', '✅', t('toast.dbs_ready'), t('toast.dbs_ready_sub'), [], null, 4000);
           return;
         }
         await createMissingDatabases(pid, missing);
@@ -4262,7 +4436,7 @@ async function notionFetch(path, method = 'GET', body = null, _retry = 0) {
     try { errBody = await resp.json(); } catch { errBody = { message: 'Unknown 400 error' }; }
     const errMsg = errBody.message || JSON.stringify(errBody).slice(0, 200);
     console.error(`Notion 400 on ${method} ${path}:`, errMsg, body);
-    showToast('error', '⚠️', 'Notion-Fehler',
+    showToast('error', '⚠️', t('toast.notion_error'),
       `${method} ${path.split('/').pop()}: ${errMsg.slice(0, 120)}`,
       [], null, 10000);
     return errBody;
@@ -5183,8 +5357,8 @@ async function migrateV1Recurrings() {
   }
   saveLocal('fb_recurrings_migrated', true);
   hideLoading();
-  if (ok > 0)   showToast('success', '🔄', `${ok} Recurrings migriert`, 'Von localStorage nach Notion');
-  if (fail > 0) showToast('warning', '⚠️', `${fail} fehlgeschlagen`, 'Bitte manuell in Notion prüfen');
+  if (ok > 0)   showToast('success', '🔄', t('toast.recurrings_migrated', { n: ok }), t('toast.recurrings_migrated_sub'));
+  if (fail > 0) showToast('warning', '⚠️', t('toast.n_failed', { n: fail }), t('toast.n_failed_check_notion'));
 }
 
 /**
@@ -5247,7 +5421,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.26a.2026-04-18';
+const APP_VERSION = '2.26c.2026-04-18';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -5307,6 +5481,30 @@ function _fileToBase64(file) {
 }
 
 /**
+ * BUG-076 (S28): Konvertiert Erf.receipt (data URL) zu File-Objekt für queueAddReceipt.
+ * Analog zum Blob-Bau in erfUploadReceipt, aber mit .name (File extends Blob).
+ * @param {object} receipt  Erf.receipt-Shape: { original, filename, isPDF }
+ * @param {string} date     Buchungsdatum (für Filename)
+ * @param {number} amt      Betrag (für Filename)
+ * @param {string} cat      Kategorie (für Filename)
+ * @param {string} desc     Beschreibung (für Filename)
+ * @returns {File}
+ */
+function _erfReceiptToFile(receipt, date, amt, cat, desc) {
+  const dataURL = receipt.original;
+  const isPDF   = receipt.isPDF;
+  const base64  = dataURL.split(',')[1];
+  const byteChars = atob(base64);
+  const byteArray = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+  const mime = isPDF ? 'application/pdf'
+    : dataURL.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+  const ext = isPDF ? 'pdf' : (receipt.filename?.split('.').pop() || 'jpg');
+  const filename = erfBuildFilename(ext, date, amt, cat, desc);
+  return new File([byteArray], filename, { type: mime });
+}
+
+/**
  * BL-107: Prüft ob in der Queue ein pending upload_receipt für diese bookingId existiert.
  * Genutzt vom Detail-Overlay um "wartet auf Upload"-Hinweis zu zeigen.
  * @param {string} bookingId
@@ -5344,7 +5542,7 @@ async function flushQueue() {
   const db = getActiveDataAdapter();
   const { sent, failed } = await db.flushQueue();
   if (failed === 0) {
-    showToast('success', '✅', `${sent} Einträge gesendet`, 'Notion ist synchronisiert');
+    showToast('success', '✅', t('toast.sync_sent', { n: sent }), t('toast.sync_sent_sub'));
     await fullSync();
     renderAll();
   } else {
@@ -6451,6 +6649,8 @@ document.addEventListener('DOMContentLoaded', () => {
     statusEl.style.cursor = 'pointer';
     statusEl.addEventListener('click', manualSync);
   }
+  // S28 Sprint 6 Block 2: Banner + FAB in initialer Sprache rendern
+  try { if (typeof applyStaticI18n === 'function') applyStaticI18n(); } catch(e) { console.error('[boot] applyStaticI18n failed:', e); }
 });
 
 
@@ -7554,28 +7754,39 @@ async function erfSaveBuchung() {
   if (!dbsConfigured()) {
     if (fbEl) fbEl.textContent = 'Notion-Datenbanken nicht eingerichtet — bitte Setup abschliessen';
     btn.disabled = false; btn.textContent = '✓ Speichern';
-    showToast('error', '⚠️', 'Nicht bereit', 'Bitte zuerst das Setup abschliessen (Notion verbinden).',
-      [], { label: 'Setup', fn: () => showSetup() }, 0);
+    showToast('error', '⚠️', t('toast.not_ready'), t('toast.not_ready_sub'),
+      [], { label: t('toast.not_ready_action'), fn: () => showSetup() }, 0);
     return;
   }
 
   // Upload receipt if present (S12 BUG-034: aktiver Token-Abruf statt passiver Check)
+  // BUG-076 (S28): Pre-Check storage.isConnected() — bei disconnect Upload überspringen
+  // und Beleg NACH createBooking queuen (statt silent fail mit verlorenem Beleg).
   let receiptFile = null, receiptLink = null;
+  let receiptPendingQueue = false;   // BUG-076: flag for post-save queueAddReceipt
+  let receiptUploadError = false;    // BUG-076: distinguish disconnect vs. upload-fail
   if (Erf.receipt) {
-    const ext = Erf.receipt.isPDF ? 'pdf' : (Erf.receipt.filename?.split('.').pop() || 'jpg');
-    const filename = erfBuildFilename(ext, date, amt, Erf.cat, desc);
-    btn.textContent = '📤 Beleg hochladen…';
-    try {
-      const up = await erfUploadReceipt(filename);
-      receiptFile = up.filename;
-      receiptLink = up.link;
-    } catch (e) {
-      console.warn('Receipt upload failed:', e.message);
-      showToast('warning', '☁\uFE0F', 'Beleg-Upload fehlgeschlagen',
-        'Buchung gespeichert, aber Beleg konnte nicht hochgeladen werden. Beleg später nachträglich anhängen.',
-        [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 10000);
+    const storage = getActiveStorageAdapter();
+    const gDriveReady = !!(storage && typeof storage.isConnected === 'function' && storage.isConnected());
+    if (!gDriveReady) {
+      // BUG-076: Kein Toast hier — Caller (Kombi-Toast nach Save) ist zuständig.
+      receiptPendingQueue = true;
+    } else {
+      const ext = Erf.receipt.isPDF ? 'pdf' : (Erf.receipt.filename?.split('.').pop() || 'jpg');
+      const filename = erfBuildFilename(ext, date, amt, Erf.cat, desc);
+      btn.textContent = '📤 Beleg hochladen…';
+      try {
+        const up = await erfUploadReceipt(filename);
+        receiptFile = up.filename;
+        receiptLink = up.link;
+      } catch (e) {
+        console.warn('Receipt upload failed:', e.message);
+        // BUG-076: Auch Upload-Fehler bei verbundenem GDrive → Queue statt silent fail.
+        receiptPendingQueue = true;
+        receiptUploadError = true;
+      }
+      btn.textContent = 'Speichert…';
     }
-    btn.textContent = 'Speichert…';
   }
 
   const tm = loadLocal('fb_tax_mapping', getDefaultTaxMapping());
@@ -7599,7 +7810,7 @@ async function erfSaveBuchung() {
       fromAccount: transferFrom, toAccount: transferTo, amount: amt, status: 'Ausgeführt',
     });
     if (success) {
-      showToast('success', '↔️', 'Transfer gespeichert', fmt(amt) + ' ' + (AppState.currency || 'CHF'));
+      showToast('success', '↔️', t('toast.transfer_saved'), fmt(amt) + ' ' + (AppState.currency || 'CHF'));
       closeErfassen();
       deltaSync().then(() => { renderAll(); InboxEngine.updateBadge(); });
     } else {
@@ -7647,7 +7858,33 @@ async function erfSaveBuchung() {
         thumbs[Erf.editId] = Erf.receipt.thumb;
         saveLocal(CACHE.thumbs, thumbs);
       }
-      showToast('success', '✏️', 'Buchung aktualisiert', desc || '');
+
+      // BUG-076 (S28): Beleg queuen falls GDrive disconnected oder Upload failed.
+      let queuedForUpload = false;
+      if (receiptPendingQueue && Erf.receipt) {
+        try {
+          const queueFile = _erfReceiptToFile(Erf.receipt, date, amt, Erf.cat, desc);
+          await queueAddReceipt(Erf.editId, queueFile);
+          queuedForUpload = true;
+          try { updateQueueBanner(); } catch(_) {}
+        } catch (qErr) {
+          console.error('[BUG-076] Queue-Add fehlgeschlagen (edit)', qErr);
+        }
+      }
+
+      if (queuedForUpload) {
+        const reason = receiptUploadError ? t('toast.receipt_reason_failed') : t('toast.receipt_reason_nogdrive');
+        showToast('info', '✏️', t('toast.booking_updated') + ' · ' + t('toast.receipt_waiting'),
+          (desc ? desc + ' · ' : '') + reason + ' → ' + t('toast.receipt_auto_hint'),
+          [], { label: t('action.settings_link'), fn: () => nav('einstellungen') }, 10000);
+      } else if (receiptPendingQueue && !queuedForUpload) {
+        showToast('warning', '⚠️', t('toast.booking_updated') + ' · ' + t('toast.receipt_too_large'),
+          t('toast.receipt_too_large_sub'),
+          [], { label: t('action.settings_link'), fn: () => nav('einstellungen') }, 12000);
+      } else {
+        showToast('success', '✏️', t('toast.booking_updated'), desc || '');
+      }
+
       closeErfassen();
       deltaSync().then(() => { renderAll(); InboxEngine.updateBadge(); });
     } catch (e) {
@@ -7667,14 +7904,47 @@ async function erfSaveBuchung() {
       thumbs[result.id] = Erf.receipt.thumb;
       saveLocal(CACHE.thumbs, thumbs);
     }
+
+    // BUG-076 (S28): Beleg queuen falls GDrive disconnected oder Upload failed.
+    let queuedForUpload = false;
+    if (receiptPendingQueue && Erf.receipt && result?.id) {
+      try {
+        const queueFile = _erfReceiptToFile(Erf.receipt, date, amt, Erf.cat, desc);
+        await queueAddReceipt(result.id, queueFile);
+        queuedForUpload = true;
+        try { updateQueueBanner(); } catch(_) {}
+      } catch (qErr) {
+        console.error('[BUG-076] Queue-Add fehlgeschlagen (create)', qErr);
+      }
+    }
+
     const isInc = Erf.type === 'income';
     const links = [];
     if (result?.url)  links.push({ label: 'In Notion', url: result.url });
     if (receiptLink)  links.push({ label: 'Beleg', url: receiptLink });
-    showToast('success', isInc ? '💰' : '💸',
-      isInc ? 'Einnahme gespeichert' : 'Ausgabe gespeichert',
-      (isInc ? '+' : '−') + fmt(amt) + ' ' + (AppState.currency || 'CHF') + (desc ? ' · ' + desc : ''),
-      links);
+
+    // Kombi-Toast: Success + Pending-Hinweis falls gequeued (Prinzip 4+8)
+    if (queuedForUpload) {
+      const reason = receiptUploadError ? t('toast.receipt_reason_failed') : t('toast.receipt_reason_nogdrive');
+      const title = (isInc ? t('toast.booking_income_saved') : t('toast.booking_expense_saved')) + ' · ' + t('toast.receipt_waiting');
+      showToast('info', isInc ? '💰' : '💸',
+        title,
+        (isInc ? '+' : '−') + fmt(amt) + ' ' + (AppState.currency || 'CHF')
+          + ' · ' + reason + ' → ' + t('toast.receipt_auto_hint'),
+        links, { label: t('action.settings_link'), fn: () => nav('einstellungen') }, 10000);
+    } else if (receiptPendingQueue && !queuedForUpload) {
+      const title = (isInc ? t('toast.booking_income_saved') : t('toast.booking_expense_saved')) + ' · ' + t('toast.receipt_too_large');
+      showToast('warning', '⚠️',
+        title,
+        t('toast.receipt_too_large_sub'),
+        links, { label: t('action.settings_link'), fn: () => nav('einstellungen') }, 12000);
+    } else {
+      showToast('success', isInc ? '💰' : '💸',
+        isInc ? t('toast.booking_income_saved') : t('toast.booking_expense_saved'),
+        (isInc ? '+' : '−') + fmt(amt) + ' ' + (AppState.currency || 'CHF') + (desc ? ' · ' + desc : ''),
+        links);
+    }
+
     // Session 3: Update merchant learning rule
     if (data.cat && (data.counterpart || desc)) {
       updateMerchantRule(data.counterpart || desc, data.cat).catch(() => {});
@@ -7734,7 +8004,7 @@ async function erfSaveTransfer() {
           .catch(e => console.warn('Projekt reserviert update failed:', e));
       }
     }
-    showToast('success', '↔', 'Transfer gespeichert',
+    showToast('success', '↔', t('toast.transfer_saved'),
       fmt(amt) + ' CHF: ' + von + ' → ' + nach);
     closeErfassen();
     deltaSync().then(() => { renderAll(); });
@@ -7786,7 +8056,7 @@ async function erfSaveRechnung() {
       const idx = Store.rechnungen.findIndex(r => r._id === editId);
       if (idx >= 0) Object.assign(Store.rechnungen[idx], data, { _id: editId });
       saveCache('rechnungen');
-      showToast('success', '🧾', 'Rechnung aktualisiert', nr + ' · ' + client);
+      showToast('success', '🧾', t('toast.invoice_updated'), nr + ' · ' + client);
       window._editInvoiceId = '';
       closeErfassen();
       renderBuchSubtab();
@@ -7800,7 +8070,7 @@ async function erfSaveRechnung() {
 
     if (success) {
       const links = result?.url ? [{ label: 'In Notion', url: result.url }] : [];
-      showToast('success', '🧾', 'Rechnung gespeichert',
+      showToast('success', '🧾', t('toast.invoice_saved'),
         nr + ' · ' + client + ' · CHF ' + fmt(amt), links);
       // BL-066: Auto-create booking if invoice is already paid
       if (data.status === 'Bezahlt' && data.amount > 0) {
@@ -8043,11 +8313,9 @@ async function erfUploadReceipt(filename) {
   if (!Erf.receipt) throw new Error('No receipt');
   const storage = getActiveStorageAdapter();
   if (!storage || !storage.isConnected()) {
-    // BUG-054: Proactive hint for users on second device
-    showToast('warning', '📂', 'Google Drive nicht verbunden',
-      'Beleg wird ohne Upload gespeichert. Verbinde GDrive in den Einstellungen.',
-      [], { label: 'Einstellungen →', fn: () => { closeErfassen(); nav('einstellungen'); } }, 8000);
-    throw new Error('GDrive nicht verbunden — Beleg-Upload übersprungen');
+    // BUG-076 (S28): Defensiv — Caller pre-checkt bereits und zeigt Kombi-Toast
+    // nach Save (verhindert dass Success-Toast den Warn-Toast überschreibt).
+    throw new Error('GDrive nicht verbunden');
   }
 
   // Build Blob from receipt data (BUG-045: no fetch on data: URI)
@@ -8087,22 +8355,22 @@ async function attachReceiptToBooking(bookingId, file) {
     if (typeof queueAddReceipt === 'function') {
       try {
         await queueAddReceipt(bookingId, file);
-        showToast('info', '📂', 'Beleg zwischengespeichert',
-          'Google Drive neu verbinden — Beleg wird automatisch hochgeladen.',
-          [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 10000);
+        showToast('info', '📂', t('toast.receipt_attach_queued'),
+          t('toast.receipt_attach_queued_sub'),
+          [], { label: t('action.settings_link'), fn: () => nav('einstellungen') }, 10000);
         try { updateQueueBanner(); } catch(_) {}
       } catch (queueErr) {
         // Queue voll oder File zu gross — ehrliche Fehlermeldung mit Lösungsweg (Prinzip 8)
         console.error('[attachReceipt] Queue-Add fehlgeschlagen', queueErr);
-        showToast('error', '⚠️', 'Beleg konnte nicht zwischengespeichert werden',
-          queueErr.message || 'Bitte Google Drive verbinden und erneut versuchen.',
-          [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 10000);
+        showToast('error', '⚠️', t('toast.receipt_too_large'),
+          queueErr.message || t('toast.receipt_too_large_sub'),
+          [], { label: t('action.settings_link'), fn: () => nav('einstellungen') }, 10000);
       }
     } else {
       // Defensiver Fallback (sollte in v2.26+ nie eintreten)
-      showToast('warning', '📂', 'Google Drive nicht verbunden',
-        'Verbinde GDrive in den Einstellungen, dann erneut versuchen.',
-        [], { label: 'Einstellungen →', fn: () => nav('einstellungen') }, 8000);
+      showToast('warning', '📂', t('toast.receipt_reason_nogdrive'),
+        t('toast.receipt_auto_hint'),
+        [], { label: t('action.settings_link'), fn: () => nav('einstellungen') }, 8000);
     }
     return;
   }
@@ -8125,7 +8393,7 @@ async function attachReceiptToBooking(bookingId, file) {
     b.receiptFile = result.filename;
     saveCache('buchungen');
     renderBuchSubtab();
-    showToast('success', '📎', 'Beleg angehängt', result.filename);
+    showToast('success', '📎', t('toast.receipt_attached'), result.filename);
   } catch (e) {
     console.error('[attachReceiptToBooking] Upload failed:', e);
     // BL-074-Item: Queue-Eintrag für späteren Retry (Implementation folgt)
@@ -8468,7 +8736,7 @@ async function createBookingFromInvoice(inv) {
         });
       }
     }
-    showToast('success', '📝', 'Buchung erstellt', `Einnahme ${fmtS(inv.amount)} aus Rechnung ${inv.nr}`);
+    showToast('success', '📝', t('toast.booking_created'), t('toast.booking_created_from_invoice', { amt: fmtS(inv.amount), nr: inv.nr }));
   } catch (e) {
     console.warn('Auto-Buchung aus Rechnung fehlgeschlagen:', e.message);
     showToast('warning', '⚠️', 'Buchung nicht erstellt',
@@ -8763,9 +9031,75 @@ function restoreDarkMode() {
    UI LAYER — TAB RENDERS (stubs, filled in next steps)
    ══════════════════════════════════════════════════════ */
 
+/** S28 Sprint 6 Block 2 Teil 1: Sidebar-Renderer (Weg A).
+ *  Ersetzt hardcoded HTML, damit Sprachwechsel sofort greift (renderAll ruft uns auf).
+ *  Items zentral definiert — Reihenfolge + Icons bleiben, Labels kommen aus I18N. */
+const SIDEBAR_ITEMS = [
+  { tab: 'cockpit',       icon: '🦅', key: 'nav.cockpit' },
+  { tab: 'buchhaltung',   icon: '🦩', key: 'nav.buchhaltung' },
+  { tab: 'ziele',         icon: '🐣', key: 'nav.ziele' },
+  { tab: 'aktivitaeten',  icon: '🦚', key: 'nav.aktivitaeten' },
+  { tab: 'kompass',       icon: '🦉', key: 'nav.kompass' },
+  { tab: 'einstellungen', icon: '🦤', key: 'nav.einstellungen' },
+];
+
+function renderSidebar() {
+  const nav = document.getElementById('sidebarNav');
+  if (!nav) return;  // A10: Null-Path
+  const current = AppState.currentTab || 'cockpit';
+  const tabItems = SIDEBAR_ITEMS.map(function(it) {
+    const active = it.tab === current ? ' active' : '';
+    return '<div class="sidebar-item' + active + '" data-tab="' + it.tab + '" onclick="nav(\'' + it.tab + '\')">'
+         + '<span class="nav-icon">' + it.icon + '</span> ' + t(it.key)
+         + '</div>';
+  }).join('');
+  const feedbackItem = '<div class="sidebar-item" onclick="closeSidebar();showFeedbackForm()">'
+    + '<span class="nav-icon">💬</span> ' + t('sidebar.feedback') + '</div>';
+  nav.innerHTML = tabItems + feedbackItem;
+
+  // Footer: Kontakt-Label (Link bleibt unverändert — Cloudflare E-Mail-Schutz)
+  const footer = document.querySelector('.sidebar-footer .sidebar-contact');
+  if (footer) {
+    // Nur Text-Node nach dem Icon ersetzen, Icon erhalten
+    const iconSpan = footer.querySelector('span');
+    footer.innerHTML = '';
+    if (iconSpan) footer.appendChild(iconSpan);
+    footer.appendChild(document.createTextNode(' ' + t('sidebar.contact')));
+  }
+}
+
+/** S28: Statische Strings (Banner, FAB) die nicht per Renderer getrieben werden,
+ *  aber bei Sprachwechsel aktualisiert werden müssen. Einmalig in initApp() + bei setLang().
+ *  Keine DOM-Generierung — nur textContent / innerHTML patchen. */
+function applyStaticI18n() {
+  // Offline-Banner (id="offlineBanner")
+  const ob = document.getElementById('offlineBanner');
+  if (ob) {
+    ob.innerHTML = '📴 ' + t('banner.offline') + ' <span id="offlineSyncTime">'
+      + t('banner.offline_unknown') + '</span> · ' + t('banner.offline_cache');
+  }
+  // Queue-Banner (id="queueBanner") — Count bleibt dynamisch in updateQueueBanner
+  const qb = document.getElementById('queueBanner');
+  if (qb) {
+    qb.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px">'
+      + '<span class="queue-badge" id="queueCount">0</span>'
+      + '<span>' + t('banner.queue_pending') + '</span>'
+      + '</div>'
+      + '<span style="font-size:11px;opacity:.7">' + t('banner.queue_reason') + '</span>';
+  }
+  // FAB mobile (id="fabMobile")
+  const fab = document.getElementById('fabMobile');
+  if (fab) {
+    fab.innerHTML = '<span style="font-size:14px">+</span> ' + t('fab.capture');
+  }
+}
+
 function renderAll() {
   InboxEngine.updateBadge();
   updateQueueBanner();
+  // S28: Sidebar + statische I18n-Strings bei jedem Render aktualisieren
+  renderSidebar();
   // Always render Cockpit (primary view)
   renderCockpit();
   // Re-render whichever tab is currently active (keeps data fresh after sync)
@@ -10168,8 +10502,8 @@ async function submitPartialPayment(invId) {
     document.getElementById('partialPayOverlay')?.remove();
     renderBuchSubtab();
     InboxEngine.updateBadge();
-    showToast('success', '💰', isFullyPaid ? 'Vollständig bezahlt' : 'Teilzahlung erfasst',
-      `${fmtS(amt)} erhalten · ${isFullyPaid ? 'Abgeschlossen' : fmtS(inv.amount - newPaidAmount) + ' offen'}`);
+    showToast('success', '💰', isFullyPaid ? t('toast.fully_paid') : t('toast.partial_payment'),
+      t('toast.partial_received', { amt: fmtS(amt) }) + ' · ' + (isFullyPaid ? t('toast.partial_payment_done') : t('toast.partial_payment_open', { amt: fmtS(inv.amount - newPaidAmount) })));
   } catch (e) {
     re();
     showToast('error', '❌', 'Fehler', e.message);
@@ -10186,9 +10520,9 @@ async function deleteRechnung(id) {
     saveCache('rechnungen');
     renderBuchSubtab();
     InboxEngine.updateBadge();
-    showToast('info', '🗑', 'Rechnung gelöscht', r?.nr || '');
+    showToast('info', '🗑', t('toast.invoice_deleted'), r?.nr || '');
   } catch (e) {
-    showToast('error', '❌', 'Fehler', e.message);
+    showToast('error', '❌', t('toast.error_title'), e.message);
   }
 }
 
@@ -10392,7 +10726,7 @@ async function saveKontoForm() {
     document.getElementById('kontoFormOverlay')?.remove();
     renderBuchSubtab();
     renderCockpit();
-    showToast('success','🏦','Konto erstellt', name);
+    showToast('success','🏦',t('toast.account_created'), name);
   } catch (e) {
     showToast('error','❌','Fehler', e.message);
   }
@@ -10503,7 +10837,7 @@ async function saveRecurringForm(editId = '') {
     document.getElementById('recurringFormOverlay')?.remove();
     renderBuchSubtab();
     InboxEngine.updateBadge();
-    showToast('success','🔄', editId ? 'Recurring aktualisiert' : 'Recurring erstellt', data.name);
+    showToast('success','🔄', editId ? t('toast.recurring_updated') : t('toast.recurring_saved'), data.name);
   } catch (e) {
     showToast('error','❌','Fehler', e.message);
   }
@@ -11667,7 +12001,7 @@ async function submitFeedback() {
     if (resp.ok) {
       saveLocal('fb_feedback_cooldown', Date.now());
       document.getElementById('feedbackOverlay')?.remove();
-      showToast('success', '💬', 'Feedback gesendet', 'Danke! Wir schauen uns das an.');
+      showToast('success', '💬', t('toast.feedback_sent'), t('toast.feedback_sent_sub'));
     } else if (resp.status === 429) {
       showToast('warning', '⏳', 'Rate-Limit', 'Bitte warte einen Moment und versuche es erneut.');
     } else { throw new Error('Status ' + resp.status); }
@@ -11720,7 +12054,7 @@ async function restoreBuchung(id) {
     const db = getActiveDataAdapter();
     await db.restoreBooking(id);
     saveLocal(TRASH_KEY, trash.filter(b => b._id !== id));
-    showToast('success', '♻️', 'Buchung wiederhergestellt', entry.desc || '');
+    showToast('success', '♻️', t('toast.booking_restored'), entry.desc || '');
     await deltaSync();
     renderAll();
   } catch (e) {
@@ -12528,6 +12862,8 @@ function showSetup() {
 function showApp() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('mainApp').style.display     = 'block';
+  // S28: Statische I18n-Strings beim App-Sichtbar-Werden einmalig setzen.
+  try { if (typeof applyStaticI18n === 'function') applyStaticI18n(); } catch(e) { console.error('[showApp] applyStaticI18n failed:', e); }
 }
 
 function showQuizAfterAuth() {
@@ -13115,6 +13451,8 @@ async function onboardFinish() {
   saveAppState();
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('mainApp').style.display     = 'block';
+  // S28: Statische I18n-Strings beim App-Sichtbar-Werden einmalig setzen.
+  try { if (typeof applyStaticI18n === 'function') applyStaticI18n(); } catch(e) { console.error('[onboardFinish] applyStaticI18n failed:', e); }
   nav('cockpit');
   showLoading('Lade deine Daten…');
   try {
@@ -13480,7 +13818,7 @@ async function obConnectDrive() {
     saveAppState();
     obUpdateIntTiles();
     if (wrap) wrap.style.display = 'none';
-    showToast('success', '📎', 'Google Drive verbunden', 'Ein Ordner «FinanceBird» wurde in deiner Ablage erstellt. Du kannst ihn frei verschieben — über die Folder-ID findet FinanceBird ihn trotzdem.');
+    showToast('success', '📎', t('toast.gdrive_connected'), t('toast.gdrive_connected_sub'));
     // BL-107: Auto-Flush pending Beleg-Queue (falls Pairing-Szenario schon Belege gequeued hat)
     await flushReceiptQueueAfterReauth();
   } catch(e) {
@@ -13503,7 +13841,7 @@ async function obSaveClockify() {
     OB.clockifyConnected = true;
     document.getElementById('obIntClockifyWrap').style.display = 'none';
     obUpdateIntTiles();
-    showToast('success', '⏱', 'Clockify Key erfasst', 'Wird beim Systemcheck geprüft.');
+    showToast('success', '⏱', t('toast.clockify_key_saved'), t('toast.clockify_key_saved_sub'));
   }
 }
 
@@ -13519,7 +13857,7 @@ async function obSaveKi() {
     OB.kiConnected = true;
     document.getElementById('obIntKiWrap').style.display = 'none';
     obUpdateIntTiles();
-    showToast('success', '🤖', 'Claude Key erfasst', 'Wird beim Systemcheck geprüft.');
+    showToast('success', '🤖', t('toast.claude_key_saved'), t('toast.claude_key_saved_sub'));
   }
 }
 
@@ -13774,10 +14112,10 @@ function nav(tabId) {
   AppState.currentTab = tabId;
   saveAppState();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
   const page = document.getElementById('tab-' + tabId);
   if (page) page.classList.add('active');
-  document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(el => el.classList.add('active'));
+  // S28: Sidebar re-rendern (active-Class folgt aus AppState.currentTab)
+  if (typeof renderSidebar === 'function') renderSidebar();
   closeSidebar();
   const fabMobile = document.getElementById('fabMobile');
   if (fabMobile) fabMobile.classList.remove('fab-hidden'); // U1: FAB immer sichtbar
@@ -13860,6 +14198,8 @@ function setLang(lang) {
   saveAppState();
   // Re-render alle sichtbaren Views, damit UI-Strings sofort in neuer Sprache erscheinen.
   try { if (typeof renderAll === 'function') renderAll(); } catch(e) { console.error('[setLang] renderAll failed:', e); }
+  // S28: Statische Strings (Banner, FAB) zusätzlich patchen — nicht Teil von renderAll.
+  try { if (typeof applyStaticI18n === 'function') applyStaticI18n(); } catch(e) { console.error('[setLang] applyStaticI18n failed:', e); }
   // Toast selbst in Zielsprache (nach AppState-Update, damit t() die neue Sprache benutzt).
   showToast('success', '✅', t('settings.lang.changed'), t('settings.lang.' + lang));
 }
@@ -14227,7 +14567,7 @@ async function saveSaldoModal() {
   closeSaldoModal();
   renderBuchSubtab();   // refresh Konten tab
   renderCockpit();      // refresh wealth + liquidity
-  showToast('success', '💰', 'Startsaldo gespeichert', k.name + ' · CHF ' + fmt(amt) + ' per ' + fmtDate(date));
+  showToast('success', '💰', t('toast.opening_balance_saved'), k.name + ' · CHF ' + fmt(amt) + ' per ' + fmtDate(date));
 }
 
 // Close on backdrop click
