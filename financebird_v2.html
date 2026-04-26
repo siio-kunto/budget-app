@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.27a.2026-04-20">
+<meta name="fb-version" content="2.28a.2026-04-26">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2052,23 +2052,23 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
      ═══════════════════════════════════════════════ -->
 <div id="saldoModalOverlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(22,20,18,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center">
   <div style="background:var(--paper);border-radius:20px;padding:28px;width:92%;max-width:420px;box-shadow:0 8px 40px rgba(44,31,14,.15)">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:4px" id="saldoModalTitle">Startsaldo aktualisieren</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:4px" id="saldoModalTitle"></div>
     <div id="saldoModalSubtitle" style="font-size:13px;color:var(--muted);margin-bottom:18px"></div>
     <input type="hidden" id="saldoModalKontoId">
     <div class="form-group">
-      <label class="form-label">Aktueller Kontostand (CHF)</label>
+      <label class="form-label" id="saldoModalAmtLabel"></label>
       <input type="number" id="saldoModalAmt" class="form-input"
         placeholder="0.00" step="0.01"
         style="font-size:22px;font-family:'Libre Baskerville',serif;font-weight:500">
     </div>
     <div class="form-group">
-      <label class="form-label">Stand per Datum</label>
+      <label class="form-label" id="saldoModalDateLabel"></label>
       <input type="date" id="saldoModalDate" class="form-input">
     </div>
     <div id="saldoModalHint" style="font-size:12px;color:var(--muted);margin-bottom:14px;padding:8px 10px;background:var(--bg2);border-radius:8px;line-height:1.5"></div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" style="flex:1" onclick="closeSaldoModal()">Abbrechen</button>
-      <button class="btn btn-primary" style="flex:1" onclick="saveSaldoModal()">✓ Speichern</button>
+      <button class="btn btn-outline" style="flex:1" id="saldoModalCancelBtn" onclick="closeSaldoModal()"></button>
+      <button class="btn btn-primary" style="flex:1" id="saldoModalSaveBtn" onclick="saveSaldoModal()"></button>
     </div>
   </div>
 </div>
@@ -2968,6 +2968,224 @@ const I18N = {
     'toast.print_popup_blocked_sub': 'Bitte Pop-up erlauben',
     'toast.nothing_to_import':       'Nichts zu importieren',
     'toast.nothing_to_import_sub':   'Keine gültigen Zeilen gefunden',
+    /* S33 Sprint 6.5a Gruppe 1 — Buch-Subtabs (BUG-078) */
+    'buch.subtab.buchungen':   'Buchungen',
+    'buch.subtab.rechnungen':  'Rechnungen',
+    'buch.subtab.konten':      'Konten',
+    'buch.subtab.transfers':   'Transfers',
+    'buch.subtab.recurrings':  'Wiederkehrend',
+    'buch.subtab.abschluesse': 'Abschlüsse',
+    /* S33 Sprint 6.5a Gruppe 2 — Buchungen-Tab (Filter/Header/Toolbar/Detail) */
+    'buch.filter.type_all':           'Ein- & Ausgaben',
+    'buch.filter.type_income':        'Einnahmen',
+    'buch.filter.type_expense':       'Ausgaben',
+    'buch.filter.bereich_all':        'Alle Bereiche',
+    'buch.filter.bereich_business':   'Geschäftlich',
+    'buch.filter.bereich_private':    'Privat',
+    'buch.filter.month_all':          'Alle Monate',
+    'buch.filter.cat_all':            'Alle Kategorien',
+    'buch.filter.search_placeholder': '🔍 Suchen…',
+    'buch.toolbar.csv':               '📥 CSV',
+    'buch.toolbar.belege_zip':        '📦 Belege ZIP',
+    'buch.toolbar.csv_import':        '📤 CSV importieren',
+    'buch.toolbar.add':               '+ Buchung',
+    'buch.zip.loading':               'Belege werden geladen…',
+    'buch.col.date':                  'Datum',
+    'buch.col.desc':                  'Beschreibung',
+    'buch.col.counterparty':          'Gegenpartei',
+    'buch.col.type':                  'Typ',
+    'buch.col.category':              'Kategorie',
+    'buch.col.tax_category':          'Steuerkategorie',
+    'buch.col.account':               'Konto',
+    'buch.col.amount':                'Betrag',
+    'buch.col.paid':                  'Bezahlt',
+    'buch.col.receipt':               'Beleg',
+    'buch.type.income':               'Einnahme',
+    'buch.type.expense':              'Ausgabe',
+    'buch.type.transfer':             'Transfer',
+    'buch.cat_status.suggested':      'Vorgeschlagen',
+    'buch.cat_status.flagged':        'Flagged',
+    'buch.cat_status.validated':      'Validiert',
+    'buch.action.confirm_cat':        'Kategorie bestätigen',
+    'buch.action.details':            'Details',
+    'buch.action.edit':               'Bearbeiten',
+    'buch.action.delete':             'Löschen',
+    'buch.detail.gross':              'Brutto:',
+    'buch.detail.net':                'Netto:',
+    'buch.detail.vat':                'MWST',
+    'buch.detail.tax_form':           'Steuerformular:',
+    'buch.detail.status':             'Status:',
+    'buch.detail.partial_ded':        'Teilabzug:',
+    'buch.detail.correction':         'Korrektur:',
+    'buch.detail.modified':           'Geändert:',
+    'buch.detail.receipt_label':      'Beleg:',
+    'buch.detail.receipt_open':       'Öffnen',
+    'buch.detail.receipt_replace':    'Ersetzen',
+    'buch.detail.no_receipt':         'Noch kein Beleg angehängt',
+    'buch.detail.add_receipt':        '📎 Beleg hinzufügen',
+    'buch.detail.receipt_pending':    '📂 Beleg <strong style="color:var(--ink2)">{filename}</strong> wartet auf Upload — wird nachgeliefert sobald Google Drive verbunden ist.',
+    'buch.row.total':                 'Total ({count})',
+    'buch.row.image_alt':             'Beleg',
+    /* S33 Sprint 6.5a Gruppe 3 — Rechnungen-Tab (Status/KPI/Filter/Tabelle/Partial-Payment) */
+    'inv.status.open':                'Offen',
+    'inv.status.paid':                'Bezahlt',
+    'inv.status.partial':             'Teilzahlung',
+    'inv.status.overdue':             'Überfällig',
+    'inv.status.draft':               'Entwurf',
+    'inv.kpi.paid_year':              'Bezahlt {year}',
+    'inv.kpi.invoices':               '{n} Rechnungen',
+    'inv.kpi.paid_count':             '{n} bezahlt',
+    'inv.kpi.overdue_count':          '{n} überfällig',
+    'inv.filter.all':                 'Alle',
+    'inv.toolbar.add':                '+ Neue Rechnung',
+    'inv.col.no':                     'Nr.',
+    'inv.col.date':                   'Datum',
+    'inv.col.due':                    'Fällig',
+    'inv.col.client':                 'Kunde',
+    'inv.col.desc':                   'Beschreibung',
+    'inv.col.amount':                 'Betrag',
+    'inv.col.status':                 'Status',
+    'inv.col.paid_on':                'Bezahlt am',
+    'inv.empty':                      'Keine Rechnungen',
+    'inv.row.received':               '{amt} erhalten',
+    'inv.action.edit':                'Bearbeiten',
+    'inv.action.print':               'Drucken',
+    'inv.partial.title':              'Teilzahlung erfassen',
+    'inv.partial.total':              'Gesamtbetrag: {amt}',
+    'inv.partial.already':            'Bereits erhalten: {amt}',
+    'inv.partial.open':               'Offen: {amt}',
+    'inv.partial.amt_label':          'Eingegangener Betrag',
+    'inv.partial.cancel':             'Abbrechen',
+    'inv.partial.submit':             '✓ Erfassen',
+    'inv.partial.suffix':             '(Teilzahlung)',
+    /* S33 Sprint 6.5a Gruppe 4 — Konten-Tab + Konto-Form + Saldo-Modal */
+    'konten.toolbar.add':             '+ Konto',
+    'konten.empty':                   'Noch keine Konten',
+    'konten.total_estimated':         'Total (Schätzung)',
+    'konten.card.base_at':            'Basis {date}: {amt}',
+    'konten.card.no_opening':         '⚠ Kein Startsaldo',
+    'konten.card.estimated':          'Schätzung',
+    'konten.card.edit_balance':       '✏️ Saldo',
+    'konto.form.title_new':           'Neues Konto',
+    'konto.form.name':                'Name',
+    'konto.form.name_placeholder':    'z.B. Hauptkonto',
+    'konto.form.type':                'Typ',
+    'konto.form.group':               'Gruppe',
+    'konto.form.currency':            'Währung',
+    'konto.form.opening_balance':     'Startsaldo',
+    'konto.form.as_of':               'Stand per',
+    'konto.form.icon':                'Icon',
+    'konto.form.cancel':              'Abbrechen',
+    'konto.form.save':                '✓ Speichern',
+    'konto.type.checking':            'Girokonto',
+    'konto.type.savings':             'Sparkonto',
+    'konto.type.credit_card':         'Kreditkarte',
+    'konto.type.pocket':              'Pocket',
+    'konto.type.cash':                'Bargeld',
+    'konto.type.investment':          'Investition',
+    'konto.type.debt':                'Schuld',
+    'konto.group.other':              'Sonstige',
+    'saldo.modal.title':              'Startsaldo · {name}',
+    'saldo.modal.balance_label':      'Aktueller Kontostand (CHF)',
+    'saldo.modal.date_label':         'Stand per Datum',
+    'saldo.modal.hint_existing':      'Letzter Saldo: CHF {amt} per {date}{est}',
+    'saldo.modal.hint_estimate':      ' · Schätzung heute: CHF {est}',
+    'saldo.modal.hint_empty':         'Kein Startsaldo hinterlegt. Bitte aktuellen Kontostand eingeben.',
+    'saldo.modal.cancel':             'Abbrechen',
+    'saldo.modal.save':               '✓ Speichern',
+    /* S33 Sprint 6.5a Gruppe 5 — Transfers + Recurrings + Recurring-Form */
+    'tr.toolbar.add':                 '+ Transfer',
+    'tr.col.date':                    'Datum',
+    'tr.col.desc':                    'Beschreibung',
+    'tr.col.from':                    'Von',
+    'tr.col.to':                      'Nach',
+    'tr.col.amount':                  'Betrag',
+    'tr.col.status':                  'Status',
+    'tr.col.type':                    'Typ',
+    'tr.empty':                       'Keine Transfers dieses Jahr',
+    'tr.status.executed':             'Ausgeführt',
+    'tr.status.draft':                'Entwurf',
+    'rec.freq.weekly':                'Wöchentlich',
+    'rec.freq.monthly':               'Monatlich',
+    'rec.freq.yearly':                'Jährlich',
+    'rec.tag.paused':                 '(pausiert)',
+    'rec.tag.income':                 'Einnahme',
+    'rec.due.label':                  '⏰ Fällig: ',
+    'rec.next.label':                 'Nächste: ',
+    'rec.kpi.monthly':                'Ø monatliche Fixkosten:',
+    'rec.kpi.yearly':                 '(jährlich: {amt})',
+    'rec.toolbar.add':                '+ Hinzufügen',
+    'rec.empty':                      'Noch keine Recurrings',
+    'rec.confirm.delete':             '"{name}" wirklich löschen?',
+    'rec.form.title':                 'Wiederkehrende Zahlung',
+    'rec.form.name':                  'Bezeichnung',
+    'rec.form.name_placeholder':      'Netflix, Miete, AHV…',
+    'rec.form.amount':                'Betrag (CHF)',
+    'rec.form.type':                  'Typ',
+    'rec.form.type_expense':          'Ausgabe',
+    'rec.form.type_income':           'Einnahme',
+    'rec.form.frequency':             'Frequenz',
+    'rec.form.next_due':              'Nächste Fälligkeit',
+    'rec.form.bereich':               'Bereich',
+    'rec.form.bereich_private':       'Privat',
+    'rec.form.bereich_business':      'Geschäftlich',
+    'rec.form.category':              'Kategorie',
+    'rec.form.account':               'Konto',
+    'rec.form.note':                  'Notiz (optional)',
+    'rec.form.cancel':                'Abbrechen',
+    'rec.form.save':                  '✓ Speichern',
+    /* S33 Sprint 6.5a Gruppe 6 — Abschlüsse + Checkliste + Tax-Mapping + PDF-Print */
+    'abs.section.export':             'Jahresabschluss exportieren',
+    'abs.section.tax_mapping':        'Steuer-Mapping',
+    'abs.intro':                      'Export für Treuhänderin — Milchbüechli-Format mit Steuerkategorien.',
+    'abs.tax_mapping.intro':          'Ordne deine Kategorien den Steuerkategorien zu — für den Jahresabschluss-Export.',
+    'abs.btn.csv':                    '📥 Jahresabschluss (CSV)',
+    'abs.btn.pdf':                    '🖨 PDF drucken',
+    'abs.btn.all_buchungen':          '📋 Alle Buchungen',
+    'abs.checklist.title':            'Checkliste {year}',
+    'abs.checklist.ready':            '✓ Bereit für Export',
+    'abs.checklist.open_one':         '{n} Punkt offen',
+    'abs.checklist.open_many':        '{n} Punkte offen',
+    'abs.check.cat_ok':               'Alle Buchungen kategorisiert',
+    'abs.check.cat_bad_one':          '{n} Buchung ohne Kategorie',
+    'abs.check.cat_bad_many':         '{n} Buchungen ohne Kategorie',
+    'abs.check.unpaid_ok':            'Alle Rechnungen als bezahlt markiert',
+    'abs.check.unpaid_bad_one':       '{n} offene Rechnung',
+    'abs.check.unpaid_bad_many':      '{n} offene Rechnungen',
+    'abs.check.tax_ok':               'Steuer-Mapping vollständig',
+    'abs.check.tax_bad_one':          '{n} Kategorie ohne Steuer-Zuordnung',
+    'abs.check.tax_bad_many':         '{n} Kategorien ohne Steuer-Zuordnung',
+    'abs.check.receipt_ok':           'Ausgaben über CHF 50 haben Belege',
+    'abs.check.receipt_bad_one':      '{n} Ausgabe über CHF 50 ohne Beleg',
+    'abs.check.receipt_bad_many':     '{n} Ausgaben über CHF 50 ohne Beleg',
+    'abs.check.action.review':        'Prüfen',
+    'abs.check.action.view':          'Ansehen',
+    'abs.pdf.title':                  'Jahresabschluss {year} — {name}',
+    'abs.pdf.h1':                     'Jahresabschluss {year}',
+    'abs.pdf.subtitle':               '{name} · Erstellt mit FinanceBird · {date}',
+    'abs.pdf.h2_income':              'Einnahmen',
+    'abs.pdf.total_income':           'Total Einnahmen',
+    'abs.pdf.h2_expenses':            'Geschäftsaufwand',
+    'abs.pdf.total_expenses':         'Total Aufwand',
+    'abs.pdf.profit_loss':            'Gewinn / Verlust',
+    'abs.pdf.h2_journal':             'Buchungsjournal',
+    'abs.pdf.col_date':               'Datum',
+    'abs.pdf.col_desc':               'Beschreibung',
+    'abs.pdf.col_amount':             'Betrag',
+    'abs.pdf.col_cat':                'Kategorie',
+    'abs.pdf.col_tax_cat':            'Steuerkategorie',
+    'abs.pdf.footer':                 'FinanceBird · Alle Angaben ohne Gewähr · Zur Kontrolle durch Treuhänder:in empfohlen',
+    'abs.pdf.firma_default':          'Einzelfirma',
+    'abs.csv.title':                  'Jahresabschluss {year}',
+    'abs.csv.section_income':         'EINNAHMEN',
+    'abs.csv.section_expenses':       'GESCHÄFTSAUFWAND',
+    'abs.csv.section_journal':        'BUCHUNGSJOURNAL',
+    'abs.csv.total_expenses':         'Total Geschäftsaufwand',
+    'abs.csv.profit_loss':            'GEWINN / VERLUST',
+    'abs.csv.col_inc':                'Einnahme',
+    'abs.csv.col_exp':                'Ausgabe',
+    'abs.csv.col_text':               'Text',
+    'abs.csv.fallback_taxcat':        'Alle übrigen Geschäftsaufwände',
   },
   en: {
     'nav.cockpit':       'Cockpit',
@@ -3252,6 +3470,224 @@ const I18N = {
     'toast.print_popup_blocked_sub': 'Please allow pop-ups',
     'toast.nothing_to_import':       'Nothing to import',
     'toast.nothing_to_import_sub':   'No valid rows found',
+    /* S33 Sprint 6.5a Gruppe 1 — Buch-Subtabs (BUG-078) */
+    'buch.subtab.buchungen':   'Transactions',
+    'buch.subtab.rechnungen':  'Invoices',
+    'buch.subtab.konten':      'Accounts',
+    'buch.subtab.transfers':   'Transfers',
+    'buch.subtab.recurrings':  'Recurring',
+    'buch.subtab.abschluesse': 'Closings',
+    /* S33 Sprint 6.5a Gruppe 2 — Buchungen-Tab (Filter/Header/Toolbar/Detail) */
+    'buch.filter.type_all':           'Income & Expenses',
+    'buch.filter.type_income':        'Income',
+    'buch.filter.type_expense':       'Expenses',
+    'buch.filter.bereich_all':        'All domains',
+    'buch.filter.bereich_business':   'Business',
+    'buch.filter.bereich_private':    'Private',
+    'buch.filter.month_all':          'All months',
+    'buch.filter.cat_all':            'All categories',
+    'buch.filter.search_placeholder': '🔍 Search…',
+    'buch.toolbar.csv':               '📥 CSV',
+    'buch.toolbar.belege_zip':        '📦 Receipts ZIP',
+    'buch.toolbar.csv_import':        '📤 Import CSV',
+    'buch.toolbar.add':               '+ Transaction',
+    'buch.zip.loading':               'Loading receipts…',
+    'buch.col.date':                  'Date',
+    'buch.col.desc':                  'Description',
+    'buch.col.counterparty':          'Counterparty',
+    'buch.col.type':                  'Type',
+    'buch.col.category':              'Category',
+    'buch.col.tax_category':          'Tax category',
+    'buch.col.account':               'Account',
+    'buch.col.amount':                'Amount',
+    'buch.col.paid':                  'Paid',
+    'buch.col.receipt':               'Receipt',
+    'buch.type.income':               'Income',
+    'buch.type.expense':              'Expense',
+    'buch.type.transfer':             'Transfer',
+    'buch.cat_status.suggested':      'Suggested',
+    'buch.cat_status.flagged':        'Flagged',
+    'buch.cat_status.validated':      'Validated',
+    'buch.action.confirm_cat':        'Confirm category',
+    'buch.action.details':            'Details',
+    'buch.action.edit':               'Edit',
+    'buch.action.delete':             'Delete',
+    'buch.detail.gross':              'Gross:',
+    'buch.detail.net':                'Net:',
+    'buch.detail.vat':                'VAT',
+    'buch.detail.tax_form':           'Tax form:',
+    'buch.detail.status':             'Status:',
+    'buch.detail.partial_ded':        'Partial deduction:',
+    'buch.detail.correction':         'Correction:',
+    'buch.detail.modified':           'Modified:',
+    'buch.detail.receipt_label':      'Receipt:',
+    'buch.detail.receipt_open':       'Open',
+    'buch.detail.receipt_replace':    'Replace',
+    'buch.detail.no_receipt':         'No receipt attached yet',
+    'buch.detail.add_receipt':        '📎 Add receipt',
+    'buch.detail.receipt_pending':    '📂 Receipt <strong style="color:var(--ink2)">{filename}</strong> waiting for upload — will be uploaded once Google Drive is connected.',
+    'buch.row.total':                 'Total ({count})',
+    'buch.row.image_alt':             'Receipt',
+    /* S33 Sprint 6.5a Gruppe 3 — Rechnungen-Tab (Status/KPI/Filter/Tabelle/Partial-Payment) */
+    'inv.status.open':                'Open',
+    'inv.status.paid':                'Paid',
+    'inv.status.partial':             'Partial',
+    'inv.status.overdue':             'Overdue',
+    'inv.status.draft':               'Draft',
+    'inv.kpi.paid_year':              'Paid {year}',
+    'inv.kpi.invoices':               '{n} invoices',
+    'inv.kpi.paid_count':             '{n} paid',
+    'inv.kpi.overdue_count':          '{n} overdue',
+    'inv.filter.all':                 'All',
+    'inv.toolbar.add':                '+ New invoice',
+    'inv.col.no':                     'No.',
+    'inv.col.date':                   'Date',
+    'inv.col.due':                    'Due',
+    'inv.col.client':                 'Customer',
+    'inv.col.desc':                   'Description',
+    'inv.col.amount':                 'Amount',
+    'inv.col.status':                 'Status',
+    'inv.col.paid_on':                'Paid on',
+    'inv.empty':                      'No invoices',
+    'inv.row.received':               '{amt} received',
+    'inv.action.edit':                'Edit',
+    'inv.action.print':               'Print',
+    'inv.partial.title':              'Record partial payment',
+    'inv.partial.total':              'Total amount: {amt}',
+    'inv.partial.already':            'Already received: {amt}',
+    'inv.partial.open':               'Outstanding: {amt}',
+    'inv.partial.amt_label':          'Amount received',
+    'inv.partial.cancel':             'Cancel',
+    'inv.partial.submit':             '✓ Record',
+    'inv.partial.suffix':             '(Partial)',
+    /* S33 Sprint 6.5a Gruppe 4 — Konten-Tab + Konto-Form + Saldo-Modal */
+    'konten.toolbar.add':             '+ Account',
+    'konten.empty':                   'No accounts yet',
+    'konten.total_estimated':         'Total (estimated)',
+    'konten.card.base_at':            'Base {date}: {amt}',
+    'konten.card.no_opening':         '⚠ No opening balance',
+    'konten.card.estimated':          'Estimated',
+    'konten.card.edit_balance':       '✏️ Balance',
+    'konto.form.title_new':           'New account',
+    'konto.form.name':                'Name',
+    'konto.form.name_placeholder':    'e.g. Main account',
+    'konto.form.type':                'Type',
+    'konto.form.group':               'Group',
+    'konto.form.currency':            'Currency',
+    'konto.form.opening_balance':     'Opening balance',
+    'konto.form.as_of':               'As of',
+    'konto.form.icon':                'Icon',
+    'konto.form.cancel':              'Cancel',
+    'konto.form.save':                '✓ Save',
+    'konto.type.checking':            'Checking',
+    'konto.type.savings':             'Savings',
+    'konto.type.credit_card':         'Credit card',
+    'konto.type.pocket':              'Pocket',
+    'konto.type.cash':                'Cash',
+    'konto.type.investment':          'Investment',
+    'konto.type.debt':                'Debt',
+    'konto.group.other':              'Other',
+    'saldo.modal.title':              'Opening balance · {name}',
+    'saldo.modal.balance_label':      'Current account balance (CHF)',
+    'saldo.modal.date_label':         'As of date',
+    'saldo.modal.hint_existing':      'Last balance: CHF {amt} on {date}{est}',
+    'saldo.modal.hint_estimate':      ' · Estimated today: CHF {est}',
+    'saldo.modal.hint_empty':         'No opening balance set. Please enter the current account balance.',
+    'saldo.modal.cancel':             'Cancel',
+    'saldo.modal.save':               '✓ Save',
+    /* S33 Sprint 6.5a Gruppe 5 — Transfers + Recurrings + Recurring-Form */
+    'tr.toolbar.add':                 '+ Transfer',
+    'tr.col.date':                    'Date',
+    'tr.col.desc':                    'Description',
+    'tr.col.from':                    'From',
+    'tr.col.to':                      'To',
+    'tr.col.amount':                  'Amount',
+    'tr.col.status':                  'Status',
+    'tr.col.type':                    'Type',
+    'tr.empty':                       'No transfers this year',
+    'tr.status.executed':             'Executed',
+    'tr.status.draft':                'Draft',
+    'rec.freq.weekly':                'Weekly',
+    'rec.freq.monthly':               'Monthly',
+    'rec.freq.yearly':                'Yearly',
+    'rec.tag.paused':                 '(paused)',
+    'rec.tag.income':                 'Income',
+    'rec.due.label':                  '⏰ Due: ',
+    'rec.next.label':                 'Next: ',
+    'rec.kpi.monthly':                'Avg. monthly recurring:',
+    'rec.kpi.yearly':                 '(yearly: {amt})',
+    'rec.toolbar.add':                '+ Add',
+    'rec.empty':                      'No recurring entries yet',
+    'rec.confirm.delete':             'Delete "{name}"?',
+    'rec.form.title':                 'Recurring payment',
+    'rec.form.name':                  'Name',
+    'rec.form.name_placeholder':      'Netflix, rent, insurance…',
+    'rec.form.amount':                'Amount (CHF)',
+    'rec.form.type':                  'Type',
+    'rec.form.type_expense':          'Expense',
+    'rec.form.type_income':           'Income',
+    'rec.form.frequency':             'Frequency',
+    'rec.form.next_due':              'Next due date',
+    'rec.form.bereich':               'Domain',
+    'rec.form.bereich_private':       'Private',
+    'rec.form.bereich_business':      'Business',
+    'rec.form.category':              'Category',
+    'rec.form.account':               'Account',
+    'rec.form.note':                  'Note (optional)',
+    'rec.form.cancel':                'Cancel',
+    'rec.form.save':                  '✓ Save',
+    /* S33 Sprint 6.5a Gruppe 6 — Abschlüsse + Checkliste + Tax-Mapping + PDF-Print */
+    'abs.section.export':             'Export year-end closing',
+    'abs.section.tax_mapping':        'Tax category mapping',
+    'abs.intro':                      'Export for your accountant — simple bookkeeping format with tax categories.',
+    'abs.tax_mapping.intro':          'Map your categories to tax categories — used for the year-end export.',
+    'abs.btn.csv':                    '📥 Year-end closing (CSV)',
+    'abs.btn.pdf':                    '🖨 Print PDF',
+    'abs.btn.all_buchungen':          '📋 All transactions',
+    'abs.checklist.title':            'Checklist {year}',
+    'abs.checklist.ready':            '✓ Ready to export',
+    'abs.checklist.open_one':         '{n} item open',
+    'abs.checklist.open_many':        '{n} items open',
+    'abs.check.cat_ok':               'All transactions categorized',
+    'abs.check.cat_bad_one':          '{n} transaction without category',
+    'abs.check.cat_bad_many':         '{n} transactions without category',
+    'abs.check.unpaid_ok':            'All invoices marked as paid',
+    'abs.check.unpaid_bad_one':       '{n} unpaid invoice',
+    'abs.check.unpaid_bad_many':      '{n} unpaid invoices',
+    'abs.check.tax_ok':               'Tax mapping complete',
+    'abs.check.tax_bad_one':          '{n} category without tax mapping',
+    'abs.check.tax_bad_many':         '{n} categories without tax mapping',
+    'abs.check.receipt_ok':           'Expenses over CHF 50 have receipts',
+    'abs.check.receipt_bad_one':      '{n} expense over CHF 50 without receipt',
+    'abs.check.receipt_bad_many':     '{n} expenses over CHF 50 without receipt',
+    'abs.check.action.review':        'Review',
+    'abs.check.action.view':          'View',
+    'abs.pdf.title':                  'Year-end closing {year} — {name}',
+    'abs.pdf.h1':                     'Year-end closing {year}',
+    'abs.pdf.subtitle':               '{name} · Created with FinanceBird · {date}',
+    'abs.pdf.h2_income':              'Income',
+    'abs.pdf.total_income':           'Total income',
+    'abs.pdf.h2_expenses':            'Business expenses',
+    'abs.pdf.total_expenses':         'Total expenses',
+    'abs.pdf.profit_loss':            'Profit / Loss',
+    'abs.pdf.h2_journal':             'Transaction journal',
+    'abs.pdf.col_date':               'Date',
+    'abs.pdf.col_desc':               'Description',
+    'abs.pdf.col_amount':             'Amount',
+    'abs.pdf.col_cat':                'Category',
+    'abs.pdf.col_tax_cat':            'Tax category',
+    'abs.pdf.footer':                 'FinanceBird · No warranty for any data · Review by your accountant recommended',
+    'abs.pdf.firma_default':          'Sole proprietorship',
+    'abs.csv.title':                  'Year-end closing {year}',
+    'abs.csv.section_income':         'INCOME',
+    'abs.csv.section_expenses':       'BUSINESS EXPENSES',
+    'abs.csv.section_journal':        'TRANSACTION JOURNAL',
+    'abs.csv.total_expenses':         'Total business expenses',
+    'abs.csv.profit_loss':            'PROFIT / LOSS',
+    'abs.csv.col_inc':                'Income',
+    'abs.csv.col_exp':                'Expense',
+    'abs.csv.col_text':               'Text',
+    'abs.csv.fallback_taxcat':        'Other business expenses',
   }
 };
 
@@ -5745,7 +6181,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.27a.2026-04-20';
+const APP_VERSION = '2.28a.2026-04-26';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -9417,6 +9853,16 @@ function applyStaticI18n() {
   if (fab) {
     fab.innerHTML = '<span style="font-size:14px">+</span> ' + t('fab.capture');
   }
+  // S33 Sprint 6.5a Gruppe 4 — Saldo-Modal Statics
+  // (Title + Subtitle + Hint werden in openSaldoForm dynamisch gesetzt)
+  const _setText = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
+  };
+  _setText('saldoModalAmtLabel',  'saldo.modal.balance_label');
+  _setText('saldoModalDateLabel', 'saldo.modal.date_label');
+  _setText('saldoModalCancelBtn', 'saldo.modal.cancel');
+  _setText('saldoModalSaveBtn',   'saldo.modal.save');
 }
 
 function renderAll() {
@@ -10398,6 +10844,7 @@ function renderBuchhaltung() {
       ${['buchungen','rechnungen','konten','transfers','recurrings','abschluesse']
         .map(tab => `
           <button class="buch-subtab ${_buchSubtab === tab ? 'active' : ''}"
+            data-tab="${tab}"
             onclick="setBuchSubtab('${tab}')">
             ${buchSubtabLabel(tab)}
           </button>`).join('')}
@@ -10409,21 +10856,16 @@ function renderBuchhaltung() {
 }
 
 function buchSubtabLabel(tab) {
-  return {
-    buchungen:   'Buchungen',
-    rechnungen:  'Rechnungen',
-    konten:      'Konten',
-    transfers:   'Transfers',
-    recurrings:  'Wiederkehrend',
-    abschluesse: 'Abschlüsse',
-  }[tab] || tab;
+  /* BUG-078 (S33 Sprint 6.5a): t()-basiert statt hardcoded DE-Map */
+  return t('buch.subtab.' + tab) || tab;
 }
 
 function setBuchSubtab(tab) {
   _buchSubtab = tab;
-  // Update active state
+  /* BUG-078 (S33 Sprint 6.5a): match via data-tab statt textContent
+     — robust gegen Sprachwechsel (textContent änderte sich mid-flight) */
   document.querySelectorAll('.buch-subtab').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.trim() === buchSubtabLabel(tab));
+    btn.classList.toggle('active', btn.dataset.tab === tab);
   });
   renderBuchSubtab();
 }
@@ -10460,36 +10902,36 @@ function renderBuchungenHTML() {
     <div class="buch-filterbar">
       <select class="form-input" style="width:auto;padding:7px 10px;font-size:13px"
         onchange="BuchFilter.type=this.value;renderBuchSubtab()">
-        <option value="">Ein- & Ausgaben</option>
-        <option value="Einnahme" ${BuchFilter.type==='Einnahme'?'selected':''}>Einnahmen</option>
-        <option value="Ausgabe"  ${BuchFilter.type==='Ausgabe' ?'selected':''}>Ausgaben</option>
+        <option value="">${t('buch.filter.type_all')}</option>
+        <option value="Einnahme" ${BuchFilter.type==='Einnahme'?'selected':''}>${t('buch.filter.type_income')}</option>
+        <option value="Ausgabe"  ${BuchFilter.type==='Ausgabe' ?'selected':''}>${t('buch.filter.type_expense')}</option>
       </select>
       <select class="form-input" style="width:auto;padding:7px 10px;font-size:13px"
         onchange="BuchFilter.bereich=this.value;renderBuchSubtab()">
-        <option value="">Alle Bereiche</option>
-        <option value="Geschäftlich" ${BuchFilter.bereich==='Geschäftlich'?'selected':''}>Geschäftlich</option>
-        <option value="Privat"       ${BuchFilter.bereich==='Privat'      ?'selected':''}>Privat</option>
+        <option value="">${t('buch.filter.bereich_all')}</option>
+        <option value="Geschäftlich" ${BuchFilter.bereich==='Geschäftlich'?'selected':''}>${t('buch.filter.bereich_business')}</option>
+        <option value="Privat"       ${BuchFilter.bereich==='Privat'      ?'selected':''}>${t('buch.filter.bereich_private')}</option>
       </select>
       <select class="form-input" style="width:auto;padding:7px 10px;font-size:13px"
         onchange="BuchFilter.month=this.value;renderBuchSubtab()">
-        <option value="">Alle Monate</option>
+        <option value="">${t('buch.filter.month_all')}</option>
         ${months.map(m => `<option value="${m}" ${BuchFilter.month===m?'selected':''}>${m}</option>`).join('')}
       </select>
       <select class="form-input" style="width:auto;padding:7px 10px;font-size:13px"
         onchange="BuchFilter.cat=this.value;renderBuchSubtab()">
-        <option value="">Alle Kategorien</option>
+        <option value="">${t('buch.filter.cat_all')}</option>
         ${cats.map(c => `<option value="${c}" ${BuchFilter.cat===c?'selected':''}>${c}</option>`).join('')}
       </select>
-      <input class="form-input" type="text" placeholder="🔍 Suchen…" style="min-width:140px;padding:7px 10px;font-size:13px"
+      <input class="form-input" type="text" placeholder="${t('buch.filter.search_placeholder')}" style="min-width:140px;padding:7px 10px;font-size:13px"
         value="${BuchFilter.search}"
         oninput="BuchFilter.search=this.value;renderBuchSubtab()">
-      <button class="btn btn-outline btn-sm" onclick="exportBuchungenCSV()">📥 CSV</button>
-      ${buchungenFiltered().some(b => b.receiptLink) ? '<button class="btn btn-outline btn-sm" onclick="exportBelegeZip()" id="belegeZipBtn">📦 Belege ZIP</button>' : ''}
-      <button class="btn btn-outline btn-sm" onclick="openCSVImport()">📤 CSV importieren</button>
-      <button class="btn btn-primary btn-sm" onclick="openErfassen('buchung')">+ Buchung</button>
+      <button class="btn btn-outline btn-sm" onclick="exportBuchungenCSV()">${t('buch.toolbar.csv')}</button>
+      ${buchungenFiltered().some(b => b.receiptLink) ? `<button class="btn btn-outline btn-sm" onclick="exportBelegeZip()" id="belegeZipBtn">${t('buch.toolbar.belege_zip')}</button>` : ''}
+      <button class="btn btn-outline btn-sm" onclick="openCSVImport()">${t('buch.toolbar.csv_import')}</button>
+      <button class="btn btn-primary btn-sm" onclick="openErfassen('buchung')">${t('buch.toolbar.add')}</button>
     </div>
     <div id="belegeZipProgress" style="display:none;padding:8px 0">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px" id="belegeZipProgressLabel">Belege werden geladen…</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px" id="belegeZipProgressLabel">${t('buch.zip.loading')}</div>
       <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
         <div id="belegeZipProgressBar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div>
       </div>
@@ -10504,15 +10946,15 @@ function renderBuchungenHTML() {
           <col style="width:44px"><col style="width:120px">
         </colgroup>
         <thead><tr>
-          <th>Datum</th><th>Beschreibung</th><th>Gegenpartei</th>
-          <th>Typ</th><th>Kategorie</th><th>Steuerkategorie</th>
-          <th>Konto</th><th>Betrag</th><th>Bezahlt</th>
-          <th>Beleg</th><th></th>
+          <th>${t('buch.col.date')}</th><th>${t('buch.col.desc')}</th><th>${t('buch.col.counterparty')}</th>
+          <th>${t('buch.col.type')}</th><th>${t('buch.col.category')}</th><th>${t('buch.col.tax_category')}</th>
+          <th>${t('buch.col.account')}</th><th>${t('buch.col.amount')}</th><th>${t('buch.col.paid')}</th>
+          <th>${t('buch.col.receipt')}</th><th></th>
         </tr></thead>
         <tbody>
           ${filtered.map(b => buchungRowHTML(b)).join('')}
           <tr class="totals-row">
-            <td colspan="7"><strong>Total (${filtered.length})</strong></td>
+            <td colspan="7"><strong>${t('buch.row.total', { count: filtered.length })}</strong></td>
             <td class="amt ${total>=0?'pos':'neg'}" colspan="4">
               <strong>${total>=0?'+':'−'}${fmt(Math.abs(total))}</strong>
             </td>
@@ -10532,12 +10974,29 @@ function catStatusClass(b) {
   return '';
 }
 
+/** S33 Sprint 6.5a Gruppe 2: Type-Tag i18n
+ *  DB-Werte ('Einnahme'/'Ausgabe'/'Transfer') bleiben Anker, Frontend mappt. */
+function buchTypeLabel(type) {
+  if (type === 'Einnahme') return t('buch.type.income');
+  if (type === 'Ausgabe')  return t('buch.type.expense');
+  if (type === 'Transfer') return t('buch.type.transfer');
+  return type || '';
+}
+
+/** S33 Sprint 6.5a Gruppe 2: CatStatus-Label i18n (für tooltips) */
+function catStatusLabel(status) {
+  if (status === 'vorgeschlagen') return t('buch.cat_status.suggested');
+  if (status === 'flagged')       return t('buch.cat_status.flagged');
+  if (status === 'validiert')     return t('buch.cat_status.validated');
+  return status || '';
+}
+
 /** Session 3: Category status icon */
 function catStatusIcon(b) {
   const s = b.categoryStatus;
-  if (s === 'vorgeschlagen') return ' <span title="Vorgeschlagen" style="font-size:10px;opacity:.6">💡</span>';
-  if (s === 'flagged')       return ' <span title="Flagged" style="font-size:10px">🚩</span>';
-  if (s === 'validiert')     return ' <span title="Validiert" style="font-size:10px">✓</span>';
+  if (s === 'vorgeschlagen') return ` <span title="${catStatusLabel(s)}" style="font-size:10px;opacity:.6">💡</span>`;
+  if (s === 'flagged')       return ` <span title="${catStatusLabel(s)}" style="font-size:10px">🚩</span>`;
+  if (s === 'validiert')     return ` <span title="${catStatusLabel(s)}" style="font-size:10px">✓</span>`;
   return '';
 }
 
@@ -10572,35 +11031,35 @@ function buchungRowHTML(b) {
         ${isPend ? `<span style="font-size:10px;color:var(--amber)"> ⏳</span>` : ''}
       </td>
       <td style="font-size:12px;color:var(--muted)">${b.counterpart || '—'}</td>
-      <td><span class="tag ${b.type==='Einnahme'?'income':'expense'}">${b.type}</span></td>
+      <td><span class="tag ${b.type==='Einnahme'?'income':'expense'}">${buchTypeLabel(b.type)}</span></td>
       <td style="font-size:12px"><span class="${catStatusClass(b)}">${getCatDisplay(b.cat, b.bereich)}${catStatusIcon(b)}</span></td>
       <td style="font-size:11px;color:var(--muted)">${b.steuerformular || taxCat || '—'}</td>
       <td style="font-size:12px;color:var(--muted)">${b.account || '—'}</td>
       <td class="amt ${b.type==='Einnahme'?'pos':'neg'}">${b.type==='Einnahme'?'+':'−'}${fmt(b.amount)}</td>
       <td style="text-align:center">${b.paid ? '✅' : '⬜'}</td>
       <td>${b.receipt
-        ? `<img style="width:32px;height:32px;object-fit:cover;border-radius:5px;cursor:zoom-in" src="${b.receipt}" alt="Beleg">`
+        ? `<img style="width:32px;height:32px;object-fit:cover;border-radius:5px;cursor:zoom-in" src="${b.receipt}" alt="${t('buch.row.image_alt')}">`
         : b.receiptLink
           ? `<a href="${b.receiptLink}" target="_blank" style="font-size:14px">📄</a>`
           : b.receiptFile ? `<span style="font-size:14px" title="${b.receiptFile}">📎</span>` : '—'}</td>
       <td style="white-space:nowrap;overflow:visible">
-        ${b.categoryStatus === 'vorgeschlagen' ? `<button class="btn btn-outline btn-sm" onclick="confirmBuchungCategory('${b._id}')" title="Kategorie bestätigen" style="color:var(--green)">✓</button>` : ''}
-        <button class="btn btn-outline btn-sm" onclick="toggleBuchungDetail('${b._id}')" title="Details">…</button>
-        <button class="btn btn-outline btn-sm" onclick="openErfassenEdit('${b._id}')" title="Bearbeiten">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteBuchung('${b._id}')" title="Löschen">✕</button>
+        ${b.categoryStatus === 'vorgeschlagen' ? `<button class="btn btn-outline btn-sm" onclick="confirmBuchungCategory('${b._id}')" title="${t('buch.action.confirm_cat')}" style="color:var(--green)">✓</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="toggleBuchungDetail('${b._id}')" title="${t('buch.action.details')}">…</button>
+        <button class="btn btn-outline btn-sm" onclick="openErfassenEdit('${b._id}')" title="${t('buch.action.edit')}">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteBuchung('${b._id}')" title="${t('buch.action.delete')}">✕</button>
       </td>
     </tr>
     <tr id="buchDetail_${b._id}" style="display:none">
       <td colspan="11" style="padding:12px 16px;background:var(--bg2);font-size:12px;line-height:1.8">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">
-          ${b.mwstSatz ? `<div><span style="color:var(--muted)">Brutto:</span> ${fmtS(b.amount)}</div>` : ''}
-          ${b.nettoBetrag ? `<div><span style="color:var(--muted)">Netto:</span> ${fmtS(b.nettoBetrag)}</div>` : ''}
-          ${b.mwstBetrag ? `<div><span style="color:var(--muted)">MWST (${((b.mwstSatz||0)*100).toFixed(1)}%):</span> ${fmtS(b.mwstBetrag)}</div>` : ''}
-          ${b.steuerformular ? `<div><span style="color:var(--muted)">Steuerformular:</span> ${esc(b.steuerformular)}</div>` : ''}
-          ${b.categoryStatus ? `<div><span style="color:var(--muted)">Status:</span> ${esc(b.categoryStatus)}</div>` : ''}
-          ${b.teilabzug ? `<div><span style="color:var(--muted)">Teilabzug:</span> ${(b.teilabzug*100).toFixed(0)}%</div>` : ''}
-          ${b.korrekturKat ? `<div style="color:var(--amber)"><span style="color:var(--muted)">Korrektur:</span> ${esc(b.korrekturKat)} (${esc(b.korrekturVon||'?')})</div>` : ''}
-          <div><span style="color:var(--muted)">Geändert:</span> ${b._edited ? new Date(b._edited).toLocaleDateString('de-CH') : '—'}</div>
+          ${b.mwstSatz ? `<div><span style="color:var(--muted)">${t('buch.detail.gross')}</span> ${fmtS(b.amount)}</div>` : ''}
+          ${b.nettoBetrag ? `<div><span style="color:var(--muted)">${t('buch.detail.net')}</span> ${fmtS(b.nettoBetrag)}</div>` : ''}
+          ${b.mwstBetrag ? `<div><span style="color:var(--muted)">${t('buch.detail.vat')} (${((b.mwstSatz||0)*100).toFixed(1)}%):</span> ${fmtS(b.mwstBetrag)}</div>` : ''}
+          ${b.steuerformular ? `<div><span style="color:var(--muted)">${t('buch.detail.tax_form')}</span> ${esc(b.steuerformular)}</div>` : ''}
+          ${b.categoryStatus ? `<div><span style="color:var(--muted)">${t('buch.detail.status')}</span> ${esc(catStatusLabel(b.categoryStatus) || b.categoryStatus)}</div>` : ''}
+          ${b.teilabzug ? `<div><span style="color:var(--muted)">${t('buch.detail.partial_ded')}</span> ${(b.teilabzug*100).toFixed(0)}%</div>` : ''}
+          ${b.korrekturKat ? `<div style="color:var(--amber)"><span style="color:var(--muted)">${t('buch.detail.correction')}</span> ${esc(b.korrekturKat)} (${esc(b.korrekturVon||'?')})</div>` : ''}
+          <div><span style="color:var(--muted)">${t('buch.detail.modified')}</span> ${b._edited ? new Date(b._edited).toLocaleDateString(AppState.lang === 'en' ? 'en-US' : 'de-CH') : '—'}</div>
         </div>
         <!-- Sprint 5 BL-072: Beleg-Block (Upload / Ersetzen / Öffnen) -->
         <!-- BL-107: Wenn Queue-Eintrag existiert → pending Upload anzeigen -->
@@ -10608,16 +11067,16 @@ function buchungRowHTML(b) {
           const pending = getQueuedReceiptFor(b._id);
           if (!pending) return '';
           return `<div style="margin-top:10px;padding:8px 12px;background:var(--bg2);border-left:3px solid var(--amber);border-radius:6px;font-size:12px;color:var(--muted);line-height:1.5">
-            📂 Beleg <strong style="color:var(--ink2)">${esc(pending.filename || 'beleg')}</strong> wartet auf Upload — wird nachgeliefert sobald Google Drive verbunden ist.
+            ${t('buch.detail.receipt_pending', { filename: esc(pending.filename || 'beleg') })}
           </div>`;
         })()}
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="color:var(--muted);font-weight:600">Beleg:</span>
+          <span style="color:var(--muted);font-weight:600">${t('buch.detail.receipt_label')}</span>
           ${b.receiptLink
-            ? `<a href="${b.receiptLink}" target="_blank" style="color:var(--accent);text-decoration:none">${esc(b.receiptFile || 'Öffnen')} ↗</a>
-               <button class="btn btn-outline btn-sm" onclick="triggerAttachReceipt('${b._id}')" style="font-size:11px;padding:4px 10px">Ersetzen</button>`
-            : `<span style="color:var(--muted)">Noch kein Beleg angehängt</span>
-               <button class="btn btn-outline btn-sm" onclick="triggerAttachReceipt('${b._id}')" style="font-size:11px;padding:4px 10px">📎 Beleg hinzufügen</button>`}
+            ? `<a href="${b.receiptLink}" target="_blank" style="color:var(--accent);text-decoration:none">${esc(b.receiptFile || t('buch.detail.receipt_open'))} ↗</a>
+               <button class="btn btn-outline btn-sm" onclick="triggerAttachReceipt('${b._id}')" style="font-size:11px;padding:4px 10px">${t('buch.detail.receipt_replace')}</button>`
+            : `<span style="color:var(--muted)">${t('buch.detail.no_receipt')}</span>
+               <button class="btn btn-outline btn-sm" onclick="triggerAttachReceipt('${b._id}')" style="font-size:11px;padding:4px 10px">${t('buch.detail.add_receipt')}</button>`}
           <span id="attachStatus_${b._id}" style="font-size:11px"></span>
         </div>
       </td>
@@ -10680,6 +11139,19 @@ function exportBuchungenCSV() {
 
 let _invFilter = '';
 
+/** S33 Sprint 6.5a Gruppe 3: Rechnungs-Status-Label i18n
+ *  DB-Werte ('Offen'/'Bezahlt'/'Teilzahlung'/'Überfällig'/'Entwurf') bleiben Anker. */
+function invStatusLabel(status) {
+  const map = {
+    'Offen':       t('inv.status.open'),
+    'Bezahlt':     t('inv.status.paid'),
+    'Teilzahlung': t('inv.status.partial'),
+    'Überfällig':  t('inv.status.overdue'),
+    'Entwurf':     t('inv.status.draft'),
+  };
+  return map[status] || status || '';
+}
+
 function renderRechnungenHTML() {
   const open    = Store.rechnungen.filter(r => r.status==='Offen');
   const overdue = Store.rechnungen.filter(r => r.status==='Überfällig' ||
@@ -10692,41 +11164,41 @@ function renderRechnungenHTML() {
     : Store.rechnungen;
 
   const filterOpts = ['','Offen','Teilzahlung','Bezahlt','Überfällig','Entwurf'].map(f =>
-    `<option value="${f}" ${_invFilter===f?'selected':''}>${f||'Alle'}</option>`).join('');
+    `<option value="${f}" ${_invFilter===f?'selected':''}>${f ? invStatusLabel(f) : t('inv.filter.all')}</option>`).join('');
 
   return `
     <div class="grid-3" style="margin:16px 0">
       <div class="kpi">
-        <div class="kpi-label">Offen</div>
+        <div class="kpi-label">${t('inv.status.open')}</div>
         <div class="kpi-val blue">${fmtS(open.reduce((s,r)=>s+r.amount,0))}</div>
-        <div class="kpi-sub">${open.length} Rechnungen</div>
+        <div class="kpi-sub">${t('inv.kpi.invoices', { n: open.length })}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">Bezahlt ${new Date().getFullYear()}</div>
+        <div class="kpi-label">${t('inv.kpi.paid_year', { year: new Date().getFullYear() })}</div>
         <div class="kpi-val green">${fmtS(paid.reduce((s,r)=>s+r.amount,0))}</div>
-        <div class="kpi-sub">${paid.length} bezahlt</div>
+        <div class="kpi-sub">${t('inv.kpi.paid_count', { n: paid.length })}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">Überfällig</div>
+        <div class="kpi-label">${t('inv.status.overdue')}</div>
         <div class="kpi-val red">${fmtS(overdue.reduce((s,r)=>s+r.amount,0))}</div>
-        <div class="kpi-sub">${overdue.length} überfällig</div>
+        <div class="kpi-sub">${t('inv.kpi.overdue_count', { n: overdue.length })}</div>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <select class="form-input" style="width:auto;padding:7px 10px;font-size:13px"
         onchange="_invFilter=this.value;renderBuchSubtab()">${filterOpts}</select>
-      <button class="btn btn-primary btn-sm" onclick="openErfassen('rechnung')">+ Neue Rechnung</button>
+      <button class="btn btn-primary btn-sm" onclick="openErfassen('rechnung')">${t('inv.toolbar.add')}</button>
     </div>
     <div class="card table-scroll-wrap">
       <table class="data-table">
         <thead><tr>
-          <th>Nr.</th><th>Datum</th><th>Fällig</th><th>Kunde</th>
-          <th>Beschreibung</th><th>Betrag</th><th>Status</th><th>Bezahlt am</th><th></th>
+          <th>${t('inv.col.no')}</th><th>${t('inv.col.date')}</th><th>${t('inv.col.due')}</th><th>${t('inv.col.client')}</th>
+          <th>${t('inv.col.desc')}</th><th>${t('inv.col.amount')}</th><th>${t('inv.col.status')}</th><th>${t('inv.col.paid_on')}</th><th></th>
         </tr></thead>
         <tbody>
           ${filtered.length
             ? filtered.map(r => rechnungRowHTML(r)).join('')
-            : `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)">Keine Rechnungen</td></tr>`}
+            : `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)">${t('inv.empty')}</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -10773,22 +11245,22 @@ function openPartialPaymentDialog(invId) {
     <div id="partialPayOverlay" class="overlay-sheet" onclick="if(event.target===this)this.remove()">
       <div class="overlay-sheet-content" style="max-width:400px">
         <div class="overlay-sheet-header">
-          <div style="font-weight:700;font-size:17px">Teilzahlung erfassen</div>
+          <div style="font-weight:700;font-size:17px">${t('inv.partial.title')}</div>
           <button class="overlay-close-btn" onclick="document.getElementById('partialPayOverlay').remove()">✕</button>
         </div>
         <div style="margin-bottom:12px;font-size:14px">
           <strong>${esc(inv.nr)}</strong> · ${esc(inv.client)}<br>
-          Gesamtbetrag: ${fmtS(inv.amount)}<br>
-          Bereits erhalten: ${fmtS(inv.paidAmount || 0)}<br>
-          <strong>Offen: ${fmtS(remaining)}</strong>
+          ${t('inv.partial.total', { amt: fmtS(inv.amount) })}<br>
+          ${t('inv.partial.already', { amt: fmtS(inv.paidAmount || 0) })}<br>
+          <strong>${t('inv.partial.open', { amt: fmtS(remaining) })}</strong>
         </div>
         <div class="form-group">
-          <label class="form-label required">Eingegangener Betrag</label>
+          <label class="form-label required">${t('inv.partial.amt_label')}</label>
           <input id="partialPayAmt" type="number" class="form-input" placeholder="0.00" step="0.01" value="${remaining.toFixed(2)}">
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('partialPayOverlay').remove()">Abbrechen</button>
-          <button class="btn btn-primary" style="flex:1" id="partialPayBtn" onclick="submitPartialPayment('${invId}')">✓ Erfassen</button>
+          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('partialPayOverlay').remove()">${t('inv.partial.cancel')}</button>
+          <button class="btn btn-primary" style="flex:1" id="partialPayBtn" onclick="submitPartialPayment('${invId}')">${t('inv.partial.submit')}</button>
         </div>
       </div>
     </div>`;
@@ -10821,7 +11293,7 @@ async function submitPartialPayment(invId) {
     saveCache('rechnungen');
 
     // Create booking for the partial amount
-    await createBookingFromInvoice({ ...inv, amount: amt, nr: inv.nr + ' (Teilzahlung)' });
+    await createBookingFromInvoice({ ...inv, amount: amt, nr: inv.nr + ' ' + t('inv.partial.suffix') });
 
     document.getElementById('partialPayOverlay')?.remove();
     renderBuchSubtab();
@@ -10920,18 +11392,51 @@ function openRechnungEdit(id) {
 
 /* ══ KONTEN ══ */
 
+/** S33 Sprint 6.5a Gruppe 4: Konto-Type/Group-Labels i18n
+ *  DB-Werte ('Girokonto'/'Sparkonto'/etc.) bleiben Anker, Frontend mappt. */
+function kontoTypeLabel(typ) {
+  const map = {
+    'Girokonto':   t('konto.type.checking'),
+    'Sparkonto':   t('konto.type.savings'),
+    'Kreditkarte': t('konto.type.credit_card'),
+    'Pocket':      t('konto.type.pocket'),
+    'Bargeld':     t('konto.type.cash'),
+    'Investition': t('konto.type.investment'),
+    'Schuld':      t('konto.type.debt'),
+  };
+  return map[typ] || typ || '';
+}
+function kontoGroupLabel(grp) {
+  if (grp === 'Sonstige') return t('konto.group.other');
+  return grp || '';
+}
+
+/** S33 Sprint 6.5a Gruppe 5: Transfer-Status + Recurring-Frequency Labels i18n
+ *  DB-Werte ('Ausgeführt'/'Entwurf', 'monthly'/'weekly'/'yearly') bleiben Anker. */
+function trStatusLabel(status) {
+  if (status === 'Ausgeführt') return t('tr.status.executed');
+  if (status === 'Entwurf')    return t('tr.status.draft');
+  return status || '';
+}
+function recFreqLabel(freq) {
+  if (freq === 'weekly')  return t('rec.freq.weekly');
+  if (freq === 'monthly') return t('rec.freq.monthly');
+  if (freq === 'yearly')  return t('rec.freq.yearly');
+  return freq || '';
+}
+
 function renderKontenHTML() {
   const konten = Store.konten.filter(k => k.active !== false);
   return `
     <div style="display:flex;justify-content:flex-end;margin:16px 0 12px">
-      <button class="btn btn-primary btn-sm" onclick="openKontoForm()">+ Konto</button>
+      <button class="btn btn-primary btn-sm" onclick="openKontoForm()">${t('konten.toolbar.add')}</button>
     </div>
     ${konten.length
       ? konten.map(k => kontoCardHTML(k)).join('')
-      : `<div class="empty"><div class="ico">🏦</div><p>Noch keine Konten</p></div>`}
+      : `<div class="empty"><div class="ico">🏦</div><p>${t('konten.empty')}</p></div>`}
     <div style="margin-top:12px;padding:12px 16px;background:var(--bg2);border-radius:12px;
       display:flex;justify-content:space-between;align-items:center">
-      <strong>Total (Schätzung)</strong>
+      <strong>${t('konten.total_estimated')}</strong>
       <span style="font-family:'Libre Baskerville',serif;font-size:18px;font-weight:500">
         ${fmtS(Computed.totalWealth())}
       </span>
@@ -10948,10 +11453,10 @@ function kontoCardHTML(k) {
         <span style="font-size:20px">${k.icon||'💰'}</span>
         <div>
           <div style="font-weight:600;font-size:13.5px">${esc(k.name)}</div>
-          <div style="font-size:11px;color:var(--muted)">${k.group||''} · ${k.typ||''}${k.currency && k.currency !== (AppState.currency||'CHF') ? ' · '+k.currency : ''}</div>
+          <div style="font-size:11px;color:var(--muted)">${kontoGroupLabel(k.group)} · ${kontoTypeLabel(k.typ)}${k.currency && k.currency !== (AppState.currency||'CHF') ? ' · '+k.currency : ''}</div>
           ${k.saldoDatum
-            ? `<div style="font-size:10px;color:var(--muted)">Basis ${fmtDate(k.saldoDatum)}: ${fmtK(k.stand||0, k.currency)}</div>`
-            : `<div style="font-size:10px;color:var(--amber)">⚠ Kein Startsaldo</div>`}
+            ? `<div style="font-size:10px;color:var(--muted)">${t('konten.card.base_at', { date: fmtDate(k.saldoDatum), amt: fmtK(k.stand||0, k.currency) })}</div>`
+            : `<div style="font-size:10px;color:var(--amber)">${t('konten.card.no_opening')}</div>`}
         </div>
       </div>
       <div style="text-align:right">
@@ -10959,9 +11464,9 @@ function kontoCardHTML(k) {
           color:${isNeg?'var(--red)':'var(--ink)'}">
           ${est !== null ? fmtK(est, k.currency) : '—'}
         </div>
-        <div style="font-size:9px;color:var(--muted)">Schätzung</div>
+        <div style="font-size:9px;color:var(--muted)">${t('konten.card.estimated')}</div>
         <button class="btn btn-outline btn-sm" style="margin-top:6px;font-size:11px"
-          onclick="openSaldoForm('${k._id}')">✏️ Saldo</button>
+          onclick="openSaldoForm('${k._id}')">${t('konten.card.edit_balance')}</button>
       </div>
     </div>`;
 }
@@ -10973,28 +11478,28 @@ function openKontoForm() {
   const html   = `
     <div id="kontoFormOverlay" style="position:fixed;inset:0;z-index:400;background:rgba(22,20,18,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px">
       <div style="background:var(--paper);border-radius:20px;padding:26px;width:92%;max-width:420px;max-height:90vh;overflow-y:auto">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:16px">Neues Konto</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:16px">${t('konto.form.title_new')}</div>
         <div class="form-group">
-          <label class="form-label required">Name</label>
-          <input id="kfName" class="form-input" placeholder="z.B. Hauptkonto">
+          <label class="form-label required">${t('konto.form.name')}</label>
+          <input id="kfName" class="form-input" placeholder="${t('konto.form.name_placeholder')}">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group">
-            <label class="form-label">Typ</label>
+            <label class="form-label">${t('konto.form.type')}</label>
             <select id="kfTyp" class="form-input">
-              ${types.map(t=>`<option value="${t}">${t}</option>`).join('')}
+              ${types.map(typ=>`<option value="${typ}">${kontoTypeLabel(typ)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Gruppe</label>
+            <label class="form-label">${t('konto.form.group')}</label>
             <select id="kfGroup" class="form-input">
-              ${groups.map(g=>`<option value="${g}">${g}</option>`).join('')}
+              ${groups.map(g=>`<option value="${g}">${kontoGroupLabel(g)}</option>`).join('')}
             </select>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div class="form-group">
-            <label class="form-label">Währung</label>
+            <label class="form-label">${t('konto.form.currency')}</label>
             <select id="kfCurrency" class="form-input">
               <option value="CHF" ${(AppState.currency||'CHF')==='CHF'?'selected':''}>CHF</option>
               <option value="EUR" ${(AppState.currency||'CHF')==='EUR'?'selected':''}>EUR</option>
@@ -11003,24 +11508,24 @@ function openKontoForm() {
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Startsaldo</label>
+            <label class="form-label">${t('konto.form.opening_balance')}</label>
             <input id="kfStand" type="number" class="form-input" placeholder="0.00" step="0.01">
           </div>
           <div class="form-group">
-            <label class="form-label">Stand per</label>
+            <label class="form-label">${t('konto.form.as_of')}</label>
             <input id="kfDatum" type="date" class="form-input" value="${toDay()}">
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Icon</label>
+          <label class="form-label">${t('konto.form.icon')}</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             ${icons.map(i=>`<button type="button" onclick="this.parentElement.querySelectorAll('button').forEach(b=>b.style.outline='');this.style.outline='2px solid var(--accent)';document.getElementById('kfIcon').value='${i}'" style="font-size:22px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer">${i}</button>`).join('')}
           </div>
           <input id="kfIcon" type="hidden" value="🏦">
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('kontoFormOverlay').remove()">Abbrechen</button>
-          <button class="btn btn-primary" style="flex:1" onclick="saveKontoForm()">✓ Speichern</button>
+          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('kontoFormOverlay').remove()">${t('konto.form.cancel')}</button>
+          <button class="btn btn-primary" style="flex:1" onclick="saveKontoForm()">${t('konto.form.save')}</button>
         </div>
       </div>
     </div>`;
@@ -11059,31 +11564,31 @@ async function saveKontoForm() {
 function openRecurringForm(prefill = {}) {
   const cats    = getActiveCatsBiz().concat(getActiveCatsPriv());
   const konten  = Store.konten.map(k => k.name);
-  const freqs   = [{v:'monthly',l:'Monatlich'},{v:'weekly',l:'Wöchentlich'},{v:'yearly',l:'Jährlich'}];
+  const freqs   = [{v:'monthly',l:t('rec.freq.monthly')},{v:'weekly',l:t('rec.freq.weekly')},{v:'yearly',l:t('rec.freq.yearly')}];
   const html    = `
     <div id="recurringFormOverlay" style="position:fixed;inset:0;z-index:400;background:rgba(22,20,18,.55);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center">
       <div style="background:var(--paper);border-radius:20px 20px 0 0;padding:26px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,20px)">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:16px">Wiederkehrende Zahlung</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:16px">${t('rec.form.title')}</div>
         <div class="form-group">
-          <label class="form-label required">Bezeichnung</label>
-          <input id="rfName" class="form-input" placeholder="Netflix, Miete, AHV…" value="${prefill.name||''}">
+          <label class="form-label required">${t('rec.form.name')}</label>
+          <input id="rfName" class="form-input" placeholder="${t('rec.form.name_placeholder')}" value="${prefill.name||''}">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group">
-            <label class="form-label">Betrag (CHF)</label>
+            <label class="form-label">${t('rec.form.amount')}</label>
             <input id="rfAmt" type="number" class="form-input" placeholder="0.00" step="0.01" value="${prefill.amt||''}">
           </div>
           <div class="form-group">
-            <label class="form-label">Typ</label>
+            <label class="form-label">${t('rec.form.type')}</label>
             <select id="rfTyp" class="form-input">
-              <option value="Ausgabe" ${(prefill.typ||'Ausgabe')==='Ausgabe'?'selected':''}>Ausgabe</option>
-              <option value="Einnahme" ${prefill.typ==='Einnahme'?'selected':''}>Einnahme</option>
+              <option value="Ausgabe" ${(prefill.typ||'Ausgabe')==='Ausgabe'?'selected':''}>${t('rec.form.type_expense')}</option>
+              <option value="Einnahme" ${prefill.typ==='Einnahme'?'selected':''}>${t('rec.form.type_income')}</option>
             </select>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group">
-            <label class="form-label">Frequenz</label>
+            <label class="form-label">${t('rec.form.frequency')}</label>
             <select id="rfFreq" class="form-input">
               ${freqs.map(f=>`<option value="${f.v}" ${prefill.freq===f.v?'selected':''}>${f.l}</option>`).join('')}
             </select>
@@ -11091,27 +11596,27 @@ function openRecurringForm(prefill = {}) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group">
-            <label class="form-label">Nächste Fälligkeit</label>
+            <label class="form-label">${t('rec.form.next_due')}</label>
             <input id="rfNext" type="date" class="form-input" value="${prefill.nextDate||toDay()}">
           </div>
           <div class="form-group">
-            <label class="form-label">Bereich</label>
+            <label class="form-label">${t('rec.form.bereich')}</label>
             <select id="rfBereich" class="form-input">
-              <option value="Privat" ${prefill.bereich==='Privat'?'selected':''}>Privat</option>
-              <option value="Geschäftlich" ${prefill.bereich==='Geschäftlich'?'selected':''}>Geschäftlich</option>
+              <option value="Privat" ${prefill.bereich==='Privat'?'selected':''}>${t('rec.form.bereich_private')}</option>
+              <option value="Geschäftlich" ${prefill.bereich==='Geschäftlich'?'selected':''}>${t('rec.form.bereich_business')}</option>
             </select>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group">
-            <label class="form-label">Kategorie</label>
+            <label class="form-label">${t('rec.form.category')}</label>
             <select id="rfCat" class="form-input">
               <option value="">—</option>
               ${cats.map(c=>`<option value="${c}" ${prefill.cat===c?'selected':''}>${c}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Konto</label>
+            <label class="form-label">${t('rec.form.account')}</label>
             <select id="rfAccount" class="form-input">
               <option value="">—</option>
               ${konten.map(k=>`<option value="${k}" ${prefill.account===k?'selected':''}>${k}</option>`).join('')}
@@ -11119,12 +11624,12 @@ function openRecurringForm(prefill = {}) {
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Notiz (optional)</label>
+          <label class="form-label">${t('rec.form.note')}</label>
           <input id="rfNote" class="form-input" placeholder="" value="${prefill.note||''}">
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('recurringFormOverlay').remove()">Abbrechen</button>
-          <button class="btn btn-primary" style="flex:1" onclick="saveRecurringForm('${prefill._id||''}')">✓ Speichern</button>
+          <button class="btn btn-outline" style="flex:1" onclick="document.getElementById('recurringFormOverlay').remove()">${t('rec.form.cancel')}</button>
+          <button class="btn btn-primary" style="flex:1" onclick="saveRecurringForm('${prefill._id||''}')">${t('rec.form.save')}</button>
         </div>
       </div>
     </div>`;
@@ -11176,7 +11681,7 @@ function openRecurringEdit(id) {
 
 /** BUG-057: Delete recurring with confirmation */
 async function deleteRecurring(id, name) {
-  if (!confirm(`"${name}" wirklich löschen?`)) return;
+  if (!confirm(t('rec.confirm.delete', { name }))) return;
   try {
     const db = getActiveDataAdapter();
     await db.deleteRecurring(id);
@@ -11199,13 +11704,13 @@ function renderTransfersHTML() {
 
   return `
     <div style="display:flex;justify-content:flex-end;margin:16px 0 12px">
-      <button class="btn btn-primary btn-sm" onclick="openErfassen('transfer')">+ Transfer</button>
+      <button class="btn btn-primary btn-sm" onclick="openErfassen('transfer')">${t('tr.toolbar.add')}</button>
     </div>
     <div class="card table-scroll-wrap">
       <table class="data-table">
         <thead><tr>
-          <th>Datum</th><th>Beschreibung</th><th>Von</th><th>Nach</th>
-          <th>Betrag</th><th>Status</th><th>Typ</th>
+          <th>${t('tr.col.date')}</th><th>${t('tr.col.desc')}</th><th>${t('tr.col.from')}</th><th>${t('tr.col.to')}</th>
+          <th>${t('tr.col.amount')}</th><th>${t('tr.col.status')}</th><th>${t('tr.col.type')}</th>
         </tr></thead>
         <tbody>
           ${transfers.length
@@ -11217,11 +11722,11 @@ function renderTransfersHTML() {
                 <td style="font-size:12px;color:var(--muted)">${tr.toAccount||'—'}</td>
                 <td class="amt" style="color:var(--blue)">↔ ${fmt(tr.amount)}</td>
                 <td style="font-size:12px">
-                  <span class="tag ${tr.status==='Ausgeführt'?'paid':'draft'}">${tr.status||'—'}</span>
+                  <span class="tag ${tr.status==='Ausgeführt'?'paid':'draft'}">${trStatusLabel(tr.status) || '—'}</span>
                 </td>
                 <td style="font-size:11px;color:var(--muted)">${tr.typ||'—'}</td>
               </tr>`).join('')
-            : `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Keine Transfers dieses Jahr</td></tr>`}
+            : `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">${t('tr.empty')}</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -11232,7 +11737,6 @@ function renderTransfersHTML() {
 function renderRecurringsHTML() {
   const recurrings = Store.recurrings;
   const today      = toDay();
-  const FREQ_LABEL = { weekly:'Wöchentlich', monthly:'Monatlich', yearly:'Jährlich' };
   const FREQ_MULT  = { weekly:52, monthly:12, yearly:1 };
   const monthlyTotal = recurrings
     .filter(r => !r.paused)
@@ -11248,17 +11752,17 @@ function renderRecurringsHTML() {
         <span style="padding:4px 9px;border-radius:7px;font-size:11px;font-weight:700;
           background:${r.freq==='monthly'?'var(--accent-light)':r.freq==='weekly'?'var(--sky-light)':'var(--purple-light)'};
           color:${r.freq==='monthly'?'var(--accent)':r.freq==='weekly'?'var(--sky)':'var(--purple)'}">
-          ${FREQ_LABEL[r.freq]||r.freq}
+          ${recFreqLabel(r.freq)}
         </span>
         <div style="flex:1">
-          <div style="font-size:13.5px;font-weight:500">${esc(r.name)}${r.paused?' <span style="font-size:10px;color:var(--muted)">(pausiert)</span>':''}
-            ${isIncome?'<span style="font-size:10px;color:var(--green)"> Einnahme</span>':''}</div>
+          <div style="font-size:13.5px;font-weight:500">${esc(r.name)}${r.paused?` <span style="font-size:10px;color:var(--muted)">${t('rec.tag.paused')}</span>`:''}
+            ${isIncome?`<span style="font-size:10px;color:var(--green)"> ${t('rec.tag.income')}</span>`:''}</div>
           <div style="font-size:11px;color:var(--muted)">${r.cat||''}${r.account?' · '+r.account:''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-family:'Libre Baskerville',serif;font-size:15px;font-weight:700;color:${isIncome?'var(--green)':'var(--red)'}">${fmtS(r.amt)}</div>
           <div style="font-size:10px;color:${isDue?'var(--amber)':'var(--muted)'}">
-            ${isDue?'⏰ Fällig: ':'Nächste: '}${fmtDate(r.nextDate||today)}
+            ${isDue?t('rec.due.label'):t('rec.next.label')}${fmtDate(r.nextDate||today)}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px">
@@ -11273,12 +11777,12 @@ function renderRecurringsHTML() {
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 12px;flex-wrap:wrap;gap:8px">
       <div style="font-size:13px;color:var(--muted)">
-        Ø monatliche Fixkosten: <strong style="color:var(--red)">${fmtS(monthlyTotal)}</strong>
-        <span style="margin-left:8px;font-size:11px">(jährlich: ${fmtS(monthlyTotal*12)})</span>
+        ${t('rec.kpi.monthly')} <strong style="color:var(--red)">${fmtS(monthlyTotal)}</strong>
+        <span style="margin-left:8px;font-size:11px">${t('rec.kpi.yearly', { amt: fmtS(monthlyTotal*12) })}</span>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openRecurringForm()">+ Hinzufügen</button>
+      <button class="btn btn-primary btn-sm" onclick="openRecurringForm()">${t('rec.toolbar.add')}</button>
     </div>
-    ${rows || `<div class="empty"><div class="ico">🔄</div><p>Noch keine Recurrings</p></div>`}`;
+    ${rows || `<div class="empty"><div class="ico">🔄</div><p>${t('rec.empty')}</p></div>`}`;
 }
 
 /* ══ ABSCHLÜSSE ══ */
@@ -11303,27 +11807,27 @@ function renderAbschluesseHTML() {
     </div>`).join('');
 
   return `
-    <div class="section-head" style="margin-top:16px"><h3>Jahresabschluss exportieren</h3></div>
+    <div class="section-head" style="margin-top:16px"><h3>${t('abs.section.export')}</h3></div>
     <div id="abschlussChecklist" class="card" style="margin-bottom:12px">
       ${renderAbschlussChecklist()}
     </div>
     <div class="card">
       <div style="font-size:13.5px;color:var(--ink2);margin-bottom:16px">
-        Export für Treuhänderin — Milchbüechli-Format mit Steuerkategorien.
+        ${t('abs.intro')}
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <select id="exportYear" class="form-input" style="width:auto;padding:8px 12px">
           ${years.map(y => `<option value="${y}" ${String(yr)===y?'selected':''}>${y}</option>`).join('')}
         </select>
-        <button class="btn btn-primary" onclick="exportJahresabschluss()">📥 Jahresabschluss (CSV)</button>
-        <button class="btn btn-outline" onclick="printJahresabschluss()">🖨 PDF drucken</button>
-        <button class="btn btn-outline" onclick="exportBuchungenCSV()">📋 Alle Buchungen</button>
+        <button class="btn btn-primary" onclick="exportJahresabschluss()">${t('abs.btn.csv')}</button>
+        <button class="btn btn-outline" onclick="printJahresabschluss()">${t('abs.btn.pdf')}</button>
+        <button class="btn btn-outline" onclick="exportBuchungenCSV()">${t('abs.btn.all_buchungen')}</button>
       </div>
     </div>
-    <div class="section-head" style="margin-top:16px"><h3>Steuer-Mapping</h3></div>
+    <div class="section-head" style="margin-top:16px"><h3>${t('abs.section.tax_mapping')}</h3></div>
     <div class="card" style="margin-bottom:16px">
       <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">
-        Ordne deine Kategorien den Steuerkategorien zu — für den Jahresabschluss-Export.
+        ${t('abs.tax_mapping.intro')}
       </div>
       ${mappingRows}
     </div>`;
@@ -11349,39 +11853,48 @@ function renderAbschlussChecklist() {
   const checks = [
     {
       ok: noCat === 0,
-      label: noCat === 0 ? 'Alle Buchungen kategorisiert' : `${noCat} Buchung${noCat>1?'en':''} ohne Kategorie`,
+      label: noCat === 0
+        ? t('abs.check.cat_ok')
+        : (noCat === 1 ? t('abs.check.cat_bad_one', { n: noCat }) : t('abs.check.cat_bad_many', { n: noCat })),
       action: noCat > 0 ? `nav('buchhaltung')` : null,
-      actionLabel: 'Prüfen',
+      actionLabel: t('abs.check.action.review'),
     },
     {
       ok: unpaid === 0,
-      label: unpaid === 0 ? 'Alle Rechnungen als bezahlt markiert' : `${unpaid} offene Rechnung${unpaid>1?'en':''}`,
+      label: unpaid === 0
+        ? t('abs.check.unpaid_ok')
+        : (unpaid === 1 ? t('abs.check.unpaid_bad_one', { n: unpaid }) : t('abs.check.unpaid_bad_many', { n: unpaid })),
       action: unpaid > 0 ? `nav('buchhaltung');setTimeout(()=>setBuchSubtab('rechnungen'),100)` : null,
-      actionLabel: 'Ansehen',
+      actionLabel: t('abs.check.action.view'),
     },
     {
       ok: noTax === 0,
-      label: noTax === 0 ? 'Steuer-Mapping vollständig' : `${noTax} Kategorie${noTax>1?'n':''} ohne Steuer-Zuordnung`,
+      label: noTax === 0
+        ? t('abs.check.tax_ok')
+        : (noTax === 1 ? t('abs.check.tax_bad_one', { n: noTax }) : t('abs.check.tax_bad_many', { n: noTax })),
       action: noTax > 0 ? null : null,
-      actionLabel: 'Prüfen',
+      actionLabel: t('abs.check.action.review'),
     },
     {
       ok: noReceipt === 0,
-      label: noReceipt === 0 ? 'Ausgaben über CHF 50 haben Belege' : `${noReceipt} Ausgabe${noReceipt>1?'n':''} über CHF 50 ohne Beleg`,
+      label: noReceipt === 0
+        ? t('abs.check.receipt_ok')
+        : (noReceipt === 1 ? t('abs.check.receipt_bad_one', { n: noReceipt }) : t('abs.check.receipt_bad_many', { n: noReceipt })),
       action: noReceipt > 0 ? `nav('buchhaltung')` : null,
-      actionLabel: 'Prüfen',
+      actionLabel: t('abs.check.action.review'),
     },
   ];
 
   const allOk = checks.every(c => c.ok);
+  const openCount = checks.filter(c=>!c.ok).length;
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div style="font-family:'Courier Prime',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">
-        Checkliste ${yr}
+        ${t('abs.checklist.title', { year: yr })}
       </div>
       ${allOk
-        ? '<div style="font-size:12px;color:var(--green);font-weight:600">✓ Bereit für Export</div>'
-        : `<div style="font-size:12px;color:var(--amber)">${checks.filter(c=>!c.ok).length} Punkt${checks.filter(c=>!c.ok).length>1?'e':''} offen</div>`}
+        ? `<div style="font-size:12px;color:var(--green);font-weight:600">${t('abs.checklist.ready')}</div>`
+        : `<div style="font-size:12px;color:var(--amber)">${openCount === 1 ? t('abs.checklist.open_one', { n: openCount }) : t('abs.checklist.open_many', { n: openCount })}</div>`}
     </div>
     ${checks.map(c => `
       <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
@@ -11401,12 +11914,12 @@ function printJahresabschluss() {
   const taxGroups = {};
   getTaxCats().forEach(c => taxGroups[c] = 0);
   biz.filter(b => b.type==='Ausgabe').forEach(b => {
-    const tc = tm[b.cat] || 'Alle übrigen Geschäftsaufwände';
+    const tc = tm[b.cat] || t('abs.csv.fallback_taxcat');
     taxGroups[tc] = (taxGroups[tc]||0) + b.amount;
   });
   const totalExp = Object.values(taxGroups).reduce((s,v)=>s+v,0);
   const profit   = inc - totalExp;
-  const name     = loadLocal('fb_firma_name', '') || AppState.userName || 'Einzelfirma';
+  const name     = loadLocal('fb_firma_name', '') || AppState.userName || t('abs.pdf.firma_default');
   const journal  = biz.sort((a,b)=>a.date.localeCompare(b.date)).map(b => {
     const taxCat = b.cat ? (tm[b.cat] || '') : '';
     return `<tr>
@@ -11418,11 +11931,13 @@ function printJahresabschluss() {
     </tr>`;
   }).join('');
 
+  const lang     = AppState.lang === 'en' ? 'en' : 'de';
+  const dateLoc  = lang === 'en' ? 'en-US' : 'de-CH';
   const html = `<!DOCTYPE html>
-<html lang="de">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
-<title>Jahresabschluss ${yr} — ${name}</title>
+<title>${t('abs.pdf.title', { year: yr, name })}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Georgia', serif; font-size: 11pt; color: #1a1a1a; padding: 30px 40px; }
@@ -11445,27 +11960,27 @@ function printJahresabschluss() {
 </style>
 </head>
 <body>
-  <h1>Jahresabschluss ${yr}</h1>
-  <div class="sub">${name} · Erstellt mit FinanceBird · ${new Date().toLocaleDateString('de-CH')}</div>
+  <h1>${t('abs.pdf.h1', { year: yr })}</h1>
+  <div class="sub">${t('abs.pdf.subtitle', { name, date: new Date().toLocaleDateString(dateLoc) })}</div>
 
-  <h2>Einnahmen</h2>
-  <div class="summary-row total"><span>Total Einnahmen</span><span>CHF ${fmt(inc)}</span></div>
+  <h2>${t('abs.pdf.h2_income')}</h2>
+  <div class="summary-row total"><span>${t('abs.pdf.total_income')}</span><span>CHF ${fmt(inc)}</span></div>
 
-  <h2>Geschäftsaufwand</h2>
+  <h2>${t('abs.pdf.h2_expenses')}</h2>
   ${getTaxCats().map(c => taxGroups[c] > 0 ? `
     <div class="summary-row"><span>${c}</span><span>CHF ${fmt(taxGroups[c])}</span></div>` : '').join('')}
-  <div class="summary-row total"><span>Total Aufwand</span><span>CHF ${fmt(totalExp)}</span></div>
+  <div class="summary-row total"><span>${t('abs.pdf.total_expenses')}</span><span>CHF ${fmt(totalExp)}</span></div>
 
-  <div class="summary-row profit"><span>Gewinn / Verlust</span><span>CHF ${fmt(profit)}</span></div>
+  <div class="summary-row profit"><span>${t('abs.pdf.profit_loss')}</span><span>CHF ${fmt(profit)}</span></div>
 
-  <h2>Buchungsjournal</h2>
+  <h2>${t('abs.pdf.h2_journal')}</h2>
   <table>
-    <thead><tr><th>Datum</th><th>Beschreibung</th><th>Betrag</th><th>Kategorie</th><th>Steuerkategorie</th></tr></thead>
+    <thead><tr><th>${t('abs.pdf.col_date')}</th><th>${t('abs.pdf.col_desc')}</th><th>${t('abs.pdf.col_amount')}</th><th>${t('abs.pdf.col_cat')}</th><th>${t('abs.pdf.col_tax_cat')}</th></tr></thead>
     <tbody>${journal}</tbody>
   </table>
 
   <div class="footer">
-    FinanceBird · Alle Angaben ohne Gewähr · Zur Kontrolle durch Treuhänder:in empfohlen
+    ${t('abs.pdf.footer')}
   </div>
 </body>
 </html>`;
@@ -11489,24 +12004,24 @@ function exportJahresabschluss() {
   const taxGroups = {};
   getTaxCats().forEach(c => taxGroups[c] = 0);
   biz.filter(b => b.type==='Ausgabe').forEach(b => {
-    const tc = tm[b.cat] || 'Alle übrigen Geschäftsaufwände';
+    const tc = tm[b.cat] || t('abs.csv.fallback_taxcat');
     taxGroups[tc] = (taxGroups[tc]||0) + b.amount;
   });
   const totalExp = Object.values(taxGroups).reduce((s,v)=>s+v,0);
 
   const rows = [
-    [`Jahresabschluss ${yr}`, '', ''],
-    ['EINNAHMEN', '', ''],
-    ['Total Einnahmen', inc, ''],
+    [t('abs.csv.title', { year: yr }), '', ''],
+    [t('abs.csv.section_income'), '', ''],
+    [t('abs.pdf.total_income'), inc, ''],
     ['', '', ''],
-    ['GESCHÄFTSAUFWAND', '', ''],
+    [t('abs.csv.section_expenses'), '', ''],
     ...getTaxCats().map(c => [c, taxGroups[c]||0, '']),
     ['', '', ''],
-    ['Total Geschäftsaufwand', totalExp, ''],
-    ['GEWINN / VERLUST', inc - totalExp, ''],
+    [t('abs.csv.total_expenses'), totalExp, ''],
+    [t('abs.csv.profit_loss'), inc - totalExp, ''],
     ['', '', ''],
-    ['BUCHUNGSJOURNAL', '', ''],
-    ['Datum','Einnahme','Ausgabe','Text','Steuerkategorie'],
+    [t('abs.csv.section_journal'), '', ''],
+    [t('abs.pdf.col_date'), t('abs.csv.col_inc'), t('abs.csv.col_exp'), t('abs.csv.col_text'), t('abs.pdf.col_tax_cat')],
     ...biz.sort((a,b)=>a.date.localeCompare(b.date)).map(b => [
       b.date,
       b.type==='Einnahme'?b.amount:'',
@@ -14833,16 +15348,24 @@ function openSaldoForm(kontoId) {
   if (!k) { showToast('warning','⚠️',t('toast.account_not_found'),''); return; }
 
   document.getElementById('saldoModalKontoId').value = kontoId;
-  document.getElementById('saldoModalTitle').textContent = 'Startsaldo · ' + k.name;
-  document.getElementById('saldoModalSubtitle').textContent = (k.icon||'💰') + ' ' + (k.group||'') + ' · ' + (k.typ||'');
+  document.getElementById('saldoModalTitle').textContent = t('saldo.modal.title', { name: k.name });
+  document.getElementById('saldoModalSubtitle').textContent = (k.icon||'💰') + ' ' + kontoGroupLabel(k.group||'') + ' · ' + kontoTypeLabel(k.typ||'');
   document.getElementById('saldoModalAmt').value  = k.stand != null ? k.stand : '';
   document.getElementById('saldoModalDate').value = k.saldoDatum || toDay();
+
+  // S33 Sprint 6.5a Gruppe 4: Static labels/buttons via applyStaticI18n;
+  // dynamic title/subtitle/hint here (depend on data)
+  if (typeof applyStaticI18n === 'function') applyStaticI18n();
 
   // Hint: show current estimate vs base
   const est   = Computed.estimatedBalance(k.name, k.stand, k.saldoDatum);
   const hint  = k.stand != null
-    ? `Letzter Saldo: CHF ${fmt(k.stand)} per ${fmtDate(k.saldoDatum||'')}${est !== null ? ` · Schätzung heute: CHF ${fmt(est)}` : ''}`
-    : 'Kein Startsaldo hinterlegt. Bitte aktuellen Kontostand eingeben.';
+    ? t('saldo.modal.hint_existing', {
+        amt:  fmt(k.stand),
+        date: fmtDate(k.saldoDatum||''),
+        est:  est !== null ? t('saldo.modal.hint_estimate', { est: fmt(est) }) : '',
+      })
+    : t('saldo.modal.hint_empty');
   document.getElementById('saldoModalHint').textContent = hint;
 
   document.getElementById('saldoModalOverlay').style.display = 'flex';
@@ -14993,12 +15516,12 @@ function rechnungRowHTML(r) {
       <td style="font-size:12px;color:${isOdue?'var(--red)':'var(--muted)'}">${r.due?fmtDate(r.due):'—'}</td>
       <td>${r.client}</td>
       <td style="font-size:12px;color:var(--muted)">${r.desc||'—'}</td>
-      <td class="amt pos">${fmt(r.amount)}${r.paidAmount && r.status === 'Teilzahlung' ? `<div style="font-size:10px;color:var(--muted)">${fmtS(r.paidAmount)} erhalten</div>` : ''}</td>
-      <td><div class="inv-status ${stMap[r.status]||'offen'}" onclick="cycleInvStatus('${r._id}')">${r.status} ▾</div></td>
+      <td class="amt pos">${fmt(r.amount)}${r.paidAmount && r.status === 'Teilzahlung' ? `<div style="font-size:10px;color:var(--muted)">${t('inv.row.received', { amt: fmtS(r.paidAmount) })}</div>` : ''}</td>
+      <td><div class="inv-status ${stMap[r.status]||'offen'}" onclick="cycleInvStatus('${r._id}')">${invStatusLabel(r.status)} ▾</div></td>
       <td style="font-size:12px;color:var(--muted)">${r.paidDate?fmtDate(r.paidDate):'—'}</td>
       <td style="white-space:nowrap;display:flex;gap:4px">
-        <button class="btn btn-outline btn-sm" onclick="openRechnungEdit('${r._id}')" title="Bearbeiten">✏️</button>
-        <button class="btn btn-outline btn-sm" onclick="previewRechnung('${r._id}')" title="Drucken">🖨️</button>
+        <button class="btn btn-outline btn-sm" onclick="openRechnungEdit('${r._id}')" title="${t('inv.action.edit')}">✏️</button>
+        <button class="btn btn-outline btn-sm" onclick="previewRechnung('${r._id}')" title="${t('inv.action.print')}">🖨️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteRechnung('${r._id}')">✕</button>
       </td>
     </tr>`;
