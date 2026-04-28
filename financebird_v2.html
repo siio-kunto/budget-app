@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-<meta name="fb-version" content="2.30a.2026-04-27">
+<meta name="fb-version" content="2.31a.2026-04-28">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2014,9 +2014,9 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div id="aktivitaetenContent">
         <div class="landing-page">
           <div class="landing-icon">🦚</div>
-          <h2>Aktivitäten</h2>
-          <p>Wie investierst du deine Zeit? Verbinde ein Zeiterfassungstool um loszulegen.</p>
-          <button class="btn btn-primary" onclick="nav('einstellungen')">Tool verbinden</button>
+          <h2 id="landingAktivitaetenTitle">Aktivitäten</h2>
+          <p id="landingAktivitaetenSub">Wie investierst du deine Zeit? Verbinde ein Zeiterfassungstool um loszulegen.</p>
+          <button class="btn btn-primary" id="landingAktivitaetenBtn" onclick="nav('einstellungen')">Tool verbinden</button>
         </div>
       </div>
     </div>
@@ -2028,9 +2028,9 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       <div id="kompassContent">
         <div class="landing-page">
           <div class="landing-icon">🦉</div>
-          <h2>Kompass</h2>
-          <p>Komme ich mit dem was ich tue dahin wo ich hinwill?</p>
-          <div style="font-size:12px;color:var(--muted)">In Entwicklung — kommt bald.</div>
+          <h2 id="landingKompassTitle">Kompass</h2>
+          <p id="landingKompassSub">Komme ich mit dem was ich tue dahin wo ich hinwill?</p>
+          <div id="landingKompassNote" style="font-size:12px;color:var(--muted)">In Entwicklung — kommt bald.</div>
         </div>
       </div>
     </div>
@@ -2040,7 +2040,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
          ═══════════════════════════════════ -->
     <div id="tab-einstellungen" class="page">
       <div id="einstellungenContent">
-        <div class="empty" id="emptyLoadSettings"><div class="ico">🦤</div><p>Lade Einstellungen…</p></div>
+        <div class="empty" id="emptyLoadSettings"><div class="ico">🦤</div><p id="emptyLoadSettingsText">Lade Einstellungen…</p></div>
       </div>
     </div>
 
@@ -2082,7 +2082,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0;position:sticky;top:0;background:var(--paper);z-index:1;padding-bottom:12px;border-bottom:1px solid var(--border)">
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink)">
+        <div id="inboxTitle" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink)">
           Zahlungs-Inbox
         </div>
         <div id="inboxSubtitle" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
@@ -2098,7 +2098,7 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
 
     <!-- Footer -->
     <div style="padding:0 20px 20px;display:flex;gap:8px">
-      <button class="btn btn-outline" style="flex:1" onclick="closeInbox()">Später</button>
+      <button class="btn btn-outline" id="inboxLaterBtn" style="flex:1" onclick="closeInbox()">Später</button>
       <button class="btn btn-primary" id="inboxDoneBtn" style="flex:1" onclick="closeInbox()">Fertig</button>
     </div>
 
@@ -2310,13 +2310,13 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
         onclick="erfTriggerUploadBeleg()"
         ondragover="erfDragOver(event)" ondragleave="erfDragLeave()" ondrop="erfDropBeleg(event)">
         <div style="font-size:40px">📎</div>
-        <div style="font-size:13px;color:var(--muted)">Foto, PDF oder Datei hochladen</div>
+        <div id="erfBelegScanZoneTypes" style="font-size:13px;color:var(--muted)">Foto, PDF oder Datei hochladen</div>
         <div style="font-size:11px;color:var(--muted)">JPG · PNG · PDF · Drag & Drop</div>
       </div>
       <input type="file" id="erfFileBelegInput" accept="image/*,.pdf" style="display:none" onchange="erfFileBelegPicked(event)">
       <div id="erfBelegPreview" style="margin-top:12px"></div>
       <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-outline" style="flex:1" onclick="erfSetMode('buchung')">← Buchung stattdessen</button>
+        <button class="btn btn-outline" id="erfBelegBackBtn" style="flex:1" onclick="erfSetMode('buchung')">← Buchung stattdessen</button>
         <button class="btn btn-primary" id="erfBelegScanBtn" style="flex:1;display:none" onclick="erfSaveBelegBuchung()">✓ Buchung speichern</button>
       </div>
     </div>
@@ -2324,23 +2324,23 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
     <!-- SCREEN 3: Transfer form -->
     <div id="erfScreen3" style="display:none;padding:12px 20px 28px">
       <div class="form-group">
-        <label class="form-label required">Betrag (CHF)</label>
+        <label class="form-label required" id="erfTransAmtLabel">Betrag (CHF)</label>
         <input type="number" id="erfTransAmt" class="form-input" placeholder="0.00" step="0.05"
           style="font-size:22px;font-family:'Libre Baskerville',serif;font-weight:500">
       </div>
       <div class="form-group">
-        <label class="form-label">Datum</label>
+        <label class="form-label" id="erfTransDateLabel">Datum</label>
         <input type="date" id="erfTransDate" class="form-input">
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label class="form-label">Von Konto</label>
+          <label class="form-label" id="erfTransVonLabel">Von Konto</label>
           <select id="erfTransVon" class="form-input" onchange="erfUpdateTransferProjekt()">
             <option value="">— wählen —</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Nach Konto</label>
+          <label class="form-label" id="erfTransNachLabel">Nach Konto</label>
           <select id="erfTransNach" class="form-input" onchange="erfUpdateTransferProjekt()">
             <option value="">— wählen —</option>
           </select>
@@ -2348,17 +2348,17 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
       </div>
       <!-- Projekt-Referenz wenn Konto mit Projekt verknüpft -->
       <div id="erfTransProjektWrap" class="form-group" style="display:none">
-        <label class="form-label">Projekt <span style="font-size:11px;color:var(--accent)">(Pocket-Einzahlung erkannt)</span></label>
+        <label class="form-label" id="erfTransProjektLabel">Projekt <span style="font-size:11px;color:var(--accent)">(Pocket-Einzahlung erkannt)</span></label>
         <select id="erfTransProjekt" class="form-input">
           <option value="">— kein Projekt —</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Beschreibung</label>
+        <label class="form-label" id="erfTransDescLabel">Beschreibung</label>
         <input type="text" id="erfTransDesc" class="form-input" placeholder="z.B. Pocket-Einzahlung Equipment">
       </div>
       <div class="form-group">
-        <label class="form-label">Notiz</label>
+        <label class="form-label" id="erfTransNoteLabel">Notiz</label>
         <input type="text" id="erfTransNote" class="form-input" placeholder="Optional">
       </div>
       <div id="erfTransFeedback" style="font-size:12px;color:var(--red);margin-bottom:8px;display:none"></div>
@@ -2371,72 +2371,72 @@ tr.unconfirmed td:first-child::before { content: '◷ '; font-style: normal; col
     <div id="erfScreen4" style="display:none;padding:12px 20px 28px">
       <div class="grid-2">
         <div class="form-group">
-          <label class="form-label">Rechnungs-Nr</label>
+          <label class="form-label" id="erfInvNrLabel">Rechnungs-Nr</label>
           <input type="text" id="erfInvNr" class="form-input" placeholder="R-2026-001">
         </div>
         <div class="form-group">
-          <label class="form-label">Datum</label>
+          <label class="form-label" id="erfInvDateLabel">Datum</label>
           <input type="date" id="erfInvDate" class="form-input">
         </div>
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label class="form-label">Fällig am</label>
+          <label class="form-label" id="erfInvDueLabel">Fällig am</label>
           <input type="date" id="erfInvDue" class="form-input">
         </div>
         <div class="form-group">
-          <label class="form-label">Status</label>
+          <label class="form-label" id="erfInvStatusLabel">Status</label>
           <select id="erfInvStatus" class="form-input">
-            <option value="Offen">Offen</option>
-            <option value="Entwurf">Entwurf</option>
-            <option value="Teilzahlung">Teilzahlung</option>
-            <option value="Bezahlt">Bezahlt</option>
+            <option value="Offen" id="erfInvStatusOptOpen">Offen</option>
+            <option value="Entwurf" id="erfInvStatusOptDraft">Entwurf</option>
+            <option value="Teilzahlung" id="erfInvStatusOptPartial">Teilzahlung</option>
+            <option value="Bezahlt" id="erfInvStatusOptPaid">Bezahlt</option>
           </select>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Kunde</label>
+        <label class="form-label" id="erfInvClientLabel">Kunde</label>
         <input type="text" id="erfInvClient" class="form-input"
           placeholder="Name oder Organisation" list="erfInvClientList">
         <datalist id="erfInvClientList"></datalist>
       </div>
       <div class="form-group">
-        <label class="form-label">Beschreibung / Leistung</label>
+        <label class="form-label" id="erfInvDescLabel">Beschreibung / Leistung</label>
         <input type="text" id="erfInvDesc" class="form-input" placeholder="Leistung, Periode etc.">
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label class="form-label">Betrag (CHF)</label>
+          <label class="form-label" id="erfInvAmtLabel">Betrag (CHF)</label>
           <input type="number" id="erfInvAmt" class="form-input" placeholder="0.00" step="0.05"
             style="font-size:20px;font-family:'Libre Baskerville',serif">
         </div>
         <div class="form-group">
-          <label class="form-label">MwSt (%)</label>
+          <label class="form-label" id="erfInvMwstLabel">MwSt (%)</label>
           <input type="number" id="erfInvMwst" class="form-input" placeholder="0" step="0.1">
         </div>
       </div>
       <div class="grid-2">
         <div class="form-group">
-          <label class="form-label">Konto</label>
+          <label class="form-label" id="erfInvKontoLabel">Konto</label>
           <select id="erfInvKonto" class="form-input">
             <option value="">— wählen —</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Typ</label>
+          <label class="form-label" id="erfInvTypLabel">Typ</label>
           <select id="erfInvTyp" class="form-input">
             <!-- dynamisch populiert via renderInvoiceTypeDropdown -->
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Steuerkategorie</label>
+          <label class="form-label" id="erfInvSteuerkatLabel">Steuerkategorie</label>
           <select id="erfInvSteuerkat" class="form-input">
             <!-- dynamisch populiert -->
           </select>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Notiz</label>
+        <label class="form-label" id="erfInvNoteLabel">Notiz</label>
         <textarea id="erfInvNote" class="form-input" rows="2"></textarea>
       </div>
       <div id="erfInvFeedback" style="font-size:13px;color:var(--red);margin-bottom:8px"></div>
@@ -3871,6 +3871,196 @@ const I18N = {
     'ob.repair.body':                            'Etwas muss repariert werden — das geht schnell.',
     'ob.repair.license_label':                   'Lizenz-Key',
     'ob.repair.check_btn':                       'Prüfen',
+
+    /* S36 Sprint 6.5d Gruppe 1 — Landing-Pages + Inbox-Modal-Title + Erfassen Screens 2-4 */
+    'landing.aktivitaeten.title':                'Aktivitäten',
+    'landing.aktivitaeten.sub':                  'Wie investierst du deine Zeit? Verbinde ein Zeiterfassungstool um loszulegen.',
+    'landing.aktivitaeten.btn':                  'Tool verbinden',
+    'landing.kompass.sub':                       'Komme ich mit dem was ich tue dahin wo ich hinwill?',
+    'landing.kompass.note':                      'In Entwicklung — kommt bald.',
+    'landing.settings.loading':                  'Lade Einstellungen…',
+    'erf.beleg.scan_zone_types':                 'Foto, PDF oder Datei hochladen',
+    'erf.beleg.back_btn':                        '← Buchung stattdessen',
+    'erf.beleg.save_btn':                        '✓ Buchung speichern',
+    'erf.trans.label.amount':                    'Betrag (CHF)',
+    'erf.trans.projekt_label_pre':               'Projekt',
+    'erf.trans.projekt_label_hint':              '(Pocket-Einzahlung erkannt)',
+    'erf.trans.placeholder.desc':                'z.B. Pocket-Einzahlung Equipment',
+    'erf.trans.btn.save':                        '↔ Transfer speichern',
+    'erf.inv.label.amount':                      'Betrag (CHF)',
+    'erf.inv.label.typ':                         'Typ',
+    'erf.inv.placeholder.desc':                  'Leistung, Periode etc.',
+    'erf.inv.placeholder.client':                'Name oder Organisation',
+    'erf.inv.btn.save':                          '🧾 Rechnung speichern',
+
+    /* S36 Sprint 6.5d Gruppe 2 — Onboarding-JS Provider-Selector + Overview + Tile-Subs */
+    'ob.tile.gdrive_connected':                  'Google Drive verbunden',
+    'ob.tile.provider_connected':                '{provider} verbunden',
+    'ob.tile.notion_next':                       'Weiter →',
+    'ob.tile.notion_connect':                    'Notion verbinden',
+    'ob.accounts.summary_singular':              '{n} Konto: {items}',
+    'ob.accounts.summary_plural':                '{n} Konten: {items}',
+    'ob.provider.title.time':                    'Zeiterfassung wählen',
+    'ob.provider.title.storage':                 'Belege-Ablage wählen',
+    'ob.provider.title.vision':                  'KI-Provider wählen',
+    'ob.provider.label.clockify':                '⏱ Clockify',
+    'ob.provider.label.toggl':                   '⏱ Toggl Track',
+    'ob.provider.label.gdrive':                  '📁 Google Drive',
+    'ob.provider.label.claude':                  '🤖 Claude (Anthropic)',
+    'ob.provider.label.openai':                  '🤖 OpenAI',
+    'ob.provider.label.skip':                    '⏭ Überspringen',
+    'ob.provider.sub.free':                      'Kostenlos',
+    'ob.provider.sub.free_pro':                  'Kostenlos & Pro',
+    'ob.provider.sub.recommended':               'Empfohlen',
+    'ob.provider.sub.gpt4o':                     'GPT-4o',
+    'ob.provider.sub.skip':                      'Später einrichten',
+    'ob.provider.section_extension':             'Erweiterung',
+    'ob.provider.btn_save':                      'Speichern',
+    'ob.provider.btn_skip':                      'Überspringen',
+    'overview.checking':                         'System wird geprüft…',
+    'overview.label.license':                    'Lizenz',
+    'overview.label.notion':                     'Datenbank',
+    'overview.label.gdrive':                     'Belege',
+    'overview.label.clockify':                   'Zeit & Projekte',
+    'overview.label.claude':                     'KI-Analyse',
+    'overview.license.active':                   '✅ Aktiv',
+    'overview.license.invalid':                  '❌ Ungültig',
+    'overview.license.missing':                  '❌ Fehlt',
+    'overview.notion.ready':                     '✅ Verbunden · Datenbanken bereit',
+    'overview.notion.dbs_missing':               '⚠️ Verbunden · DBs fehlen',
+    'overview.notion.invalid':                   '❌ Token ungültig',
+    'overview.notion.disconnected':              '❌ Nicht verbunden',
+    'overview.gdrive.connected':                 '✅ Google Drive verbunden',
+    'overview.gdrive.expired':                   '⚠️ Token abgelaufen',
+    'overview.clockify.connected':               '✅ Clockify verbunden',
+    'overview.claude.connected':                 '✅ Claude API verbunden',
+    'overview.invalid_key':                      '⚠️ Key ungültig',
+    'overview.optional.not_configured':          '⬜ Nicht konfiguriert (Erweiterung)',
+    'overview.recheck':                          '🔄 Erneut prüfen',
+    'overview.action.change_key':                'Key ändern',
+    'overview.finish.ready':                     'Fertig — zum Cockpit →',
+    'overview.finish.notion_required':           'Notion muss verbunden sein',
+    'overview.title.ready':                      'Dein FinanceBird ist bereit!',
+    'overview.title.almost':                     'Fast bereit — schau dir die offenen Punkte an',
+
+    /* S36 Sprint 6.5d Gruppe 3 — PWA-Install + Mobile-Pairing-Submit + Done-Screen-JS */
+    'pwa.install.title':                         'App installieren',
+    'pwa.install.hint_android':                  'Für die beste Erfahrung installiere FinanceBird als App auf deinem Gerät.',
+    'pwa.install.hint_ios':                      'Für die beste Erfahrung füge FinanceBird zum Home-Bildschirm hinzu:',
+    'pwa.install.btn_install':                   'Installieren',
+    'pwa.install.btn_skip':                      'Ohne Installation weiter →',
+    'pwa.install.ios_step_1':                    'Tippe auf <span style="font-size:18px">⬆️</span> (Teilen-Symbol unten)',
+    'pwa.install.ios_step_2':                    'Scrolle nach unten',
+    'pwa.install.ios_step_3':                    '<strong>Zum Home-Bildschirm</strong> tippen',
+    'pairing.code_length_error':                 'Code muss 6 Zeichen haben.',
+    'pairing.btn_connecting':                    'Verbinde…',
+    'pairing.btn_connect':                       'Verbinden',
+    'pairing.success_inline':                    '✅ Code korrekt — verbinde jetzt Notion…',
+    'pairing.btn_continue':                      '✅ Weiter',
+    'pairing.error_expired':                     'Code abgelaufen. Generiere einen neuen Code am anderen Gerät, oder gib deinen Lizenz-Key direkt ein.',
+    'pairing.error_invalid':                     'Code ungültig oder Verbindung fehlgeschlagen — bitte nochmal versuchen.',
+    'done.pairing.loading':                      'Lädt…',
+    'done.pairing.error_retry':                  'Fehler — bitte nochmal versuchen',
+    'done.pairing.valid_for':                    'Gültig noch {time} Min',
+    'done.pairing.expired':                      'Abgelaufen',
+    'done.copy.label':                           'Kopieren',
+
+    /* S36 Sprint 6.5d Gruppe 4 — Print/Preview Rechnung (Standalone PDF-HTML) */
+    'invoice.print.title':                       'Rechnung',
+    'invoice.print.uid_prefix':                  'UID:',
+    'invoice.print.recipient':                   'Empfänger',
+    'invoice.print.date_label':                  'Rechnungsdatum',
+    'invoice.print.amount_chf':                  'Betrag CHF',
+    'invoice.print.total_chf':                   'Total CHF',
+    'invoice.print.mwst':                        'MwSt',
+    'invoice.print.default_service':             'Leistung',
+    'invoice.print.payment_iban':                'Zahlung bitte via IBAN:',
+    'invoice.print.footer':                      'Erstellt mit FinanceBird · financebird.app',
+
+    /* S36 Sprint 6.5d Gruppe 5 — License/Pairing/Repair Errors + UI-Throws */
+    /* License-Modal + onboardLicense-Error-Messages */
+    'license.error.format':                      'Key ungültig — Format: LK-xxxxxxxx',
+    'license.error.expired':                     'Lizenz abgelaufen — bitte verlängern.',
+    'license.error.expired_contact':             'Lizenz abgelaufen — bitte kontaktiere hello@oswaldkoenig.ch',
+    'license.error.not_found':                   'Key nicht gefunden — Schreibweise prüfen.',
+    'license.error.network':                     'Verbindung fehlgeschlagen — bitte nochmal versuchen.',
+    'license.error.invalid_contact':             'Key ungültig — kontaktiere hello@oswaldkoenig.ch',
+    'license.error.invalid_format_contact':      'Key ungültig — prüfe die Schreibweise oder kontaktiere hello@oswaldkoenig.ch',
+    'license.btn.checking':                      'Prüfe…',
+    'license.btn.check':                         'Prüfen',
+    'license.btn.active':                        '✓ Aktiv',
+    'license.format_short':                      'Format: LK-xxxxxxxx',
+    'license.error.expired_short':               'Abgelaufen — hello@oswaldkoenig.ch',
+    'license.error.not_found_short':             'Key nicht gefunden',
+    /* Onboarding manual token */
+    'token.error.empty':                         'Bitte Token einfügen',
+    'token.error.invalid':                       'Ungültiger Token',
+    'token.error.worker_url_missing':            'Worker URL fehlt',
+    'token.error.no_token_payload':              'Kein Token im Payload',
+    /* Repair-Screen Items + Actions */
+    'repair.item.license_missing':               'Lizenz-Key fehlt',
+    'repair.item.license_invalid':               'Lizenz-Key ungültig oder abgelaufen',
+    'repair.item.notion_disconnected':           'Notion nicht verbunden',
+    'repair.item.notion_expired':                'Notion-Verbindung abgelaufen',
+    'repair.item.notion_dbs_missing':            'Notion-Datenbanken fehlen',
+    'repair.item.fallback_status':               'Status prüfen ({diag})',
+    'repair.item.fallback_no_issues':            'keine Issues',
+    'repair.action.enter_key':                   'Key eingeben',
+    'repair.action.connect_notion':              'Notion verbinden',
+    'repair.action.reconnect':                   'Neu verbinden',
+    'repair.action.repair':                      'Reparieren',
+    'repair.action.reconnect_notion':            'Notion neu verbinden',
+    /* v3SubmitPairingCode Variante (kürzer als pairing.error_*) */
+    'pairing.error_expired_short':               'Code abgelaufen. Generiere einen neuen am anderen Gerät.',
+    'pairing.error_invalid_short':               'Code ungültig — bitte nochmal versuchen.',
+    'pairing.success_short':                     '✅ Code korrekt — verbinde Notion…',
+    /* Welcome claimPairingCode */
+    'pairing.welcome.code_length':               'Bitte 6-stelligen Code eingeben',
+    'pairing.welcome.btn_checking':              'Prüfe Code…',
+    'pairing.welcome.error_expired':             'Code abgelaufen — bitte neuen Code generieren',
+    'pairing.welcome.error_invalid':             'Code ungültig — bitte nochmals prüfen',
+    'pairing.welcome.error_unknown':             'Unbekannter Fehler',
+    'pairing.welcome.error_connection':          'Verbindungsfehler: {msg}',
+    /* triggerReAuth-Reasons + Banner-Statics */
+    'reauth.banner.title':                       'Notion-Verbindung unterbrochen',
+    'reauth.banner.default':                     'Bitte neu verbinden um fortzufahren',
+    'reauth.banner.btn_reconnect':               'Neu verbinden',
+    'reauth.banner.btn_reset':                   'Zurücksetzen',
+    'reauth.reason.no_token':                    'Kein Token',
+    'reauth.reason.device_register_failed':      'Gerät konnte nicht registriert werden',
+    'reauth.reason.token_invalid':               'Notion-Verbindung unterbrochen — Token ungültig',
+    'reauth.reason.token_expired':               'Token abgelaufen',
+    /* UI-Throws (Strategie S36-Heuristik: catch zeigt e.message via UI → migrieren) */
+    'throw.queue.file_too_large':                'Datei zu gross für Retry-Queue (max 3MB). Bitte verkleinern oder mit Internet erneut versuchen.',
+    'throw.scan.pdf_only_claude':                'PDF-Analyse wird nur mit Claude unterstützt. Bitte als Bild scannen.',
+    'throw.auth.not_authenticated':              'Nicht authentifiziert',
+    /* Loading + AI-Read */
+    'loading.dbs_setup':                         'Datenbanken einrichten…',
+    'erf.scan.ai_read_ok':                       '✅ KI hat Beleg gelesen',
+
+    /* S36 Sprint 6.5d Gruppe 6 — Cockpit-Defaults + healthSummary + Recommendations + localStorage */
+    'cat.fallback.misc':                         'Übriges',
+    'health.completeness.no_konten':             'Keine Konten konfiguriert',
+    'health.completeness.no_buchungen':          'Keine Buchungen vorhanden',
+    'health.completeness.unconfirmed':           '{n} unbestätigte Buchungen',
+    'health.completeness.no_saldo':              '{n} Konten ohne Startsaldo',
+    'health.localstorage.full':                  'Wird voll',
+    'health.localstorage.eviction':              'Eviction aktiv',
+    'cockpit.rec.title':                         'Nächste Schritte',
+    'cockpit.rec.done_count':                    '{done}/{total} erledigt',
+    'cockpit.rec.hide':                          'Ausblenden',
+    'cockpit.rec.konto.label':                   'Konto mit Startsaldo einrichten',
+    'cockpit.rec.konto.sub':                     'Für genaue Liquiditätsvorschau',
+    'cockpit.rec.konto.action':                  'Zu Konten',
+    'cockpit.rec.buchung.label':                 'Erste Buchung erfassen',
+    'cockpit.rec.buchung.sub':                   'Starte mit einer Einnahme oder Ausgabe',
+    'cockpit.rec.buchung.action':                '+ Buchung',
+    'cockpit.rec.recurring.label':               'Wiederkehrende Zahlungen',
+    'cockpit.rec.recurring.sub':                 'Fixkosten für die Liquiditätsvorschau',
+    'cockpit.rec.recurring.action':              'Einrichten',
+    'cockpit.rec.rechnung.label':                'Erste Rechnung erstellen',
+    'cockpit.rec.rechnung.sub':                  'Offene Honorare verfolgen',
+    'cockpit.rec.rechnung.action':               '+ Rechnung',
   },
   en: {
     'nav.cockpit':       'Cockpit',
@@ -5058,6 +5248,196 @@ const I18N = {
     'ob.repair.body':                            'Something needs fixing — this is quick.',
     'ob.repair.license_label':                   'License key',
     'ob.repair.check_btn':                       'Check',
+
+    /* S36 Sprint 6.5d Gruppe 1 — Landing-Pages + Inbox-Modal-Title + Erfassen Screens 2-4 */
+    'landing.aktivitaeten.title':                'Activities',
+    'landing.aktivitaeten.sub':                  'Where does your time go? Connect a time tracker to get started.',
+    'landing.aktivitaeten.btn':                  'Connect tool',
+    'landing.kompass.sub':                       'Will what I do take me where I want to go?',
+    'landing.kompass.note':                      'In development — coming soon.',
+    'landing.settings.loading':                  'Loading settings…',
+    'erf.beleg.scan_zone_types':                 'Upload photo, PDF or file',
+    'erf.beleg.back_btn':                        '← Transaction instead',
+    'erf.beleg.save_btn':                        '✓ Save transaction',
+    'erf.trans.label.amount':                    'Amount (CHF)',
+    'erf.trans.projekt_label_pre':               'Project',
+    'erf.trans.projekt_label_hint':              '(Pocket deposit detected)',
+    'erf.trans.placeholder.desc':                'e.g. Pocket deposit equipment',
+    'erf.trans.btn.save':                        '↔ Save transfer',
+    'erf.inv.label.amount':                      'Amount (CHF)',
+    'erf.inv.label.typ':                         'Type',
+    'erf.inv.placeholder.desc':                  'Service, period etc.',
+    'erf.inv.placeholder.client':                'Name or organization',
+    'erf.inv.btn.save':                          '🧾 Save invoice',
+
+    /* S36 Sprint 6.5d Gruppe 2 — Onboarding-JS Provider-Selector + Overview + Tile-Subs */
+    'ob.tile.gdrive_connected':                  'Google Drive connected',
+    'ob.tile.provider_connected':                '{provider} connected',
+    'ob.tile.notion_next':                       'Next →',
+    'ob.tile.notion_connect':                    'Connect Notion',
+    'ob.accounts.summary_singular':              '{n} account: {items}',
+    'ob.accounts.summary_plural':                '{n} accounts: {items}',
+    'ob.provider.title.time':                    'Choose time tracker',
+    'ob.provider.title.storage':                 'Choose receipts storage',
+    'ob.provider.title.vision':                  'Choose AI provider',
+    'ob.provider.label.clockify':                '⏱ Clockify',
+    'ob.provider.label.toggl':                   '⏱ Toggl Track',
+    'ob.provider.label.gdrive':                  '📁 Google Drive',
+    'ob.provider.label.claude':                  '🤖 Claude (Anthropic)',
+    'ob.provider.label.openai':                  '🤖 OpenAI',
+    'ob.provider.label.skip':                    '⏭ Skip',
+    'ob.provider.sub.free':                      'Free',
+    'ob.provider.sub.free_pro':                  'Free & Pro',
+    'ob.provider.sub.recommended':               'Recommended',
+    'ob.provider.sub.gpt4o':                     'GPT-4o',
+    'ob.provider.sub.skip':                      'Set up later',
+    'ob.provider.section_extension':             'Extension',
+    'ob.provider.btn_save':                      'Save',
+    'ob.provider.btn_skip':                      'Skip',
+    'overview.checking':                         'Checking system…',
+    'overview.label.license':                    'License',
+    'overview.label.notion':                     'Database',
+    'overview.label.gdrive':                     'Receipts',
+    'overview.label.clockify':                   'Time & Projects',
+    'overview.label.claude':                     'AI analysis',
+    'overview.license.active':                   '✅ Active',
+    'overview.license.invalid':                  '❌ Invalid',
+    'overview.license.missing':                  '❌ Missing',
+    'overview.notion.ready':                     '✅ Connected · Databases ready',
+    'overview.notion.dbs_missing':               '⚠️ Connected · DBs missing',
+    'overview.notion.invalid':                   '❌ Token invalid',
+    'overview.notion.disconnected':              '❌ Not connected',
+    'overview.gdrive.connected':                 '✅ Google Drive connected',
+    'overview.gdrive.expired':                   '⚠️ Token expired',
+    'overview.clockify.connected':               '✅ Clockify connected',
+    'overview.claude.connected':                 '✅ Claude API connected',
+    'overview.invalid_key':                      '⚠️ Invalid key',
+    'overview.optional.not_configured':          '⬜ Not configured (Extension)',
+    'overview.recheck':                          '🔄 Re-check',
+    'overview.action.change_key':                'Change key',
+    'overview.finish.ready':                     'Done — to Cockpit →',
+    'overview.finish.notion_required':           'Notion must be connected',
+    'overview.title.ready':                      'Your FinanceBird is ready!',
+    'overview.title.almost':                     'Almost ready — review the open items',
+
+    /* S36 Sprint 6.5d Gruppe 3 — PWA-Install + Mobile-Pairing-Submit + Done-Screen-JS */
+    'pwa.install.title':                         'Install app',
+    'pwa.install.hint_android':                  'For the best experience, install FinanceBird as an app on your device.',
+    'pwa.install.hint_ios':                      'For the best experience, add FinanceBird to your home screen:',
+    'pwa.install.btn_install':                   'Install',
+    'pwa.install.btn_skip':                      'Continue without installing →',
+    'pwa.install.ios_step_1':                    'Tap <span style="font-size:18px">⬆️</span> (share icon at the bottom)',
+    'pwa.install.ios_step_2':                    'Scroll down',
+    'pwa.install.ios_step_3':                    'Tap <strong>Add to Home Screen</strong>',
+    'pairing.code_length_error':                 'Code must be 6 characters.',
+    'pairing.btn_connecting':                    'Connecting…',
+    'pairing.btn_connect':                       'Connect',
+    'pairing.success_inline':                    '✅ Code correct — now connecting Notion…',
+    'pairing.btn_continue':                      '✅ Continue',
+    'pairing.error_expired':                     'Code expired. Generate a new code on the other device, or enter your license key directly.',
+    'pairing.error_invalid':                     'Code invalid or connection failed — please try again.',
+    'done.pairing.loading':                      'Loading…',
+    'done.pairing.error_retry':                  'Error — please try again',
+    'done.pairing.valid_for':                    'Valid for {time} min',
+    'done.pairing.expired':                      'Expired',
+    'done.copy.label':                           'Copy',
+
+    /* S36 Sprint 6.5d Gruppe 4 — Print/Preview Rechnung (Standalone PDF-HTML) */
+    'invoice.print.title':                       'Invoice',
+    'invoice.print.uid_prefix':                  'VAT ID:',
+    'invoice.print.recipient':                   'Recipient',
+    'invoice.print.date_label':                  'Invoice date',
+    'invoice.print.amount_chf':                  'Amount CHF',
+    'invoice.print.total_chf':                   'Total CHF',
+    'invoice.print.mwst':                        'VAT',
+    'invoice.print.default_service':             'Service',
+    'invoice.print.payment_iban':                'Please pay via IBAN:',
+    'invoice.print.footer':                      'Created with FinanceBird · financebird.app',
+
+    /* S36 Sprint 6.5d Gruppe 5 — License/Pairing/Repair Errors + UI-Throws */
+    /* License-Modal + onboardLicense-Error-Messages */
+    'license.error.format':                      'Key invalid — format: LK-xxxxxxxx',
+    'license.error.expired':                     'License expired — please renew.',
+    'license.error.expired_contact':             'License expired — please contact hello@oswaldkoenig.ch',
+    'license.error.not_found':                   'Key not found — check spelling.',
+    'license.error.network':                     'Connection failed — please try again.',
+    'license.error.invalid_contact':             'Key invalid — contact hello@oswaldkoenig.ch',
+    'license.error.invalid_format_contact':      'Key invalid — check spelling or contact hello@oswaldkoenig.ch',
+    'license.btn.checking':                      'Checking…',
+    'license.btn.check':                         'Check',
+    'license.btn.active':                        '✓ Active',
+    'license.format_short':                      'Format: LK-xxxxxxxx',
+    'license.error.expired_short':               'Expired — hello@oswaldkoenig.ch',
+    'license.error.not_found_short':             'Key not found',
+    /* Onboarding manual token */
+    'token.error.empty':                         'Please paste token',
+    'token.error.invalid':                       'Invalid token',
+    'token.error.worker_url_missing':            'Worker URL missing',
+    'token.error.no_token_payload':              'No token in payload',
+    /* Repair-Screen Items + Actions */
+    'repair.item.license_missing':               'License key missing',
+    'repair.item.license_invalid':               'License key invalid or expired',
+    'repair.item.notion_disconnected':           'Notion not connected',
+    'repair.item.notion_expired':                'Notion connection expired',
+    'repair.item.notion_dbs_missing':            'Notion databases missing',
+    'repair.item.fallback_status':               'Check status ({diag})',
+    'repair.item.fallback_no_issues':            'no issues',
+    'repair.action.enter_key':                   'Enter key',
+    'repair.action.connect_notion':              'Connect Notion',
+    'repair.action.reconnect':                   'Reconnect',
+    'repair.action.repair':                      'Repair',
+    'repair.action.reconnect_notion':            'Reconnect Notion',
+    /* v3SubmitPairingCode Variante (shorter than pairing.error_*) */
+    'pairing.error_expired_short':               'Code expired. Generate a new one on the other device.',
+    'pairing.error_invalid_short':               'Code invalid — please try again.',
+    'pairing.success_short':                     '✅ Code correct — connecting Notion…',
+    /* Welcome claimPairingCode */
+    'pairing.welcome.code_length':               'Please enter 6-character code',
+    'pairing.welcome.btn_checking':              'Checking code…',
+    'pairing.welcome.error_expired':             'Code expired — please generate a new one',
+    'pairing.welcome.error_invalid':             'Code invalid — please check again',
+    'pairing.welcome.error_unknown':             'Unknown error',
+    'pairing.welcome.error_connection':          'Connection error: {msg}',
+    /* triggerReAuth-Reasons + Banner-Statics */
+    'reauth.banner.title':                       'Notion connection lost',
+    'reauth.banner.default':                     'Please reconnect to continue',
+    'reauth.banner.btn_reconnect':               'Reconnect',
+    'reauth.banner.btn_reset':                   'Reset',
+    'reauth.reason.no_token':                    'No token',
+    'reauth.reason.device_register_failed':      'Device could not be registered',
+    'reauth.reason.token_invalid':               'Notion connection lost — token invalid',
+    'reauth.reason.token_expired':               'Token expired',
+    /* UI-Throws (Strategie S36 heuristic: catch shows e.message via UI → migrate) */
+    'throw.queue.file_too_large':                'File too large for retry queue (max 3MB). Please reduce size or try again with internet.',
+    'throw.scan.pdf_only_claude':                'PDF analysis only supported with Claude. Please scan as image.',
+    'throw.auth.not_authenticated':              'Not authenticated',
+    /* Loading + AI-Read */
+    'loading.dbs_setup':                         'Setting up databases…',
+    'erf.scan.ai_read_ok':                       '✅ AI read receipt',
+
+    /* S36 Sprint 6.5d Gruppe 6 — Cockpit-Defaults + healthSummary + Recommendations + localStorage */
+    'cat.fallback.misc':                         'Other',
+    'health.completeness.no_konten':             'No accounts configured',
+    'health.completeness.no_buchungen':          'No transactions yet',
+    'health.completeness.unconfirmed':           '{n} unconfirmed transactions',
+    'health.completeness.no_saldo':              '{n} accounts without opening balance',
+    'health.localstorage.full':                  'Filling up',
+    'health.localstorage.eviction':              'Eviction active',
+    'cockpit.rec.title':                         'Next steps',
+    'cockpit.rec.done_count':                    '{done}/{total} done',
+    'cockpit.rec.hide':                          'Hide',
+    'cockpit.rec.konto.label':                   'Set up account with opening balance',
+    'cockpit.rec.konto.sub':                     'For accurate liquidity forecast',
+    'cockpit.rec.konto.action':                  'To Accounts',
+    'cockpit.rec.buchung.label':                 'Record first transaction',
+    'cockpit.rec.buchung.sub':                   'Start with an income or expense',
+    'cockpit.rec.buchung.action':                '+ Transaction',
+    'cockpit.rec.recurring.label':               'Recurring payments',
+    'cockpit.rec.recurring.sub':                 'Fixed costs for liquidity forecast',
+    'cockpit.rec.recurring.action':              'Set up',
+    'cockpit.rec.rechnung.label':                'Create first invoice',
+    'cockpit.rec.rechnung.sub':                  'Track outstanding fees',
+    'cockpit.rec.rechnung.action':               '+ Invoice',
   }
 };
 
@@ -5476,10 +5856,10 @@ const Auth = {
    * Manueller ntn_-Token Fallback.
    */
   async setManualToken(token, workerUrl) {
-    if (!token || token.length < 10) throw new Error('Ungültiger Token');
+    if (!token || token.length < 10) throw new Error(t('token.error.invalid'));
     const base    = (workerUrl || '').replace(/\/v1\/?$/, '');
     const testUrl = base ? base + '/v1' : null;
-    if (!testUrl) throw new Error('Worker URL fehlt');
+    if (!testUrl) throw new Error(t('token.error.worker_url_missing'));
 
     const resp = await fetch(`${testUrl}/users/me`, {
       headers: {
@@ -5509,7 +5889,7 @@ const Auth = {
     const token = typeof tokenData === 'string'
       ? tokenData
       : tokenData.access_token;
-    if (!token) throw new Error('Kein Token im Payload');
+    if (!token) throw new Error(t('token.error.no_token_payload'));
 
     AppState.notionToken = token;
     AppState.authMode    = 'oauth';
@@ -5536,7 +5916,7 @@ const Auth = {
         saveLocal('fb_db_ids', DB);
       } else {
       saveLocal(lockKey, Date.now());
-      showLoading('Datenbanken einrichten…');
+      showLoading(t('loading.dbs_setup'));
       try {
         const { found, missing } = await discoverDatabases();
         console.log('[DB Setup] Discovery:', found, 'found,', missing.length, 'missing', missing);
@@ -6485,7 +6865,7 @@ async function notionFetch(path, method = 'GET', body = null, _retry = 0) {
   // Zentraler Proxy-Worker (Worker A) — AppState.workerUrl wird bei OAuth gesetzt
   const base  = AppState.workerUrl || Auth.FB_WORKER_PROXY;
 
-  if (!token) { Auth.triggerReAuth('Kein Token'); throw new Error('Nicht authentifiziert'); }
+  if (!token) { Auth.triggerReAuth(t('reauth.reason.no_token')); throw new Error(t('throw.auth.not_authenticated')); }
 
   const opts = {
     method,
@@ -6523,10 +6903,10 @@ async function notionFetch(path, method = 'GET', body = null, _retry = 0) {
         return notionFetch(path, method, body, _retry + 1);
       }
       // Register fehlgeschlagen → Repair
-      Auth.triggerReAuth('Gerät konnte nicht registriert werden');
+      Auth.triggerReAuth(t('reauth.reason.device_register_failed'));
       throw new Error('DEVICE_REGISTER_FAILED');
     }
-    Auth.triggerReAuth('Notion-Verbindung unterbrochen — Token ungültig');
+    Auth.triggerReAuth(t('reauth.reason.token_invalid'));
     throw new Error('AUTH_EXPIRED');
   }
 
@@ -7551,7 +7931,7 @@ async function deltaSync() {
 /* ── Offline Write Queue ── */
 
 const QUEUE_KEY = 'fb_write_queue';
-const APP_VERSION = '2.30a.2026-04-27';
+const APP_VERSION = '2.31a.2026-04-28';
 
 function queueAdd(entry) {
   entry.id      = entry.id || uid();
@@ -7577,7 +7957,7 @@ async function queueAddReceipt(bookingId, file) {
   const MAX_SIZE = 3 * 1024 * 1024; // 3MB
   const MAX_ENTRIES = 5;
   if (file.size > MAX_SIZE) {
-    throw new Error('Datei zu gross für Retry-Queue (max 3MB). Bitte verkleinern oder mit Internet erneut versuchen.');
+    throw new Error(t('throw.queue.file_too_large'));
   }
   // Overflow-Policy: ältesten upload_receipt-Entry entfernen wenn schon 5 da
   const q = loadLocal(QUEUE_KEY, []);
@@ -7963,7 +8343,7 @@ const Computed = {
     const map = {};
     this.buchungenYear()
       .filter(b => b.type === 'Ausgabe' && b.bereich === 'Geschäftlich')
-      .forEach(b => { const c = b.cat || 'Übriges'; map[c] = (map[c] || 0) + b.amount; });
+      .forEach(b => { const c = b.cat || t('cat.fallback.misc'); map[c] = (map[c] || 0) + b.amount; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   },
 
@@ -7972,7 +8352,7 @@ const Computed = {
     const map = {};
     this.buchungenYear()
       .filter(b => b.type === 'Ausgabe' && b.bereich === 'Privat')
-      .forEach(b => { const c = b.cat || 'Übriges'; map[c] = (map[c] || 0) + b.amount; });
+      .forEach(b => { const c = b.cat || t('cat.fallback.misc'); map[c] = (map[c] || 0) + b.amount; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   },
 
@@ -8320,12 +8700,12 @@ const Computed = {
   /** Data completeness score (0–1) — "Ehrlich" principle */
   completeness() {
     const issues = [];
-    if (Store.konten.length === 0)    issues.push('Keine Konten konfiguriert');
-    if (Store.buchungen.length === 0) issues.push('Keine Buchungen vorhanden');
+    if (Store.konten.length === 0)    issues.push(t('health.completeness.no_konten'));
+    if (Store.buchungen.length === 0) issues.push(t('health.completeness.no_buchungen'));
     const unpaid = Store.buchungen.filter(b => !b.paid).length;
-    if (unpaid > 10) issues.push(`${unpaid} unbestätigte Buchungen`);
+    if (unpaid > 10) issues.push(t('health.completeness.unconfirmed', { n: unpaid }));
     const noSaldo = Store.konten.filter(k => k.active !== false && k.stand == null).length;
-    if (noSaldo > 0) issues.push(`${noSaldo} Konten ohne Startsaldo`);
+    if (noSaldo > 0) issues.push(t('health.completeness.no_saldo', { n: noSaldo }));
     const score = Math.max(0, 1 - issues.length * 0.15);
     return { score: Math.round(score * 100) / 100, issues };
   }
@@ -8806,20 +9186,20 @@ function showReAuthBanner(reason = '') {
   `;
   banner.innerHTML = `
     <div style="flex:1;min-width:0">
-      <strong style="display:block;font-size:13px">Notion-Verbindung unterbrochen</strong>
-      <span style="font-size:11px;opacity:.85">${reason || 'Bitte neu verbinden um fortzufahren'}</span>
+      <strong style="display:block;font-size:13px">${esc(t('reauth.banner.title'))}</strong>
+      <span style="font-size:11px;opacity:.85">${esc(reason || t('reauth.banner.default'))}</span>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
       <button onclick="triggerReAuthFlow()"
         style="background:white;color:#c4441a;border:none;border-radius:7px;
                padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;
                font-family:inherit">
-        Neu verbinden
+        ${esc(t('reauth.banner.btn_reconnect'))}
       </button>
       <button onclick="triggerReset()"
         style="background:rgba(255,255,255,.2);color:white;border:none;border-radius:7px;
                padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit">
-        Zurücksetzen
+        ${esc(t('reauth.banner.btn_reset'))}
       </button>
     </div>
   `;
@@ -8959,16 +9339,16 @@ async function submitLicenseKey() {
 
   const key = input.value.trim().toUpperCase();
   if (!key.startsWith('LK-') || key.length < 5) {
-    errEl.textContent = 'Key ungültig — Format: LK-xxxxxxxx';
+    errEl.textContent = t('license.error.format');
     return;
   }
 
   errEl.textContent = '';
-  if (btn) { btn.textContent = 'Prüfe…'; btn.disabled = true; }
+  if (btn) { btn.textContent = t('license.btn.checking'); btn.disabled = true; }
 
   const result = await Auth.verifyLicense(key);
 
-  if (btn) { btn.textContent = 'Prüfen'; btn.disabled = false; }
+  if (btn) { btn.textContent = t('license.btn.check'); btn.disabled = false; }
 
   if (result.valid) {
     saveLocal('fb_license_key', key);
@@ -8978,7 +9358,7 @@ async function submitLicenseKey() {
     // DB-Setup nochmals triggern falls noch nicht konfiguriert
     if (Auth.isAuthenticated && !dbsConfigured()) {
       setTimeout(async () => {
-        showLoading('Datenbanken einrichten…');
+        showLoading(t('loading.dbs_setup'));
         try {
           const { found, missing } = await discoverDatabases();
           if (missing.length > 0) {
@@ -8994,11 +9374,11 @@ async function submitLicenseKey() {
     }
   } else {
     const msgs = {
-      expired:       'Lizenz abgelaufen — bitte verlängern.',
-      not_found:     'Key nicht gefunden — Schreibweise prüfen.',
-      network_error: 'Verbindung fehlgeschlagen — bitte nochmal versuchen.',
+      expired:       t('license.error.expired'),
+      not_found:     t('license.error.not_found'),
+      network_error: t('license.error.network'),
     };
-    errEl.textContent = msgs[result.reason] || 'Key ungültig — kontaktiere hello@oswaldkoenig.ch';
+    errEl.textContent = msgs[result.reason] || t('license.error.invalid_contact');
   }
 }
 function triggerReset() {
@@ -9040,7 +9420,7 @@ async function onboardSaveManualToken() {
   const errEl = document.getElementById('onboardTokenError');
   if (!input) return;
   const val = input.value.trim();
-  if (!val) { if (errEl) errEl.textContent = 'Bitte Token einfügen'; return; }
+  if (!val) { if (errEl) errEl.textContent = t('token.error.empty'); return; }
   if (errEl) errEl.textContent = '';
   try {
     AppState.workerUrl = Auth.FB_WORKER_PROXY;
@@ -9279,6 +9659,8 @@ const REGION_CONFIG = {
         'Zins- & Bankgebühren': 0, 'Übriger Betriebsaufwand': 19,
       },
     },
+    // taxMapping: Behörden-Anker (EÜR/E1a + offizielle Formular-Beschreibung).
+    // Atomic — keine Teil-Übersetzung. Filter via taxCategoryLabel-Regex. Strategie S36.
     taxMapping: {
       'Umsatzerlöse': 'EÜR Z.14 Betriebseinnahmen',
       'Übrige betriebliche Erträge': 'EÜR Z.14 Betriebseinnahmen',
@@ -9340,6 +9722,8 @@ const REGION_CONFIG = {
         'Zins- & Bankgebühren': 0, 'Übriger Betriebsaufwand': 20,
       },
     },
+    // taxMapping: Behörden-Anker (EÜR/E1a + offizielle Formular-Beschreibung).
+    // Atomic — keine Teil-Übersetzung. Filter via taxCategoryLabel-Regex. Strategie S36.
     taxMapping: {
       'Umsatzerlöse': 'E1a KZ 9040',
       'Übrige betriebliche Erträge': 'E1a KZ 9040',
@@ -9431,6 +9815,55 @@ function mwstMethodLabel(method) {
   const v = t(k);
   if (v !== k) return v;
   return method.charAt(0).toUpperCase() + method.slice(1);
+}
+
+/** S36 Sprint 6.5d · Display badge for a healthCheck service entry.
+ *  Used by Onboarding Overview (obRenderOverview) and Repair Screen (future).
+ *  service: 'license' | 'notion' | 'gdrive' | 'clockify' | 'claude'
+ *  Returns: { icon, label, status, ok }  (ok: true=connected, false=problem, null=optional/not set)
+ *  Note: 'gdrive' / 'clockify' / 'claude' are optional services — missing = neutral ⬜, not error. */
+function serviceStatusBadge(hc, service) {
+  switch (service) {
+    case 'license': {
+      const ok = !!(hc.license.key_present && hc.license.key_valid !== false);
+      const status = !hc.license.key_present
+        ? t('overview.license.missing')
+        : (hc.license.key_valid ? t('overview.license.active') : t('overview.license.invalid'));
+      return { icon: '🗝', label: t('overview.label.license'), status, ok: hc.license.key_present ? hc.license.key_valid !== false : false };
+    }
+    case 'notion': {
+      const dbs = hc.notion.dbs_found !== false;
+      const ok = !!(hc.notion.token_valid && dbs);
+      let status;
+      if (!hc.notion.token_present) status = t('overview.notion.disconnected');
+      else if (!hc.notion.token_valid) status = t('overview.notion.invalid');
+      else if (!hc.notion.dbs_found) status = t('overview.notion.dbs_missing');
+      else status = t('overview.notion.ready');
+      return { icon: '📊', label: t('overview.label.notion'), status, ok: hc.notion.token_valid ? dbs : false };
+    }
+    case 'gdrive': {
+      let status, ok;
+      if (!hc.gdrive.token_present) { status = t('overview.optional.not_configured'); ok = null; }
+      else if (hc.gdrive.token_valid) { status = t('overview.gdrive.connected'); ok = true; }
+      else { status = t('overview.gdrive.expired'); ok = false; }
+      return { icon: '📎', label: t('overview.label.gdrive'), status, ok };
+    }
+    case 'clockify': {
+      let status, ok;
+      if (!hc.clockify.key_present) { status = t('overview.optional.not_configured'); ok = null; }
+      else if (hc.clockify.key_valid) { status = t('overview.clockify.connected'); ok = true; }
+      else { status = t('overview.invalid_key'); ok = false; }
+      return { icon: '⏱', label: t('overview.label.clockify'), status, ok };
+    }
+    case 'claude': {
+      let status, ok;
+      if (!hc.claude.key_present) { status = t('overview.optional.not_configured'); ok = null; }
+      else if (hc.claude.key_valid) { status = t('overview.claude.connected'); ok = true; }
+      else { status = t('overview.invalid_key'); ok = false; }
+      return { icon: '🤖', label: t('overview.label.claude'), status, ok };
+    }
+  }
+  return { icon: '⬜', label: service, status: '', ok: null };
 }
 
 // ── Category Accessors (Funktionen, reagieren auf setCountry) ──
@@ -11450,6 +11883,61 @@ function applyStaticI18n() {
     const _csvStep = (typeof CSV !== 'undefined' && CSV && CSV.screen) ? CSV.screen : 1;
     _csvSubtitle.textContent = t('csv.subtitle.step' + _csvStep);
   }
+
+  // ── S36 Sprint 6.5d Gruppe 1 — Landing-Pages + Inbox-Title + Erfassen Screens 2-4 ──
+  // A1+A1' · Tab-Landings (Aktivitäten + Kompass + Einstellungen-Loading)
+  _setText('landingAktivitaetenTitle', 'landing.aktivitaeten.title');
+  _setText('landingAktivitaetenSub',   'landing.aktivitaeten.sub');
+  _setText('landingAktivitaetenBtn',   'landing.aktivitaeten.btn');
+  _setText('landingKompassTitle',      'nav.kompass');
+  _setText('landingKompassSub',        'landing.kompass.sub');
+  _setText('landingKompassNote',       'landing.kompass.note');
+  _setText('emptyLoadSettingsText',    'landing.settings.loading');
+  // A2 · Inbox-Modal Title + Footer (Title via inbox.btn_title reuse, Footer-Btns analog)
+  _setText('inboxTitle',               'inbox.btn_title');
+  _setText('inboxLaterBtn',            'inbox.btn.later');
+  // (inboxDoneBtn ist bereits oben verkabelt)
+  // A3 · Erfassen Screen 2 (Beleg-Scan)
+  _setText('erfBelegScanZoneTypes',    'erf.beleg.scan_zone_types');
+  _setText('erfBelegBackBtn',          'erf.beleg.back_btn');
+  _setText('erfBelegScanBtn',          'erf.beleg.save_btn');
+  // A4 · Erfassen Screen 3 (Transfer)
+  _setText('erfTransAmtLabel',         'erf.trans.label.amount');
+  _setText('erfTransDateLabel',        'erf.label.date');
+  _setText('erfTransVonLabel',         'erf.label.transfer_from');
+  _setText('erfTransNachLabel',        'erf.label.transfer_to');
+  // erfTransProjektLabel hat nested span — innerHTML
+  _setHTML('erfTransProjektLabel',
+    t('erf.trans.projekt_label_pre') + ' <span style="font-size:11px;color:var(--accent)">' + t('erf.trans.projekt_label_hint') + '</span>');
+  _setText('erfTransDescLabel',        'erf.label.description');
+  _setText('erfTransNoteLabel',        'erf.label.note');
+  _setText('erfTransSaveBtn',          'erf.trans.btn.save');
+  _setAttr('erfTransDesc', 'placeholder', 'erf.trans.placeholder.desc');
+  _setAttr('erfTransNote', 'placeholder', 'erf.placeholder.note');
+  _setFirstOption('erfTransVon',       'erf.select.choose');
+  _setFirstOption('erfTransNach',      'erf.select.choose');
+  _setFirstOption('erfTransProjekt',   'erf.select.no_projekt');
+  // A5 · Erfassen Screen 4 (Rechnung)
+  _setText('erfInvNrLabel',            'erf.label.invoice_ref');
+  _setText('erfInvDateLabel',          'erf.label.date');
+  _setText('erfInvDueLabel',           'erf.inv.label.due');
+  _setText('erfInvStatusLabel',        'erf.label.status');
+  _setText('erfInvStatusOptOpen',      'erf.inv.status.open');
+  _setText('erfInvStatusOptDraft',     'erf.inv.status.draft');
+  _setText('erfInvStatusOptPartial',   'erf.inv.status.partial');
+  _setText('erfInvStatusOptPaid',      'erf.inv.status.paid');
+  _setText('erfInvClientLabel',        'erf.inv.label.client');
+  _setText('erfInvDescLabel',          'erf.inv.label.description');
+  _setText('erfInvAmtLabel',           'erf.inv.label.amount');
+  _setText('erfInvMwstLabel',          'erf.label.mwst_pct');
+  _setText('erfInvKontoLabel',         'erf.label.account');
+  _setText('erfInvTypLabel',           'erf.inv.label.typ');
+  _setText('erfInvSteuerkatLabel',     'erf.inv.label.taxcat');
+  _setText('erfInvNoteLabel',          'erf.label.note');
+  _setText('erfInvSaveBtn',            'erf.inv.btn.save');
+  _setAttr('erfInvClient', 'placeholder', 'erf.inv.placeholder.client');
+  _setAttr('erfInvDesc',   'placeholder', 'erf.inv.placeholder.desc');
+  _setFirstOption('erfInvKonto',       'erf.select.choose');
 }
 
 function renderAll() {
@@ -14307,8 +14795,8 @@ function buildDiagReport() {
   checks.push(lsKB < 2048
     ? ok(`localStorage: ${lsKB} KB`)
     : lsKB < 4096
-      ? warn(`localStorage: ${lsKB} KB`, 'Wird voll')
-      : err(`localStorage: ${lsKB} KB`, 'Eviction aktiv'));
+      ? warn(`localStorage: ${lsKB} KB`, t('health.localstorage.full'))
+      : err(`localStorage: ${lsKB} KB`, t('health.localstorage.eviction')));
 
   const ICON = { ok:'✅', warn:'⚠️', err:'❌' };
   return checks.map(c => `
@@ -14717,7 +15205,7 @@ OpenAIAdapter.validateKey = async function() {
 OpenAIAdapter.analyseReceipt = async function(imageData, options) {
   const apiKey = loadLocal('fb_openai_key', '');
   if (!apiKey) throw new Error('Kein OpenAI API-Key konfiguriert');
-  if (imageData.type === 'pdf') throw new Error('PDF-Analyse wird nur mit Claude unterstützt. Bitte als Bild scannen.');
+  if (imageData.type === 'pdf') throw new Error(t('throw.scan.pdf_only_claude'));
 
   const content = [
     { type: 'image_url', image_url: { url: 'data:' + (imageData.mediaType || 'image/jpeg') + ';base64,' + imageData.base64, detail: 'low' } },
@@ -14809,7 +15297,7 @@ async function analyseBeleg(imageDataUrl, isPDF = false) {
     });
 
     hideAiAnalysis();
-    if (statusEl) statusEl.textContent = '✅ KI hat Beleg gelesen';
+    if (statusEl) statusEl.textContent = t('erf.scan.ai_read_ok');
     applyAiBelegResult(parsed);
 
   } catch (e) {
@@ -15325,36 +15813,36 @@ async function onboardCheckLicense() {
 
   const key = input.value.trim().toUpperCase();
   if (!key.startsWith('LK-') || key.length < 5) {
-    errEl.textContent = 'Key ungültig — Format: LK-xxxxxxxx';
+    errEl.textContent = t('license.error.format');
     return;
   }
 
   errEl.textContent = '';
-  btn.textContent   = 'Prüfe…';
+  btn.textContent   = t('license.btn.checking');
   btn.disabled      = true;
 
   const result = await Auth.verifyLicense(key);
 
-  btn.textContent = 'Prüfen';
+  btn.textContent = t('license.btn.check');
   btn.disabled    = false;
 
   if (result.valid) {
     saveLocal('fb_license_key', key);
     // Kurzes visuelles Feedback, dann weiter
-    btn.textContent = '✓ Aktiv';
+    btn.textContent = t('license.btn.active');
     btn.style.background = 'var(--green, #3a7a3a)';
     setTimeout(() => {
-      btn.textContent = 'Prüfen';
+      btn.textContent = t('license.btn.check');
       btn.style.background = '';
       onboardNext('license', 'country');
     }, 800);
   } else {
     const msgs = {
-      expired:       'Lizenz abgelaufen — bitte kontaktiere hello@oswaldkoenig.ch',
-      not_found:     'Key nicht gefunden — Schreibweise prüfen.',
-      network_error: 'Verbindung fehlgeschlagen — bitte nochmal versuchen.',
+      expired:       t('license.error.expired_contact'),
+      not_found:     t('license.error.not_found'),
+      network_error: t('license.error.network'),
     };
-    errEl.textContent = msgs[result.reason] || 'Key ungültig — prüfe die Schreibweise oder kontaktiere hello@oswaldkoenig.ch';
+    errEl.textContent = msgs[result.reason] || t('license.error.invalid_format_contact');
   }
 }
 
@@ -15369,21 +15857,21 @@ function v3RenderRepair(hc) {
   if (!container) return;
   const items = [];
   // Primäre Blocker (wie bisher)
-  if (!hc.license.key_present) items.push({ icon: '🗝', label: 'Lizenz-Key fehlt', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairLicense()">Key eingeben</button>' });
-  if (hc.license.key_valid === false) items.push({ icon: '🗝', label: 'Lizenz-Key ungültig oder abgelaufen', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairLicense()">Key eingeben</button>' });
-  if (!hc.notion.token_present) items.push({ icon: '📊', label: 'Notion nicht verbunden', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Notion verbinden</button>' });
-  if (hc.notion.token_valid === false) items.push({ icon: '📊', label: 'Notion-Verbindung abgelaufen', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Neu verbinden</button>' });
-  if (hc.notion.dbs_found === false) items.push({ icon: '📁', label: 'Notion-Datenbanken fehlen', action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Reparieren</button>' });
+  if (!hc.license.key_present) items.push({ icon: '🗝', label: t('repair.item.license_missing'), action: '<button class="btn btn-primary btn-sm" onclick="v3RepairLicense()">' + esc(t('repair.action.enter_key')) + '</button>' });
+  if (hc.license.key_valid === false) items.push({ icon: '🗝', label: t('repair.item.license_invalid'), action: '<button class="btn btn-primary btn-sm" onclick="v3RepairLicense()">' + esc(t('repair.action.enter_key')) + '</button>' });
+  if (!hc.notion.token_present) items.push({ icon: '📊', label: t('repair.item.notion_disconnected'), action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">' + esc(t('repair.action.connect_notion')) + '</button>' });
+  if (hc.notion.token_valid === false) items.push({ icon: '📊', label: t('repair.item.notion_expired'), action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">' + esc(t('repair.action.reconnect')) + '</button>' });
+  if (hc.notion.dbs_found === false) items.push({ icon: '📁', label: t('repair.item.notion_dbs_missing'), action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">' + esc(t('repair.action.repair')) + '</button>' });
   // BUG-074: Wenn nichts passt, Debug-Info statt "Unbekanntes Problem".
   // Der Repair-Screen sollte gar nicht erreicht werden wenn nur advisory Issues da sind
   // (healthSummary.ok prüft nur blocking). Dieser Branch ist ein Fallback für echte Edge-Cases.
   if (items.length === 0) {
     const summary = healthSummary(hc);
-    const diag = summary.issues.map(i => i.key).join(', ') || 'keine Issues';
+    const diag = summary.issues.map(i => i.key).join(', ') || t('repair.item.fallback_no_issues');
     items.push({
       icon: '⚠️',
-      label: 'Status prüfen (' + diag + ')',
-      action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">Notion neu verbinden</button>'
+      label: t('repair.item.fallback_status', { diag }),
+      action: '<button class="btn btn-primary btn-sm" onclick="v3RepairNotion()">' + esc(t('repair.action.reconnect_notion')) + '</button>'
     });
     console.warn('[BUG-074] v3RenderRepair Fallback — Issues:', summary.issues, 'hc:', hc);
   }
@@ -15401,17 +15889,17 @@ async function v3RepairLicenseSubmit() {
   const btn   = document.getElementById('repairLicenseBtn');
   if (!input) return;
   const key = input.value.trim().toUpperCase();
-  if (!key.startsWith('LK-') || key.length < 5) { if (errEl) errEl.textContent = 'Format: LK-xxxxxxxx'; return; }
+  if (!key.startsWith('LK-') || key.length < 5) { if (errEl) errEl.textContent = t('license.format_short'); return; }
   if (errEl) errEl.textContent = '';
-  if (btn) { btn.textContent = 'Prüfe…'; btn.disabled = true; }
+  if (btn) { btn.textContent = t('license.btn.checking'); btn.disabled = true; }
   const result = await Auth.verifyLicense(key);
-  if (btn) { btn.textContent = 'Prüfen'; btn.disabled = false; }
+  if (btn) { btn.textContent = t('license.btn.check'); btn.disabled = false; }
   if (result.valid) {
     saveLocal('fb_license_key', key);
     showToast('success', '✅', t('toast.license_active'), '');
     if (Auth.isAuthenticated) { showApp(); restoreTab(); } else { v3RepairNotion(); }
   } else {
-    if (errEl) errEl.textContent = result.reason === 'expired' ? 'Abgelaufen — hello@oswaldkoenig.ch' : 'Key nicht gefunden';
+    if (errEl) errEl.textContent = result.reason === 'expired' ? t('license.error.expired_short') : t('license.error.not_found_short');
   }
 }
 
@@ -15428,16 +15916,16 @@ async function v3SubmitPairingCode() {
   const btn   = document.getElementById('pairingBtn');
   if (!input || !errEl) return;
   const code = input.value.trim().toUpperCase();
-  if (code.length !== 6) { errEl.textContent = 'Code muss 6 Zeichen haben.'; return; }
+  if (code.length !== 6) { errEl.textContent = t('pairing.code_length_error'); return; }
   errEl.textContent = '';
-  if (btn) { btn.textContent = 'Verbinde…'; btn.disabled = true; }
+  if (btn) { btn.textContent = t('pairing.btn_connecting'); btn.disabled = true; }
   const result = await Auth.claimPairingCode(code);
   if (result.licenseKey) {
     saveLocal('fb_license_key', result.licenseKey);
     saveLocal('fb_pairing_active', true);
-    if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = '✅ Code korrekt — verbinde Notion…'; }
+    if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = t('pairing.success_short'); }
     // BUG-036 Fix: Button bleibt disabled + onclick entfernt — verhindert zweiten Submit
-    if (btn) { btn.textContent = '✅ Weiter'; btn.disabled = true; btn.onclick = null; }
+    if (btn) { btn.textContent = t('pairing.btn_continue'); btn.disabled = true; btn.onclick = null; }
     // S14-6: On mobile, check if PWA is installed before starting OAuth
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
     if (isMobile && !isPWAInstalled()) {
@@ -15449,11 +15937,11 @@ async function v3SubmitPairingCode() {
       setTimeout(() => { showToast('success', '📱', t('toast.device_detected'), t('toast.device_detected_sub_notion')); Auth.startOAuth(); }, 900);
     }
   } else if (result.error === 'expired') {
-    if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
-    errEl.style.color = ''; errEl.textContent = 'Code abgelaufen. Generiere einen neuen am anderen Gerät.';
+    if (btn) { btn.textContent = t('pairing.btn_connect'); btn.disabled = false; }
+    errEl.style.color = ''; errEl.textContent = t('pairing.error_expired_short');
   } else {
-    if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
-    errEl.style.color = ''; errEl.textContent = 'Code ungültig — bitte nochmal versuchen.';
+    if (btn) { btn.textContent = t('pairing.btn_connect'); btn.disabled = false; }
+    errEl.style.color = ''; errEl.textContent = t('pairing.error_invalid_short');
   }
 }
 
@@ -15480,12 +15968,12 @@ async function loadDonePairingCode() {
   if (!codeEl) return;
 
   codeEl.textContent      = '…';
-  if (countdownEl) countdownEl.textContent = 'Lädt…';
+  if (countdownEl) countdownEl.textContent = t('done.pairing.loading');
 
   const result = await Auth.generatePairingCode();
   if (!result || !result.code) {
     codeEl.textContent = '—';
-    if (countdownEl) countdownEl.textContent = 'Fehler — bitte nochmal versuchen';
+    if (countdownEl) countdownEl.textContent = t('done.pairing.error_retry');
     return;
   }
 
@@ -15501,8 +15989,8 @@ function startPairingCountdown(expiresAt, el) {
     const m = Math.floor(remaining / 60);
     const s = remaining % 60;
     if (el) el.textContent = remaining > 0
-      ? `Gültig noch ${m}:${String(s).padStart(2,'0')} Min`
-      : 'Abgelaufen';
+      ? t('done.pairing.valid_for', { time: `${m}:${String(s).padStart(2,'0')}` })
+      : t('done.pairing.expired');
     if (remaining === 0) {
       clearInterval(_pairingCountdownInterval);
       const codeEl = document.getElementById('donePairingCode');
@@ -15547,7 +16035,7 @@ function copyDoneUrl() {
   const url = urlInput ? urlInput.value : (window.location.origin + window.location.pathname);
   navigator.clipboard?.writeText(url).then(() => {
     const btn = document.getElementById('doneCopyUrlBtn');
-    if (btn) { btn.textContent = '✓'; setTimeout(() => btn.textContent = 'Kopieren', 1500); }
+    if (btn) { btn.textContent = '✓'; setTimeout(() => btn.textContent = t('done.copy.label'), 1500); }
   }).catch(() => {
     showToast('info', '📋', t('toast.url'), url);
   });
@@ -15598,30 +16086,30 @@ function showPWAInstallScreen() {
   if (isAndroid() && _deferredPwaPrompt) {
     content = `
       <div style="font-size:48px;margin-bottom:16px">📲</div>
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px">App installieren</h2>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px">${esc(t('pwa.install.title'))}</h2>
       <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:20px">
-        F\u00fcr die beste Erfahrung installiere FinanceBird als App auf deinem Ger\u00e4t.
+        ${esc(t('pwa.install.hint_android'))}
       </p>
       <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;margin-bottom:10px" onclick="triggerPwaInstall()">
-        Installieren
+        ${esc(t('pwa.install.btn_install'))}
       </button>
       <button class="btn btn-outline" style="width:100%;padding:12px;font-size:13px" onclick="skipPWAInstall()">
-        Ohne Installation weiter \u2192
+        ${esc(t('pwa.install.btn_skip'))}
       </button>`;
   } else if (isIOS()) {
     content = `
       <div style="font-size:48px;margin-bottom:16px">📲</div>
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px">App installieren</h2>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px">${esc(t('pwa.install.title'))}</h2>
       <p style="font-size:14px;color:var(--ink2);line-height:1.6;margin-bottom:16px">
-        F\u00fcr die beste Erfahrung f\u00fcge FinanceBird zum Home-Bildschirm hinzu:
+        ${esc(t('pwa.install.hint_ios'))}
       </p>
       <div style="background:var(--bg2);border-radius:12px;padding:16px;margin-bottom:20px;font-size:14px;line-height:2">
-        <div>1. Tippe auf <span style="font-size:18px">\u2B06\uFE0F</span> (Teilen-Symbol unten)</div>
-        <div>2. Scrolle nach unten</div>
-        <div>3. <strong>Zum Home-Bildschirm</strong> tippen</div>
+        <div>1. ${t('pwa.install.ios_step_1')}</div>
+        <div>2. ${esc(t('pwa.install.ios_step_2'))}</div>
+        <div>3. ${t('pwa.install.ios_step_3')}</div>
       </div>
       <button class="btn btn-outline" style="width:100%;padding:12px;font-size:13px" onclick="skipPWAInstall()">
-        Ohne Installation weiter \u2192
+        ${esc(t('pwa.install.btn_skip'))}
       </button>`;
   } else {
     // Desktop or unknown — skip directly
@@ -15663,31 +16151,31 @@ async function submitPairingCode() {
 
   const code = input.value.trim().toUpperCase();
   if (code.length !== 6) {
-    errEl.textContent = 'Code muss 6 Zeichen haben.';
+    errEl.textContent = t('pairing.code_length_error');
     return;
   }
 
   errEl.textContent = '';
-  if (btn) { btn.textContent = 'Verbinde…'; btn.disabled = true; }
+  if (btn) { btn.textContent = t('pairing.btn_connecting'); btn.disabled = true; }
 
   const result = await Auth.claimPairingCode(code);
 
-  if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
+  if (btn) { btn.textContent = t('pairing.btn_connect'); btn.disabled = false; }
 
   if (result.licenseKey) {
     saveLocal('fb_license_key', result.licenseKey);
     // BUG-025: Gepaartes Gerät braucht kein neues Setup — nur Notion-OAuth
     // Direkt OAuth starten; _applyToken leitet danach in die App
-    if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = '✅ Code korrekt — verbinde jetzt Notion…'; }
-    if (btn) btn.textContent = '✅ Weiter';
+    if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = t('pairing.success_inline'); }
+    if (btn) btn.textContent = t('pairing.btn_continue');
     setTimeout(() => {
       showToast('success', '📱', t('toast.device_detected'), t('toast.device_detected_sub_notion'));
       Auth.startOAuth();
     }, 900);
   } else if (result.error === 'expired') {
-    errEl.textContent = 'Code abgelaufen. Generiere einen neuen Code am anderen Gerät, oder gib deinen Lizenz-Key direkt ein.';
+    errEl.textContent = t('pairing.error_expired');
   } else {
-    errEl.textContent = 'Code ungültig oder Verbindung fehlgeschlagen — bitte nochmal versuchen.';
+    errEl.textContent = t('pairing.error_invalid');
   }
 }
 
@@ -16017,7 +16505,14 @@ function obAddCustomAccount() {
 
 function obUpdateAccountsUI() {
   const el = document.getElementById('obSelectedAccounts');
-  if (el) el.textContent = OB.accounts.length ? `${OB.accounts.length} Konto${OB.accounts.length > 1 ? 'n' : ''}: ${OB.accounts.join(', ')}` : '';
+  if (el) {
+    if (OB.accounts.length) {
+      const k = OB.accounts.length === 1 ? 'ob.accounts.summary_singular' : 'ob.accounts.summary_plural';
+      el.textContent = t(k, { n: OB.accounts.length, items: OB.accounts.join(', ') });
+    } else {
+      el.textContent = '';
+    }
+  }
   const btn = document.getElementById('obAccountsNextBtn');
   if (btn) btn.disabled = OB.accounts.length === 0;
 }
@@ -16036,54 +16531,54 @@ function obUpdateIntTiles() {
     OB.driveConnected = GDriveAdapter.isConnected();
     drive.className  = 'onboard-tile' + (OB.driveConnected  ? ' connected' : '');
     const sub = drive.querySelector('.tile-sub');
-    if (sub && OB.driveConnected) sub.textContent = 'Google Drive verbunden';
+    if (sub && OB.driveConnected) sub.textContent = t('ob.tile.gdrive_connected');
   }
   if (clock)  {
     const timeKey = p.time ? loadLocal('fb_' + p.time + '_key', '') : '';
     OB.clockifyConnected = !!timeKey;
     clock.className  = 'onboard-tile' + (OB.clockifyConnected ? ' connected' : '');
     const sub = clock.querySelector('.tile-sub');
-    if (sub && p.time) sub.textContent = (PROVIDER_REGISTRY.time[p.time]?.getProviderName?.() || p.time) + ' verbunden';
+    if (sub && p.time) sub.textContent = t('ob.tile.provider_connected', { provider: PROVIDER_REGISTRY.time[p.time]?.getProviderName?.() || p.time });
   }
   if (ki) {
     const visionKey = p.vision ? loadLocal('fb_' + p.vision + '_key', '') : '';
     OB.kiConnected = !!visionKey;
     ki.className = 'onboard-tile' + (OB.kiConnected ? ' connected' : '');
     const sub = ki.querySelector('.tile-sub');
-    if (sub && OB.kiConnected) sub.textContent = (PROVIDER_REGISTRY.vision[p.vision]?.getProviderName?.() || p.vision) + ' verbunden';
+    if (sub && OB.kiConnected) sub.textContent = t('ob.tile.provider_connected', { provider: PROVIDER_REGISTRY.vision[p.vision]?.getProviderName?.() || p.vision });
   }
   const btn = document.getElementById('obIntNextBtn');
-  if (btn) btn.textContent = OB.notionConnected ? 'Weiter →' : 'Notion verbinden';
+  if (btn) btn.textContent = OB.notionConnected ? t('ob.tile.notion_next') : t('ob.tile.notion_connect');
 }
 
 /** Sprint 3: Provider-Auswahl Overlay im Onboarding */
 function obSelectProvider(category) {
   const configs = {
     time: {
-      title: 'Zeiterfassung wählen',
+      title: t('ob.provider.title.time'),
       options: [
-        { id: 'clockify', label: '⏱ Clockify', sub: 'Kostenlos' },
-        { id: 'toggl', label: '⏱ Toggl Track', sub: 'Kostenlos & Pro' },
-        { id: null, label: '⏭ Überspringen', sub: 'Später einrichten' },
+        { id: 'clockify', label: t('ob.provider.label.clockify'), sub: t('ob.provider.sub.free') },
+        { id: 'toggl',    label: t('ob.provider.label.toggl'),    sub: t('ob.provider.sub.free_pro') },
+        { id: null,       label: t('ob.provider.label.skip'),     sub: t('ob.provider.sub.skip') },
       ],
       wrapId: 'obIntClockifyWrap',
       keyPrefix: 'fb_',
       keySuffix: '_key',
     },
     storage: {
-      title: 'Belege-Ablage wählen',
+      title: t('ob.provider.title.storage'),
       options: [
-        { id: 'gdrive', label: '📁 Google Drive', sub: 'Empfohlen' },
-        { id: null, label: '⏭ Überspringen', sub: 'Später einrichten' },
+        { id: 'gdrive', label: t('ob.provider.label.gdrive'), sub: t('ob.provider.sub.recommended') },
+        { id: null,     label: t('ob.provider.label.skip'),   sub: t('ob.provider.sub.skip') },
       ],
       wrapId: null,
     },
     vision: {
-      title: 'KI-Provider wählen',
+      title: t('ob.provider.title.vision'),
       options: [
-        { id: 'claude', label: '🤖 Claude (Anthropic)', sub: 'Empfohlen' },
-        { id: 'openai', label: '🤖 OpenAI', sub: 'GPT-4o' },
-        { id: null, label: '⏭ Überspringen', sub: 'Später einrichten' },
+        { id: 'claude', label: t('ob.provider.label.claude'), sub: t('ob.provider.sub.recommended') },
+        { id: 'openai', label: t('ob.provider.label.openai'), sub: t('ob.provider.sub.gpt4o') },
+        { id: null,     label: t('ob.provider.label.skip'),   sub: t('ob.provider.sub.skip') },
       ],
       wrapId: 'obIntKiWrap',
       keyPrefix: 'fb_',
@@ -16145,13 +16640,13 @@ function obProviderSelected(category, providerId) {
   if (!wrap) return;
 
   wrap.innerHTML = `
-    <div style="font-family:'Courier Prime',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Erweiterung</div>
+    <div style="font-family:'Courier Prime',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">${esc(t('ob.provider.section_extension'))}</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(kl.hint)}</div>
     <label class="form-label" style="font-size:12px">${esc(kl.label)}</label>
     <input type="password" id="obProviderKeyInput" class="form-input" placeholder="${esc(kl.placeholder)}" style="margin-bottom:6px">
     <div style="display:flex;gap:8px">
-      <button class="btn btn-primary btn-sm" onclick="obSaveProviderKey('${category}','${providerId}')" style="flex:1">Speichern</button>
-      <button class="btn btn-outline btn-sm" onclick="obProviderSelected('${category}', null)" style="font-size:12px">Überspringen</button>
+      <button class="btn btn-primary btn-sm" onclick="obSaveProviderKey('${category}','${providerId}')" style="flex:1">${esc(t('ob.provider.btn_save'))}</button>
+      <button class="btn btn-outline btn-sm" onclick="obProviderSelected('${category}', null)" style="font-size:12px">${esc(t('ob.provider.btn_skip'))}</button>
     </div>
   `;
 }
@@ -16278,26 +16773,30 @@ function obIntNext() {
 async function obRenderOverview() {
   const el = document.getElementById('overviewChecks');
   if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">System wird geprüft…</div>';
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">' + esc(t('overview.checking')) + '</div>';
   const hc = await healthCheck('deep');
-  const rows = [];
-  rows.push(overviewRow('🗝', 'Lizenz', hc.license.key_present ? (hc.license.key_valid ? '✅ Aktiv' : '❌ Ungültig') : '❌ Fehlt', hc.license.key_present && hc.license.key_valid !== false));
-  rows.push(overviewRow('📊', 'Datenbank', hc.notion.token_present ? (hc.notion.token_valid ? (hc.notion.dbs_found ? '✅ Verbunden · Datenbanken bereit' : '⚠️ Verbunden · DBs fehlen') : '❌ Token ungültig') : '❌ Nicht verbunden', hc.notion.token_valid && hc.notion.dbs_found !== false));
-  rows.push(overviewRow('📎', 'Belege', hc.gdrive.token_present ? (hc.gdrive.token_valid ? '✅ Google Drive verbunden' : '⚠️ Token abgelaufen') : '⬜ Nicht konfiguriert (Erweiterung)', hc.gdrive.token_present ? hc.gdrive.token_valid : null));
-  rows.push(overviewRow('⏱', 'Zeit & Projekte', hc.clockify.key_present ? (hc.clockify.key_valid ? '✅ Clockify verbunden' : '⚠️ Key ungültig') : '⬜ Nicht konfiguriert (Erweiterung)', hc.clockify.key_present ? hc.clockify.key_valid : null, hc.clockify.key_valid === false ? '<button class=\"btn btn-outline btn-sm\" onclick=\"onboardNext(null,\'integrations\')\">Key ändern</button>' : ''));
-  rows.push(overviewRow('🤖', 'KI-Analyse', hc.claude.key_present ? (hc.claude.key_valid ? '✅ Claude API verbunden' : '⚠️ Key ungültig') : '⬜ Nicht konfiguriert (Erweiterung)', hc.claude.key_present ? hc.claude.key_valid : null, hc.claude.key_valid === false ? '<button class=\"btn btn-outline btn-sm\" onclick=\"onboardNext(null,\'integrations\')\">Key ändern</button>' : ''));
+  const services = ['license', 'notion', 'gdrive', 'clockify', 'claude'];
+  const rows = services.map(svc => {
+    const b = serviceStatusBadge(hc, svc);
+    // Optional services with invalid key get a "Change key" action button
+    const showAction = (svc === 'clockify' || svc === 'claude') && b.ok === false;
+    const actionHtml = showAction
+      ? '<button class="btn btn-outline btn-sm" onclick="onboardNext(null,\'integrations\')">' + esc(t('overview.action.change_key')) + '</button>'
+      : '';
+    return overviewRow(b.icon, b.label, b.status, b.ok, actionHtml);
+  });
   el.innerHTML = rows.join('');
   // Add re-check button if any issues
   const hasIssues = !hc.license.key_valid || !hc.notion.token_valid || hc.clockify.key_valid === false || hc.claude.key_valid === false;
   if (hasIssues) {
-    el.innerHTML += '<div style="text-align:center;margin-top:10px"><button class="btn btn-outline btn-sm" onclick="obRenderOverview()" style="font-size:12px">🔄 Erneut prüfen</button></div>';
+    el.innerHTML += '<div style="text-align:center;margin-top:10px"><button class="btn btn-outline btn-sm" onclick="obRenderOverview()" style="font-size:12px">' + esc(t('overview.recheck')) + '</button></div>';
   }
 
   const btn = document.getElementById('overviewFinishBtn');
   const notionOk = hc.notion.token_present && hc.notion.token_valid !== false;
-  if (btn) { btn.disabled = !notionOk; btn.textContent = notionOk ? 'Fertig — zum Cockpit →' : 'Notion muss verbunden sein'; }
+  if (btn) { btn.disabled = !notionOk; btn.textContent = notionOk ? t('overview.finish.ready') : t('overview.finish.notion_required'); }
   const title = document.getElementById('overviewTitle');
-  if (title) title.textContent = (hc.license.key_valid !== false && notionOk) ? 'Dein FinanceBird ist bereit!' : 'Fast bereit — schau dir die offenen Punkte an';
+  if (title) title.textContent = (hc.license.key_valid !== false && notionOk) ? t('overview.title.ready') : t('overview.title.almost');
 }
 
 function overviewRow(icon, label, status, ok) {
@@ -16324,9 +16823,9 @@ async function claimPairingCode() {
   // Flow: claim code → save licenseKey → do own OAuth → normal app start
   const code = (document.getElementById('welcomePairingInput')?.value || '').trim().toLowerCase();
   const errEl = document.getElementById('welcomePairingError');
-  if (code.length !== 6) { if (errEl) errEl.textContent = 'Bitte 6-stelligen Code eingeben'; return; }
+  if (code.length !== 6) { if (errEl) errEl.textContent = t('pairing.welcome.code_length'); return; }
   const btn = document.querySelector('#onboardMobilePairing .btn-primary');
-  if (btn) { btn.textContent = 'Prüfe Code…'; btn.disabled = true; }
+  if (btn) { btn.textContent = t('pairing.welcome.btn_checking'); btn.disabled = true; }
   try {
     const resp = await fetch(Auth.FB_WORKER_AUTH + '/device/claim', {
       method: 'POST',
@@ -16337,22 +16836,22 @@ async function claimPairingCode() {
     if (data.licenseKey) {
       // BUG-025: Save license key, dann direkt OAuth — kein Setup-Neustart
       saveLocal('fb_license_key', data.licenseKey);
-      if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = '✅ Code korrekt — verbinde jetzt Notion…'; }
-      if (btn) btn.textContent = '✅ Weiter';
+      if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = t('pairing.success_inline'); }
+      if (btn) btn.textContent = t('pairing.btn_continue');
       setTimeout(() => {
         showToast('success', '📱', t('toast.device_detected'), t('toast.device_detected_sub_notion'));
         Auth.startOAuth();
       }, 900);
     } else {
-      const msg = data.error === 'expired' ? 'Code abgelaufen — bitte neuen Code generieren'
-                : data.error === 'invalid_code' ? 'Code ungültig — bitte nochmals prüfen'
-                : data.error || 'Unbekannter Fehler';
+      const msg = data.error === 'expired' ? t('pairing.welcome.error_expired')
+                : data.error === 'invalid_code' ? t('pairing.welcome.error_invalid')
+                : data.error || t('pairing.welcome.error_unknown');
       if (errEl) { errEl.style.color = ''; errEl.textContent = msg; }
-      if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
+      if (btn) { btn.textContent = t('pairing.btn_connect'); btn.disabled = false; }
     }
   } catch (e) {
-    if (errEl) errEl.textContent = 'Verbindungsfehler: ' + e.message;
-    if (btn) { btn.textContent = 'Verbinden'; btn.disabled = false; }
+    if (errEl) errEl.textContent = t('pairing.welcome.error_connection', { msg: e.message });
+    if (btn) { btn.textContent = t('pairing.btn_connect'); btn.disabled = false; }
   }
 }
 
@@ -16369,13 +16868,14 @@ function renderCockpitRecommendations() {
   if (document.getElementById('cockpitRecBanner')) return; // already shown
 
   const donePct  = Math.round(checks.filter(c => c.done).length / checks.length * 100);
+  const doneCount = checks.filter(c=>c.done).length;
   const banner   = document.createElement('div');
   banner.id      = 'cockpitRecBanner';
   banner.innerHTML = `
     <div class="card" style="margin-bottom:16px;border-left:3px solid var(--accent)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div class="card-title" style="margin-bottom:0">Nächste Schritte</div>
-        <div style="font-size:12px;color:var(--muted)">${checks.filter(c=>c.done).length}/${checks.length} erledigt</div>
+        <div class="card-title" style="margin-bottom:0">${esc(t('cockpit.rec.title'))}</div>
+        <div style="font-size:12px;color:var(--muted)">${esc(t('cockpit.rec.done_count', { done: doneCount, total: checks.length }))}</div>
       </div>
       <div class="prog-bar" style="margin-bottom:14px">
         <div class="prog-fill" style="width:${donePct}%"></div>
@@ -16391,7 +16891,7 @@ function renderCockpitRecommendations() {
         </div>`).join('')}
       <button onclick="this.closest('.card').remove()"
         style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;margin-top:8px;display:block;width:100%;text-align:center">
-        Ausblenden
+        ${esc(t('cockpit.rec.hide'))}
       </button>
     </div>`;
   el.prepend(banner);
@@ -16400,32 +16900,32 @@ function renderCockpitRecommendations() {
 function cockpitRecommendationChecks() {
   const checks = [
     {
-      icon:'🏦', label:'Konto mit Startsaldo einrichten',
-      sub: 'Für genaue Liquiditätsvorschau',
+      icon:'🏦', label: t('cockpit.rec.konto.label'),
+      sub: t('cockpit.rec.konto.sub'),
       done: Store.konten.some(k => k.stand != null),
       action: "nav('buchhaltung');setTimeout(()=>setBuchSubtab('konten'),100)",
-      actionLabel: 'Zu Konten',
+      actionLabel: t('cockpit.rec.konto.action'),
     },
     {
-      icon:'💰', label:'Erste Buchung erfassen',
-      sub: 'Starte mit einer Einnahme oder Ausgabe',
+      icon:'💰', label: t('cockpit.rec.buchung.label'),
+      sub: t('cockpit.rec.buchung.sub'),
       done: Store.buchungen.length > 0,
       action: "openErfassen('buchung')",
-      actionLabel: '+ Buchung',
+      actionLabel: t('cockpit.rec.buchung.action'),
     },
     {
-      icon:'🔄', label:'Wiederkehrende Zahlungen',
-      sub: 'Fixkosten für die Liquiditätsvorschau',
+      icon:'🔄', label: t('cockpit.rec.recurring.label'),
+      sub: t('cockpit.rec.recurring.sub'),
       done: Store.recurrings.length > 0,
       action: "nav('buchhaltung');setTimeout(()=>setBuchSubtab('recurrings'),100)",
-      actionLabel: 'Einrichten',
+      actionLabel: t('cockpit.rec.recurring.action'),
     },
     {
-      icon:'🧾', label:'Erste Rechnung erstellen',
-      sub: 'Offene Honorare verfolgen',
+      icon:'🧾', label: t('cockpit.rec.rechnung.label'),
+      sub: t('cockpit.rec.rechnung.sub'),
       done: Store.rechnungen.length > 0,
       action: "openErfassen('rechnung')",
-      actionLabel: '+ Rechnung',
+      actionLabel: t('cockpit.rec.rechnung.action'),
     },
     {
       icon:'⏱', label:'Clockify verbinden',
@@ -17009,9 +17509,10 @@ function previewRechnung(invId) {
   const r    = Store.rechnungen.find(x => x._id === invId);
   if (!r) return;
   const info = getRechnungsInfo();
+  const lang = AppState.lang === 'en' ? 'en' : 'de';
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Rechnung ${r.nr}</title>
+  const html = `<!DOCTYPE html><html lang="${lang}"><head><meta charset="UTF-8">
+    <title>${esc(t('invoice.print.title'))} ${esc(r.nr)}</title>
     <style>
       body { font-family:'Helvetica Neue',Arial,sans-serif; max-width:700px; margin:40px auto; color:#2c1f0e; font-size:14px; }
       .header { display:flex; justify-content:space-between; margin-bottom:40px; border-bottom:2px solid #c4441a; padding-bottom:20px; }
@@ -17030,37 +17531,37 @@ function previewRechnung(invId) {
     <div class="header">
       <div class="logo">Finance<em>Bird</em></div>
       <div style="text-align:right;font-size:13px;line-height:1.6">
-        <strong>${info.name}</strong><br>
-        ${info.adresse}<br>
-        ${info.email ? info.email + '<br>' : ''}
-        ${info.uid ? 'UID: ' + info.uid : ''}
+        <strong>${esc(info.name)}</strong><br>
+        ${esc(info.adresse)}<br>
+        ${info.email ? esc(info.email) + '<br>' : ''}
+        ${info.uid ? esc(t('invoice.print.uid_prefix')) + ' ' + esc(info.uid) : ''}
       </div>
     </div>
-    <h1>Rechnung ${r.nr}</h1>
+    <h1>${esc(t('invoice.print.title'))} ${esc(r.nr)}</h1>
     <div class="meta">
       <div>
-        <div class="meta-label">Empfänger</div>
-        <strong>${r.client}</strong>
+        <div class="meta-label">${esc(t('invoice.print.recipient'))}</div>
+        <strong>${esc(r.client)}</strong>
       </div>
       <div style="text-align:right">
-        <div><div class="meta-label">Rechnungsdatum</div>${r.date}</div>
-        ${r.due ? `<div style="margin-top:6px"><div class="meta-label">Fällig am</div>${r.due}</div>` : ''}
+        <div><div class="meta-label">${esc(t('invoice.print.date_label'))}</div>${esc(r.date)}</div>
+        ${r.due ? `<div style="margin-top:6px"><div class="meta-label">${esc(t('erf.inv.label.due'))}</div>${esc(r.due)}</div>` : ''}
       </div>
     </div>
     <table>
-      <thead><tr><th>Beschreibung</th><th style="text-align:right">Betrag CHF</th></tr></thead>
+      <thead><tr><th>${esc(t('erf.label.description'))}</th><th style="text-align:right">${esc(t('invoice.print.amount_chf'))}</th></tr></thead>
       <tbody>
-        <tr><td>${r.desc || r.type || 'Leistung'}</td><td style="text-align:right">${r.amount.toFixed(2)}</td></tr>
-        ${r.mwst > 0 ? `<tr><td style="color:#8a7a65">MwSt ${r.mwst}%</td><td style="text-align:right;color:#8a7a65">${(r.amount * r.mwst/100).toFixed(2)}</td></tr>` : ''}
+        <tr><td>${esc(r.desc || r.type || t('invoice.print.default_service'))}</td><td style="text-align:right">${r.amount.toFixed(2)}</td></tr>
+        ${r.mwst > 0 ? `<tr><td style="color:#8a7a65">${esc(t('invoice.print.mwst'))} ${r.mwst}%</td><td style="text-align:right;color:#8a7a65">${(r.amount * r.mwst/100).toFixed(2)}</td></tr>` : ''}
         <tr class="total-row">
-          <td>Total CHF</td>
+          <td>${esc(t('invoice.print.total_chf'))}</td>
           <td style="text-align:right">${(r.amount * (1 + (r.mwst||0)/100)).toFixed(2)}</td>
         </tr>
       </tbody>
     </table>
     <div class="footer">
-      ${info.iban ? `<div>Zahlung bitte via IBAN: <strong>${info.iban}</strong></div>` : ''}
-      <div style="margin-top:8px;color:#b0a898;font-size:11px">Erstellt mit FinanceBird · financebird.app</div>
+      ${info.iban ? `<div>${esc(t('invoice.print.payment_iban'))} <strong>${esc(info.iban)}</strong></div>` : ''}
+      <div style="margin-top:8px;color:#b0a898;font-size:11px">${esc(t('invoice.print.footer'))}</div>
     </div>
     </body></html>`;
 
@@ -17219,14 +17720,14 @@ function migrateLocalStorage() {
         const s = healthSummary(hcQ);
         if (!s.ok) s.issues.forEach(i => {
           if (i.key === 'license_invalid') showLicenseExpiredBanner();
-          if (i.key === 'notion_invalid') Auth.triggerReAuth('Token abgelaufen');
+          if (i.key === 'notion_invalid') Auth.triggerReAuth(t('reauth.reason.token_expired'));
         });
       }).catch(() => {});
       window.addEventListener('offline', () => { setAppStatus('offline', t('app.offline')); });
       window.addEventListener('online',  () => { setAppStatus('idle', t('app.connected')); flushQueue(); });
       // DB repair
       if (!dbsConfigured()) {
-        showLoading('Datenbanken einrichten…');
+        showLoading(t('loading.dbs_setup'));
         try {
           const { found, missing } = await discoverDatabases();
           if (missing.length > 0) { const pid = await findSharedParentPage(); if (pid) await createMissingDatabases(pid, missing); }
