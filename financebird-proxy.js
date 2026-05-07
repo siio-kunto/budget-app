@@ -14,7 +14,7 @@
  * Deploy: https://financebird-proxy.holy-forest-0174.workers.dev/v1
  */
 
-const WORKER_VERSION = '1.1.0'; // Major.Minor.Patch — bei jedem Deploy hochzählen
+const WORKER_VERSION = '1.2.0'; // Major.Minor.Patch — bei jedem Deploy hochzählen
 
 export default {
   async fetch(request, env) {
@@ -23,7 +23,7 @@ export default {
 
     // CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders() });
+      return new Response(null, { headers: corsHeaders(request) });
     }
 
     // Health-Check (kein Auth nötig)
@@ -55,20 +55,32 @@ export default {
       return json({ error: 'License expired' }, 403);
     }
 
-    // lastUsed Tracking — non-blocking (Audit-Fix: Nutzungsstatistik)
-    const now = new Date().toISOString();
-    if (!entry.lastUsed || entry.lastUsed.slice(0, 13) !== now.slice(0, 13)) {
-      entry.lastUsed = now;
-      env.LICENSE_KV.put('license:' + licenseKey, JSON.stringify(entry)).catch(() => {});
+    // 3. Device-Token prüfen (Triple-Auth)
+    const deviceToken = (request.headers.get('X-FB-Device') || '').trim();
+    if (!deviceToken) {
+      return json({ error: 'device_not_registered', action: 'reauth' }, 401);
     }
 
-    // 3. Request an Notion weiterleiten (blind — kein Logging)
+    const deviceData = await env.LICENSE_KV.get(`device:${licenseKey}:${deviceToken}`, { type: 'json' }).catch(() => null);
+    if (!deviceData) {
+      return json({ error: 'device_not_registered', action: 'reauth' }, 401);
+    }
+
+    // lastSeen aktualisieren (max 1×/Stunde um KV-Writes zu sparen)
+    const now = new Date().toISOString();
+    if (!deviceData.lastSeen || deviceData.lastSeen.slice(0, 13) !== now.slice(0, 13)) {
+      deviceData.lastSeen = now;
+      env.LICENSE_KV.put(`device:${licenseKey}:${deviceToken}`, JSON.stringify(deviceData)).catch(() => {});
+    }
+
+    // 4. Request an Notion weiterleiten (blind — kein Logging)
     const notionPath = url.pathname.replace(/^\/v1/, '') || '/';
     const notionUrl  = 'https://api.notion.com/v1' + notionPath + url.search;
 
     const headers = new Headers(request.headers);
     headers.delete('X-FB-Key');
     headers.delete('X-FB-License');
+    headers.delete('X-FB-Device');
     headers.set('Host', 'api.notion.com');
 
     const notionResp = await fetch(notionUrl, {
@@ -78,7 +90,7 @@ export default {
     });
 
     const respHeaders = new Headers(notionResp.headers);
-    Object.entries(corsHeaders()).forEach(([k, v]) => respHeaders.set(k, v));
+    Object.entries(corsHeaders(request)).forEach(([k, v]) => respHeaders.set(k, v));
 
     return new Response(notionResp.body, {
       status:  notionResp.status,
@@ -87,11 +99,19 @@ export default {
   }
 };
 
-function corsHeaders() {
+function corsHeaders(request) {
+  const origin = request?.headers?.get('Origin') || '';
+  const allowed = [
+    'https://financebird.app',
+    'https://financebird.github.io',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+  ];
+  const allowOrigin = allowed.includes(origin) ? origin : allowed[0];
   return {
-    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Origin':  allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Notion-Version, X-FB-Key, X-FB-License',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Notion-Version, X-FB-Key, X-FB-License, X-FB-Device',
   };
 }
 

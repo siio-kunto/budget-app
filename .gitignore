@@ -1,2 +1,6 @@
 node_modules/
-package*.json
+.DS_Store
+/tmp/
+
+# Admin-Konsole — bewusst nicht im Public-Deploy-Repo (BL-093, DS5)
+financebird_admin.html
